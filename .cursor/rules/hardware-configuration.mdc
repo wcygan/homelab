@@ -1,0 +1,33 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+## Project Context
+
+This project is based on https://github.com/onedr0p/cluster-template to setup a Talos Linux Kubernetes cluster in my homelab.
+
+## Hardware
+
+I have 3 Minisforum MS-01 mini PCs. I'd like them to be named k8s-1, k8s-2, k8s-3
+
+Their IPs are:
+
+1. 192.168.1.98
+2. 192.168.1.99
+3. 192.168.1.100
+
+For each of the machines, it is possible to get their disk and mac address as follows:
+
+```bash
+talosctl -n 192.168.1.99 get disks --insecure
+talosctl -n 192.168.1.99 get links --insecure
+```
+
+## Network Setup
+
+My network gateway is available at 192.168.1.254
+
+## Talos Setup
+
+The Talos schematic is `064d2c892ac9a3a7da7fa550dbdd1516908bd9dfe355ad345ff4e9d8f8b34930`
