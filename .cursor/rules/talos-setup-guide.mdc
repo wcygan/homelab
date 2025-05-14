@@ -1,0 +1,89 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Talos Linux Cluster Setup Guide
+
+This guide outlines the process for setting up a Talos Linux Kubernetes cluster, based on the Talos Getting Started Guide and adapted for this project's specific structure and tooling.
+
+## Overview
+
+The general steps to create a Kubernetes cluster with Talos Linux are:
+1.  Boot machines with the Talos Linux image.
+2.  Define the Kubernetes API endpoint and generate initial machine configurations.
+3.  Customize and apply these machine configurations to the respective nodes.
+4.  Configure `talosctl` for cluster interaction.
+5.  Bootstrap the Kubernetes cluster.
+
+## Project-Specific Workflow
+
+This project utilizes `makejinja` to process template files and generate the necessary configurations:
+-   Node-specific details such as IP addresses, MAC addresses, installation disk serials, and roles (control plane/worker) are defined in dedicated configuration files.
+-   Cluster-wide settings, including the Kubernetes version, virtual IP (VIP) for the control plane, and other cluster parameters, are also specified in configuration files.
+-   The `makejinja` tool, likely invoked via a command in `[Taskfile.yaml](mdc:Taskfile.yaml)` (e.g., `task talos:genconfig` or similar), processes these configuration files against templates located in `templates/config/`. This generates the final Talos machine configuration files (e.g., `talos/clusterconfig/k8s-1.yaml`, `talos/clusterconfig/k8s-2.yaml`, etc.) and potentially the `talosconfig` file.
+
+## Detailed Setup Steps
+
+### 1. Prerequisites
+   - Ensure the `talosctl` command-line tool is installed on your management machine.
+   - Verify network connectivity to all machines designated for the cluster. Physical hardware details and network settings are specified in your node configuration data.
+
+### 2. Boot Machines
+   - Boot each server (control plane and worker nodes as defined in your node configuration) using the appropriate Talos Linux image (e.g., ISO, PXE).
+   - The IP addresses for the nodes are pre-assigned in your node configuration data. Ensure these are correctly configured on your network (e.g., via DHCP reservations or static assignments matching the data).
+
+### 3. Prepare and Generate Configurations
+   - **Populate Configuration Files**: Ensure your primary cluster and node definition files are accurately filled out with your specific hardware details and desired cluster configuration.
+   - **Generate Machine Configs**: Run the `makejinja` command (or the relevant `task` from `[Taskfile.yaml](mdc:Taskfile.yaml)`). This will create the individual machine configuration files (e.g., `talos/clusterconfig/<node-name>.yaml`) and the `talosconfig` file for `talosctl`.
+
+### 4. Apply Machine Configurations
+   - For each node defined in your configuration, apply its corresponding generated configuration file. The IP address and name for each node are found in your node setup data.
+   - **Control Plane Node(s):**
+     ```bash
+     talosctl apply-config --insecure --nodes <CONTROL_PLANE_NODE_IP> --file ./talos/clusterconfig/<CONTROL_PLANE_NODE_NAME>.yaml
+     ```
+   - **Worker Node(s) (if any defined separately):**
+     ```bash
+     talosctl apply-config --insecure --nodes <WORKER_NODE_IP> --file ./talos/clusterconfig/<WORKER_NODE_NAME>.yaml
+     ```
+   - The `--insecure` flag is necessary for the initial configuration as the PKI (Public Key Infrastructure) is not yet established on the nodes. The connection is still encrypted.
+   - Ensure TCP port 50000 is accessible on each node from the machine running `talosctl` during this initial application phase.
+
+### 5. Configure `talosctl` Client
+   - The `talosconfig` file generated in Step 3 is used to authenticate `talosctl` commands to your cluster.
+   - For subsequent `talosctl` commands, explicitly specify this configuration:
+     ```bash
+     talosctl --talosconfig=./talosconfig <command> --nodes <TARGET_NODE_IP_OR_NAME> --endpoints <A_CONTROL_PLANE_NODE_IP_OR_NAME>
+     ```
+   - The endpoint is typically one of the control plane IP addresses from your node definitions.
+
+### 6. Bootstrap Kubernetes Cluster
+   - This critical step initializes the Kubernetes control plane components on the first (or a designated) control plane node.
+   - **This command should be executed ONLY ONCE on a SINGLE control plane node.**
+     ```bash
+     talosctl bootstrap --talosconfig=./talosconfig --nodes <A_CONTROL_PLANE_NODE_IP_OR_NAME> --endpoints <A_CONTROL_PLANE_NODE_IP_OR_NAME>
+     ```
+     (Replace `<A_CONTROL_PLANE_NODE_IP_OR_NAME>` with the actual IP or name from your node definitions).
+
+### 7. Access Kubernetes Cluster
+   - After successful bootstrapping, download the `kubeconfig` file to interact with your new Kubernetes cluster using `kubectl`.
+     ```bash
+     talosctl kubeconfig . --talosconfig=./talosconfig --nodes <A_CONTROL_PLANE_NODE_IP_OR_NAME> --endpoints <A_CONTROL_PLANE_NODE_IP_OR_NAME>
+     ```
+     (Using `.` as the first argument after `kubeconfig` will merge it into your default `~/.kube/config`. Provide a filename to save it separately).
+   - Verify cluster access:
+     ```bash
+     kubectl get nodes
+     kubectl get pods -A
+     ```
+
+## Important Considerations
+- **Endpoints vs. Nodes in `talosctl`**:
+    - `--endpoints`: Specifies the IP address(es) of the control plane node(s) that `talosctl` will send its API requests to.
+    - `--nodes`: Specifies the target node(s) on which the command should operate. The endpoint node will proxy the request if necessary.
+- **Installation Disk**: The machine configuration files include the `installDisk` parameter. Ensure this matches your hardware (e.g., `/dev/sda`, `/dev/nvme0n1`, or a disk serial). You can verify disk identifiers using `talosctl get disks --insecure -n <NODE_IP>`. The serial numbers are expected in your node configuration.
+- **Machine Configuration Customization**: Review the Talos Linux documentation for advanced configuration options that can be incorporated into your configuration file templates.
+- **Production Clusters**: While this project structure is robust, always consult the official Talos Linux documentation for best practices regarding High Availability (HA) control planes, PKI management, network security, and upgrades in production environments.
+
+*This setup guide is based on Talos v1.10. Refer to the [official Talos documentation](mdc:https:/www.talos.dev/v1.10/introduction/getting-started) for the most current and comprehensive information.*

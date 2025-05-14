@@ -1,0 +1,18 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Project Origin and Context
+
+This project is a homelab setup for a Talos Linux Kubernetes cluster. It is derived from the onedr0p/cluster-template.
+
+The specific configuration and customization for this homelab instance are detailed in the project's main `[README.md](mdc:README.md)`, which outlines how the `onedr0p/cluster-template` is utilized.
+
+Key aspects of the setup, as inherited or adapted from the template, include:
+- **Templating Engine**: makejinja processes files for cluster and nodes to generate deployment configurations.
+- **Core Technologies**:
+    - Talos Linux for the operating system.
+    - Flux for GitOps.
+    - Sops for managing secrets.
+    - cloudflared for external network access to applications.
