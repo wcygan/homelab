@@ -1,0 +1,73 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Talos Linux Cluster Troubleshooting Key Insights
+
+This guide summarizes key steps for troubleshooting Talos Linux clusters, based on the official documentation.
+
+## Core Principles
+
+*   **Start with `kube-apiserver`**: Troubleshooting should always begin by checking the `kube-apiserver`. Other control plane components like `kube-controller-manager` and `kube-scheduler` depend on it.
+*   **`etcd` Health**: The `etcd` service on the same node must be healthy for `kube-apiserver` to start.
+
+## Troubleshooting Steps
+
+1.  **Verify Static Pods**:
+    *   Ensure Talos has generated static pod definitions for `kube-apiserver`, `kube-controller-manager`, and `kube-scheduler`.
+        ```bash
+        talosctl -n <IP> get staticpods
+        ```
+    *   Check `dmesg` to confirm the static pods have been rendered:
+        ```bash
+        talosctl -n <IP> dmesg | grep 'rendered new'
+        ```
+    *   If static pods are not rendered, inspect `etcd` and `kubelet` service health, and review the `controller-runtime` logs (`talosctl logs controller-runtime`).
+
+2.  **Check Control Plane Pod Status**:
+    *   View the status of control plane components on each control plane node:
+        ```bash
+        talosctl -n <IP> containers --kubernetes
+        ```
+    *   Access logs for specific control plane components:
+        ```bash
+        talosctl -n <IP> logs -k kube-system/kube-apiserver-talos-default-controlplane-1:kube-apiserver:<hash>
+        ```
+    *   If a component fails to start, verify Kubernetes version compatibility with the Talos release and check for errors in any custom configurations or arguments.
+
+3.  **Inspect Kubernetes Bootstrap Manifests**:
+    *   Talos injects bootstrap manifests (system and custom) into the Kubernetes API server. List them using:
+        ```bash
+        talosctl -n <IP> get manifests
+        ```
+    *   View details of a specific manifest:
+        ```bash
+        talosctl -n <IP> get manifests <MANIFEST_ID> --namespace=controlplane -o yaml
+        ```
+
+4.  **Utilize `kubectl` for Further Diagnostics**:
+    *   Once the `kube-apiserver` is operational, use `kubectl` for troubleshooting other Kubernetes components:
+        ```shell
+        kubectl get nodes -o wide
+        kubectl get pods -o wide --all-namespaces
+        kubectl describe pod -n <NAMESPACE> <POD_NAME>
+        kubectl logs -n <NAMESPACE> <POD_NAME>
+        ```
+
+5.  **Kubernetes API Endpoint Configuration**:
+    *   Retrieve the `kubeconfig` file using:
+        ```bash
+        talosctl -n <IP> kubeconfig
+        ```
+    *   The Kubernetes control plane endpoint (typically `https://<endpoint_address>:6443`) is crucial for external access. It should direct traffic to all control plane nodes, often achieved using a load balancer, DNS, or Talos' built-in shared IP.
+
+6.  **Review Controller Runtime Logs**:
+    *   Talos controllers manage machine operations. Debugging information can be found in their logs:
+        ```bash
+        talosctl -n <IP> logs controller-runtime
+        ```
+    *   Controllers run reconcile loops. Messages about starting, failing, or restarting are normal. An absence of new log messages usually indicates that the system state matches the desired state.
+
+---
+*Source: [Talos Documentation - Troubleshooting](mdc:https:/www.talos.dev/v1.10/introduction/troubleshooting)*
