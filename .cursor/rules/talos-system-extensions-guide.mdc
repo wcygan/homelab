@@ -1,0 +1,88 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Talos Linux System Extensions Installation Guide
+
+This guide explains how to install system extensions into Talos Linux, allowing for customization of the root filesystem while maintaining its immutability.
+
+## Overview
+
+System extensions enable features like custom container runtimes or additional firmware. They are activated during Talos installation or upgrade. Even with extensions, the Talos root filesystem remains immutable and read-only.
+
+Since Talos v1.5.0, boot media (ISOs, PXE images, disk images) can be generated with extensions pre-included. This simplifies the process as it removes the need to rebuild the `initramfs.xz` on the machine itself during installation or upgrade.
+
+## Installation Methods
+
+There are primarily two scenarios for installing system extensions:
+
+1.  **During Initial Installation (e.g., from ISO or PXE):**
+    *   Some extensions, like network drivers, might be needed for the initial boot and installation process. These should be included in the initial boot assets.
+    *   Other extensions (e.g., NVIDIA drivers, gVisor) are only needed after Talos is installed on disk. These can be included in the `installer` image.
+
+2.  **For Pre-Installed Disk Images (e.g., AMIs, VMDKs):**
+    *   Extensions can be directly baked into the disk image.
+
+The general approach involves using a custom `installer` container image.
+
+### Using a Custom `installer` Image
+
+This is a common method, especially when booting from generic media like an ISO.
+
+1.  **Prepare a Custom `installer` Image:**
+    *   A Talos system extension is essentially a container image with a specific directory structure. You can build your own or use pre-built extensions (e.g., from the [Sidero Labs extensions repository](mdc:https:/github.com/siderolabs/extensions/blob/main/README.md)).
+    *   Create a new `installer` container image that includes the desired system extension(s). The process for generating boot assets with extensions is detailed in the [Talos boot assets guide](mdc:https:/www.talos.dev/v1.10/talos-guides/installation/boot-assets).
+    *   Push this custom `installer` image to a container registry accessible by your Talos nodes.
+
+2.  **Configure Machine Installation:**
+    *   In your Talos machine configuration file (e.g., `controlplane.yaml`, `worker.yaml`), specify your custom `installer` image in the `.machine.install.image` field.
+        ```yaml
+        machine:
+          install:
+            image: your-registry/custom-talos-installer-with-extensions:tag
+            # ... other install options
+        ```
+
+3.  **Installation Process:**
+    *   **Boot from Generic Media (if applicable):** Boot the machine using a standard Talos ISO or PXE image.
+    *   **Apply Machine Configuration:** Apply the machine configuration that points to your custom `installer` image.
+    *   **Installation with Extensions:** Talos will pull the specified custom `installer` image. This installer, now containing your system extension(s), will proceed to install Talos (with those extensions) onto the machine's disk.
+    *   **Reboot:** The machine reboots into Talos with the system extensions active.
+
+### Using a Custom Disk Image (e.g., for Cloud VMs)
+
+1.  **Prepare a Custom Disk Image:**
+    *   Generate a Talos disk image (e.g., AMI for AWS, VMDK for VMware) that includes the system extension(s). Refer to the [Talos boot assets guide](mdc:https:/www.talos.dev/v1.10/talos-guides/installation/boot-assets) for creating custom images.
+    *   Upload this image to your cloud provider or hypervisor.
+
+2.  **Launch Machine:**
+    *   Launch a new virtual machine using the custom disk image. Talos will boot with the extensions already included.
+
+## Upgrading Talos with System Extensions
+
+When upgrading Talos on a machine that uses system extensions:
+
+*   **If using the `installer` image method:** Generate a new custom `installer` container image for the new Talos version, including the same (or updated) system extensions. Push it to your registry. Update the `.machine.install.image` in the machine configuration (or use the `--image` flag with `talosctl upgrade`) to point to this new installer image.
+*   **If using custom disk images:** You can either replace the VM with a new one built from an updated disk image or use the custom `installer` image method for an in-place upgrade.
+
+## Verifying Installed Extensions
+
+You can list the system extensions active on a Talos node using `talosctl`:
+
+```bash
+talosctl get extensions -n <NODE_IP_OR_NAME>
+```
+
+To see more details about a specific extension:
+
+```bash
+talosctl get extensions <EXTENSION_ID> -n <NODE_IP_OR_NAME> -o yaml
+```
+
+## Authoring System Extensions
+
+System extensions are container images with a specific folder structure. For details on creating your own extensions, refer to the official Talos documentation on [Authoring System Extensions](mdc:https:/www.talos.dev/v1.10/talos-guides/configuration/system-extensions/#authoring-system-extensions). Sidero Labs also maintains a [repository of common extensions](mdc:https:/github.com/siderolabs/extensions/blob/main/README.md).
+
+---
+*This guide is based on information from the [Talos System Extensions documentation](mdc:https:/www.talos.dev/v1.10/talos-guides/configuration/system-extensions) and the [Sidero Labs extensions repository](mdc:https:/github.com/siderolabs/extensions/blob/main/README.md).*
