@@ -1,0 +1,112 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Kubernetes Node Troubleshooting Guide
+
+When `kubectl get nodes` is timing out, or nodes are not in the `Ready` state, follow these steps to diagnose and resolve the issue.
+
+## 0. Verify Kubernetes Context
+
+Before proceeding, ensure you are targeting the correct Kubernetes cluster. Mistakes can easily be made if you have multiple contexts configured.
+
+1.  **Check the current context:**
+    ```shell
+    kubectl config current-context
+    ```
+2.  **List all available contexts to be sure:**
+    ```shell
+    kubectl config get-contexts
+    ```
+3.  **If needed, switch to the correct context:**
+    ```shell
+    kubectl config use-context <YOUR_DESIRED_CONTEXT_NAME>
+    ```
+
+## 1. Check Basic Node Status
+
+First, try to list all nodes and observe their status:
+
+```shell
+kubectl get nodes -o wide
+```
+
+Pay attention to the `STATUS` column. Nodes should be `Ready`. If they are `NotReady`, or if the command itself times out, proceed to the next steps.
+
+## 2. Describe Problematic Nodes
+
+For any node not in a `Ready` state, or if you suspect issues with a specific node, get detailed information and events:
+
+```shell
+kubectl describe node <NODE_NAME>
+```
+
+Look for:
+-   **Conditions**: Check the status of `Ready`, `MemoryPressure`, `DiskPressure`, `PIDPressure`, `NetworkUnavailable`.
+-   **Events**: Recent events can provide clues about what's happening (e.g., image pull failures, network issues, resource problems).
+-   **Capacity and Allocatable Resources**: Ensure the node isn't overcommitted.
+
+## 3. Interactive Node Debugging with `kubectl debug node`
+
+For deeper inspection, you can launch a privileged pod directly on the node. This is useful for checking the node's filesystem, network configuration from within the node, running processes, and system logs.
+
+```shell
+kubectl debug node/<NODE_NAME> -it --image=ubuntu # Or another image like busybox, nicolaka/netshoot
+```
+
+Once inside the debug pod:
+-   Check network connectivity: `ping <GATEWAY_IP>`, `ping <OTHER_NODE_IP>`, `ping 8.8.8.8`.
+-   Inspect network interfaces: `ip addr`, `ip route`.
+-   Check disk space: `df -h`.
+-   View system logs: `chroot /host journalctl -u kubelet`, `chroot /host journalctl -u containerd` (or `docker` if applicable).
+-   Check status of `kubelet` and container runtime: `chroot /host systemctl status kubelet`, `chroot /host systemctl status containerd`.
+
+## 4. Check Pod States
+
+Issues with nodes can manifest as pods stuck in various states:
+
+-   **`Pending`**: The scheduler cannot assign the pod to a node. This could be due to:
+    -   Insufficient cluster resources (CPU, memory). Check `kubectl describe pod <POD_NAME>` for scheduler messages.
+    -   Use of `hostPort` when no node can satisfy the port requirement.
+    -   Taints and tolerations, or node affinity/anti-affinity rules preventing scheduling.
+-   **`Waiting`**: The pod has been scheduled to a node but cannot run. Common reasons:
+    -   Image pull errors (`ImagePullBackOff`, `ErrImagePull`): Verify image name, registry access, and try pulling the image manually on the node (if possible via the debug pod or direct SSH).
+    -   Storage issues (e.g., unable to attach a volume).
+-   **`CrashLoopBackOff`**: The container starts but then exits repeatedly. Check pod logs:
+    ```shell
+    kubectl logs <POD_NAME> -n <NAMESPACE>
+    kubectl logs <POD_NAME> -n <NAMESPACE> --previous # For previous crashed instance
+    ```
+-   **`Terminating`**: The pod is stuck during termination. This can sometimes be caused by finalizers or issues with the underlying storage or network resources the pod was using. Check for finalizers: `kubectl get pod <POD_NAME> -o yaml | grep finalizers`.
+
+## 5. Control Plane Health
+
+If multiple nodes are affected or the API server is unresponsive, check the health of control plane components. For Talos clusters, refer to the `talos-troubleshooting-guide`. For other Kubernetes distributions:
+-   Check logs of `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, and `etcd` on your control plane nodes.
+-   Ensure your CNI (network plugin) pods (e.g., Cilium, Calico, Flannel) are running correctly in the `kube-system` namespace.
+    ```shell
+    kubectl get pods -n kube-system
+    ```
+
+## 6. Network Connectivity and CNI
+
+Network issues are a common cause of node problems.
+-   Verify that nodes can communicate with each other and with the control plane.
+-   Check CNI pod logs for errors.
+-   Ensure firewall rules are not blocking necessary cluster communication.
+
+## 7. Resource Metrics
+
+If you have a metrics server installed, check resource utilization:
+```shell
+kubectl top nodes
+kubectl top pods -A
+```
+High resource usage might indicate that nodes are under pressure.
+
+## Relevant Kubernetes Documentation
+-   [Troubleshooting Clusters](mdc:https:/kubernetes.io/docs/tasks/debug/debug-cluster)
+-   [Debugging Kubernetes Nodes With Kubectl](mdc:https:/kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug)
+-   [Debugging Pods](mdc:https:/kubernetes.io/docs/tasks/debug/debug-application/debug-pods)
+---
