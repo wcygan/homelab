@@ -1,0 +1,97 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Kubernetes Cluster Health and Troubleshooting Guide
+
+This guide provides a structured approach to inspecting the state of your Kubernetes cluster, understanding its components, and diagnosing issues. It leverages existing project documentation and outlines a general workflow.
+
+## 1. Initial Health Check & Understanding Current State
+
+Begin with these steps to get a high-level overview of the cluster's health.
+
+### 1.1. Verify Kubernetes Context
+Ensure you are operating on the intended cluster.
+- **Tool**: `mcp_kubernetes_get_current_context`
+- **Action**: Check the output to confirm the context name, cluster, user, and default namespace.
+
+### 1.2. Check Node Status
+Verify all nodes are present and in a `Ready` state.
+- **Tool**: `mcp_kubernetes_list_nodes`
+- **Observe**: Node names, statuses, versions (OS, Kubelet), internal IPs.
+- **Troubleshooting**: If nodes are `NotReady` or missing, refer to the `[kubernetes-node-troubleshooting.mdc](mdc:kubernetes-node-troubleshooting.mdc)` guide. For Talos-specific node issues, also see `[talos-troubleshooting-guide.mdc](mdc:talos-troubleshooting-guide.mdc)`.
+
+### 1.3. Check Overall Pod Health (By Namespace)
+Inspect critical namespaces first, then application-specific ones.
+- **Tool**: `mcp_kubernetes_list_pods` (specify `namespace`)
+- **Key Namespaces & Expected Pods**:
+    - `kube-system`: Core Kubernetes components (API server, controller-manager, scheduler), CNI (e.g., Cilium), CoreDNS, metrics-server, reloader, spegel. All should be `Running`.
+    - `flux-system`: FluxCD components (source-controller, kustomize-controller, helm-controller, notification-controller, flux-operator). All should be `Running`. For issues, see `[flux-deployment-guide.mdc](mdc:flux-deployment-guide.mdc)`.
+    - `cert-manager`: Certificate management pods (cert-manager, cainjector, webhook). All should be `Running`.
+    - `network`: Networking tools like ingress controllers (internal/external), cloudflared, external-dns, k8s-gateway. All should be `Running`.
+    - `default` (or other application namespaces): Check application-specific pods.
+- **Observe**: Pod names, status (should be `Running` or `Completed`), restarts.
+- **Troubleshooting**: For pod issues (Pending, CrashLoopBackOff, Error), proceed to "Deeper Inspection".
+
+### 1.4. Review Cluster Events
+Look for recent unusual or error-level events.
+- **Tool**: `mcp_kubernetes_get_events` (can be filtered by `namespace` or `fieldSelector`)
+- **Observe**: Event types (`Normal`, `Warning`), reasons, messages, involved objects, and timestamps. Frequent `Warning` events or repeated `Normal` events that indicate failures (e.g., failed pulls, failed scheduling) need investigation.
+
+## 2. Deeper Inspection and Diagnosis
+
+If the initial checks reveal problems, or for more detailed understanding:
+
+### 2.1. Describing Nodes
+Get detailed information about a specific node.
+- **Tool**: `mcp_kubernetes_describe_node` (specify `name`)
+- **Observe**: Conditions (Ready, MemoryPressure, DiskPressure, etc.), events, capacity, allocatable resources, running pods.
+- **Further Debugging**: Use `kubectl debug node/<NODE_NAME> -it --image=ubuntu` (as outlined in `[kubernetes-node-troubleshooting.mdc](mdc:kubernetes-node-troubleshooting.mdc)`).
+
+### 2.2. Describing Pods
+Get detailed information about a specific pod.
+- **Tool**: `mcp_kubernetes_describe_pod` (specify `name` and `namespace`)
+- **Observe**: Status, conditions, events (especially scheduling failures, image pull errors, readiness/liveness probe failures), container states, volume mounts.
+
+### 2.3. Getting Pod Logs
+Retrieve logs from containers within a pod.
+- **Tool**: `mcp_kubernetes_get_logs` (specify `resourceType="pod"`, `name`, `namespace`; optionally `container`, `tail`, `timestamps`)
+- **Observe**: Application errors, startup issues, configuration problems.
+
+### 2.4. Checking Component-Specific Status
+- **FluxCD**: Use `flux get kustomizations -A`, `flux describe kustomization <name> -n <namespace>`, `flux get helmreleases -A`, etc., as detailed in `[flux-deployment-guide.mdc](mdc:flux-deployment-guide.mdc)`.
+- **Talos**: Utilize `talosctl` commands for deeper OS-level and cluster management insights (e.g., `talosctl -n <IP> containers --kubernetes`, `talosctl -n <IP> logs -k <pod_name>:<container_name>`). Refer to `[talos-troubleshooting-guide.mdc](mdc:talos-troubleshooting-guide.mdc)`.
+
+## 3. Making Recommendations & Fixing Issues
+
+Based on the diagnosis, formulate recommendations.
+
+### 3.1. Application Deployments
+- **Adding, Modifying, Deleting Applications**: Follow the procedures in `[flux-deployment-guide.mdc](mdc:flux-deployment-guide.mdc)`. This includes managing HelmReleases, Kustomizations, and SOPS secrets.
+- **Troubleshooting Application Issues**: Use logs and describe outputs to identify root causes (e.g., incorrect image, config errors, resource limits, network policy).
+
+### 3.2. Cluster Infrastructure
+- **Node Issues**: Refer to `[kubernetes-node-troubleshooting.mdc](mdc:kubernetes-node-troubleshooting.mdc)`.
+- **Talos OS or Kubernetes Upgrades**: Refer to `[cluster-upgrades-and-extensions.mdc](mdc:cluster-upgrades-and-extensions.mdc)`.
+- **Talos System Extensions**: Refer to `[cluster-upgrades-and-extensions.mdc](mdc:cluster-upgrades-and-extensions.mdc)` for management and `[talos-system-extensions-guide.mdc](mdc:talos-system-extensions-guide.mdc)` for installation concepts.
+- **Networking Issues**: Check CNI (Cilium) logs, Ingress controller logs, NetworkPolicy configurations.
+- **Storage Issues**: Check PVC/PV status, storage class definitions, and logs of components interacting with storage.
+
+## 4. Key Tools Summary (AI Toolkit)
+
+The following tools are primary for cluster inspection:
+- `mcp_kubernetes_get_current_context`
+- `mcp_kubernetes_list_nodes`
+- `mcp_kubernetes_describe_node`
+- `mcp_kubernetes_list_pods`
+- `mcp_kubernetes_describe_pod`
+- `mcp_kubernetes_get_logs`
+- `mcp_kubernetes_get_events`
+- `mcp_kubernetes_list_namespaces`
+- `mcp_kubernetes_list_services`
+- `mcp_kubernetes_list_deployments`
+- `mcp_kubernetes_describe_deployment`
+- `mcp_kubernetes_describe_service`
+
+Remember to correlate findings with the specific setup detailed in `[hardware-configuration.mdc](mdc:hardware-configuration.mdc)` and the project's overall structure based on `[project-template-info.mdc](mdc:project-template-info.mdc)`.
