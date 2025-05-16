@@ -105,11 +105,6 @@ nodes:
       - "@./patches/#{ item.name }#/#{ file | basename }#"
     #% endfor %#
     #% endif %#
-    machine:
-      install:
-        image: {{ item.talosImageURL | default(talos_image_url) }}
-        extensions:
-          - image: ghcr.io/siderolabs/tailscale:1.82.0@sha256:c1c28acfeb3a3fa10d3242a00d013da12994ae0653d6a992d97c95dc1033c3a5
   #% endfor %#
 
 #% for file in talos_patches('global') %#
