@@ -11,56 +11,132 @@ Install 1Password Connect server and Kubernetes Operator to sync 1Password items
 - 1Password Connect token (`wcygan-net Access Token: Kubernetes`)
 
 ## Steps
+Replace the manual Helm commands with a GitOps-driven approach. All resources will be managed in Git under `kubernetes/apps/onepassword-connect/`:
 
-1. Add the 1Password Helm chart repository:
-   ```bash
-   helm repo add 1password https://1password.github.io/connect-helm-charts
-   helm repo update
-   ```
+1. Create a directory `kubernetes/apps/onepassword-connect/` and add:
+   - `namespace.yaml` (a Namespace CR)
+   - `helmrepo.yaml` (a Flux HelmRepository CR for the 1Password chart)
+   - `externalsecret-credentials.yaml` (an ExternalSecret CR to sync Connect credentials and token)
+   - `helmrelease.yaml` (a Flux HelmRelease CR to install the Connect server + Operator using the synced Secret)
+   - `kustomization.yaml` (a Flux Kustomization CR to deploy all of the above)
 
-2. Store credentials locally:
-   ```bash
-   cp /path/to/wcygan-net-credentials.json 1password-credentials.json
-   export OP_CONNECT_TOKEN="$(cat /path/to/wcygan-net-access-token.txt)"
-   ```
+2. Commit and push these files. Flux will automatically install or update the Connect server and Operator.
 
-3. Install Connect server and Operator:
-   ```bash
-   helm install connect 1password/connect \
-     --namespace=1password-system \
-     --create-namespace \
-     --set-file connect.credentials=1password-credentials.json \
-     --set operator.create=true \
-     --set operator.token.value=$OP_CONNECT_TOKEN \
-     --wait
-   ```
+Example snippets:
 
-4. Verify installation:
-   ```bash
-   kubectl get pods -n 1password-system
-   kubectl get crd onepassworditems.operator.1password.io
-   ```
+```yaml
+# namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: onepassword-system
+```
+
+```yaml
+# helmrepo.yaml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: onepassword-charts
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://1password.github.io/connect-helm-charts
+```
+
+```yaml
+# externalsecret-credentials.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: onepassword-credentials
+  namespace: onepassword-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword
+    kind: ClusterSecretStore
+  target:
+    name: onepassword-credentials
+  data:
+    - secretKey: credentials.json
+      remoteRef:
+        key: connect/credentials
+        property: file
+    - secretKey: token
+      remoteRef:
+        key: connect/token
+        property: value
+```
+
+```yaml
+# helmrelease.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: onepassword-connect
+  namespace: onepassword-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: connect
+      version: 1.8.0         # pin a chart version
+      sourceRef:
+        kind: HelmRepository
+        name: onepassword-charts
+        namespace: flux-system
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  valuesFrom:
+    - kind: Secret
+      name: onepassword-credentials
+  values:
+    connect:
+      credentials:
+        secretKeyRef:
+          name: onepassword-credentials
+          key: credentials.json
+      token:
+        secretKeyRef:
+          name: onepassword-credentials
+          key: token
+    operator:
+      create: true
+      token:
+        secretKeyRef:
+          name: onepassword-credentials
+          key: token
+```
+
+```yaml
+# kustomization.yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: onepassword-connect
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/onepassword-connect
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+```
 
 ## Verification
-- All pods in `1password-system` are `Running`.
-- CRDs `onepassworditems`, `onepasswordvaults` exist.
-- Create a test `OnePasswordItem` and confirm a Kubernetes Secret is created.
+- Run `flux get kustomizations -n flux-system` to confirm `onepassword-connect` is reconciling.
+- Use `kubectl get pods -n onepassword-system` and `kubectl get crds | grep onepassword` to verify the Connect server, operator, and CRDs are present.
 
 ## Next Steps
-- Encrypt `1password-credentials.json` with SOPS or store securely via GitOps.
-- Define `OnePasswordItem` CRs for required secrets. For example, sync Tailscale OAuth credentials:
-  ```yaml
-  apiVersion: operator.1password.io/v1beta1
-  kind: OnePasswordItem
-  metadata:
-    name: tailscale-oauth
-    namespace: tailscale-system
-  spec:
-    vault: Technology
-    itemPath: "Tailscale OAuth"
-    output:
-      secretName: tailscale-oauth
-  ```
-- Configure application deployments to consume synced Secrets.
+- Define `OnePasswordItem` CRs to sync required secrets into Kubernetes.
+- Reference the synced Secrets in your application manifests via `valuesFrom` or `env.valueFrom.secretKeyRef`.
 
 Refer to: https://developer.1password.com/docs/k8s/operator/
