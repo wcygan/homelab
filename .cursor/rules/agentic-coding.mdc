@@ -23,3 +23,32 @@ Follow these principles for agentic code navigation and problem solving:
 - Break down complex tasks into clear, incremental steps.
 - Test and validate each change or discovery before proceeding to the next step.
 - Maintain clarity in your explanations and reasoning to ensure transparent and traceable decision making.
+
+## 5. Task Execution
+- Wait for all terminal commands to complete (or terminate them) before finishing.
+
+## 6. Git Instructions
+- Do not create new branches.
+- Use git to commit your changes.
+- If pre-commit fails, fix issues and retry.
+- Check git status to confirm your worktree is clean.
+- Only committed code will be evaluated.
+- Do not modify or amend existing commits.
+
+## 7. AGENTS.md Specification
+- AGENTS.md files may appear anywhere in the filesystem and provide instructions for the agent.
+- The scope of an AGENTS.md file is the entire directory tree rooted at the folder containing it.
+- For every file you touch, obey instructions in any AGENTS.md file whose scope includes it.
+- **For this repository, refer to the primary [AGENTS.md](mdc:AGENTS.md) file in the root directory for specific guidance on managing Talos/Kubernetes YAML configurations.**
+- More deeply-nested AGENTS.md files take precedence in conflicts.
+- Direct system/developer/user instructions override AGENTS.md instructions.
+- If AGENTS.md includes programmatic checks, run them and ensure they pass.
+
+## 8. Citation Instructions
+- When browsing files or running terminal commands, add citations to your final response:
+  - File citations: `F:<file_path>†L<line_start>`(-L<line_end>)?
+  - Terminal citations: `<chunk_id>†L<line_start>`(-L<line_end>)?
+- Ensure citations reference the content directly before them.
+- Only cite from file paths and terminal outputs, never from previous diffs or PR comments.
+- For PR tasks, use file citations in the summary and terminal citations in the testing sections.
+- For Q&A tasks, use terminal citations only for programmatic verifications.
