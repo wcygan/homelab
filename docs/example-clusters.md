@@ -21,3 +21,18 @@ You can refer to either of these full cluster examples in the `/examples` folder
 - `examples/Tanguille-cluster.md` &ndash; Tanguille's full cluster configuration
 
 Each file contains the complete directory layout and manifest definitions following the above patterns.
+
+## Additional Observations
+
+### Joryirving Home Ops Example (`examples/joryirving-home-ops.md`)
+- Monorepo with `kubernetes/apps/base` for shared common components and `kubernetes/apps/<cluster>` overlays for cluster-specific deployments.
+- Uses a top-level `Taskfile.yaml` plus MiniJinja templating (`.minijinja.toml`, `.mise.toml`) to generate Talos and Kubernetes configs and orchestrate tasks.
+- Bootstraps core infrastructure via `bootstrap/helmfile.yaml` and `bootstrap/resources.yaml.j2` rather than Flux alone.
+- Secrets managed by SOPS (`.sops.yaml`) and Flux `ExternalSecret` CRs alongside `*.sops.yaml` files.
+- Per-app directories under `kubernetes/apps/...` follow the same `kustomization.yaml` + `helmrelease.yaml` + nested Kustomization pattern described above.
+
+### JJGadgets Biohazard Example (`examples/JJGadgets-Biohazard.md`)
+- Splits the repo under `kube/` into `bootstrap/` (Flux install manifests), `clusters/` (cluster and Talos configs), and `deploy/apps/` (per-app deployments).
+- Each app in `deploy/apps/<app>` contains `ns.yaml` (namespace), `ks.yaml` (Kustomization), `es.yaml` (ExternalSecret), `hr.yaml` (HelmRelease), optional `pvc.yaml` (PVC), and other resource fragments.
+- Flux configuration CRs (`flux-repo.yaml`, `kustomization.yaml`) live under `kube/clusters/<cluster>/flux/`, and Talos machine configs under `kube/clusters/<cluster>/talos/`.
+- Uses a `Taskfile.dist.yaml` for task definitions and standard SOPS and pre-commit configuration files for CI consistency.

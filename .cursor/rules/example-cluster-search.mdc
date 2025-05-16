@@ -1,0 +1,15 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Searching the Examples for Guidance
+
+Whenever you need to implement additions or modifications to your Talos/Kubernetes cluster, search the complete example definitions in the `/examples` folder:
+
+- [examples/onedr0p-home-ops.md](mdc:examples/onedr0p-home-ops.md)
+- [examples/Tanguille-cluster.md](mdc:examples/Tanguille-cluster.md)
+- [examples/joryirving-home-ops.md](mdc:examples/joryirving-home-ops.md)
+- [examples/JJGadgets-Biohazard.md](mdc:examples/JJGadgets-Biohazard.md)
+
+These files include end-to-end directory layouts, Flux `Kustomization` CRs, HelmRelease patterns, SOPS secret conventions, and ConfigMapGenerator usage. Refer to them to ensure consistency with established GitOps/Kustomize–Flux patterns.
