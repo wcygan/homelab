@@ -28,19 +28,25 @@ The Talos OS version for the cluster is managed via `[talenv.yaml](mdc:talos/tal
     kubernetesVersion: v1.32.0 # Or your current/target k8s version
     ```
 2.  **(Re)generate Talos Configuration:**
-    Ensure configurations are up-to-date with the new version, especially if other related settings in `[talconfig.yaml](mdc:talos/talconfig.yaml)` might be affected or if you've changed the schematic ID (see section 4).
+    Ensure configurations are up-to-date with the new version, including any schematic ID or patch changes.
     ```bash
-    task configure
+    task talos:generate-config
     ```
-3.  **Upgrade Each Node:**
-    Execute the upgrade task for each node in your cluster, one at a time. Refer to `[hardware-configuration.mdc](mdc:hardware-configuration.mdc)` for node IPs.
+3.  **Stage Configuration on Each Node (without reboot):**
+    Apply the regenerated configs to each node. This stages changes but does *not* trigger a reboot.
+    ```bash
+    task talos:apply-node IP=<NODE_IP> MODE=auto
+    # Default MODE=auto stages changes without reboot.
+    # To stage and reboot immediately: MODE=reboot
+    # Example: task talos:apply-node IP=192.168.1.98 MODE=reboot
+    ```
+4.  **Upgrade Talos OS on Each Node (Sequentially):**
+    Execute the upgrade task for each node, one at a time, to download the new OS image and reboot.
+    Monitor each in-flight upgrade (e.g., via `talosctl dashboard --nodes <IPs>` or `kubectl get nodes -w`) and wait for `Ready` before proceeding.
     ```bash
     task talos:upgrade-node IP=<NODE_IP>
-    # Example for k8s-1 (IP: 192.168.1.98 from hardware-configuration.mdc)
-    # task talos:upgrade-node IP=192.168.1.98
+    # Example: task talos:upgrade-node IP=192.168.1.98
     ```
-    Follow this for all nodes (k8s-1, k8s-2, k8s-3).
-    The `[README.md](mdc:README.md)` section "Updating Talos and Kubernetes versions" details this.
 
 ## 3. Upgrading Kubernetes Version
 
@@ -56,65 +62,25 @@ The Kubernetes version for the cluster is also managed via `[talenv.yaml](mdc:ta
     kubernetesVersion: v1.33.0 # Changed from a previous version
     ```
 2.  **(Re)generate Talos Configuration:**
-    Ensure your Talos configurations reflect the new Kubernetes version.
+    Update the machine configs for the new Kubernetes version:
     ```bash
-    task configure
+    task talos:generate-config
     ```
-3.  **Upgrade Kubernetes on the Cluster:**
-    Execute the Kubernetes upgrade task. This typically orchestrates the upgrade across the control plane.
+3.  **Perform Kubernetes Upgrade:**
+    Orchestrate the Kubernetes version bump across all control plane nodes.
     ```bash
     task talos:upgrade-k8s
     ```
-    The `[README.md](mdc:README.md)` section "Updating Talos and Kubernetes versions" details this.
+    Monitor progress (e.g., `kubectl get nodes -w` or `talosctl dashboard`) and wait for all components to report the new version.
+
+### Verification: Kubernetes Version
+
+After the upgrade completes, confirm the Kubernetes control plane and node versions:
+```bash
+kubectl version --short
+kubectl get nodes -o wide
+```
 
 ## 4. Managing Talos System Extensions
 
-Talos system extensions (e.g., drivers, custom runtimes) are baked into the Talos installer image specified by the `talosImageURL` in `[talconfig.yaml](mdc:talos/talconfig.yaml)`. This URL includes a **schematic ID** obtained from the [Talos Linux Image Factory](mdc:https:/factory.talos.dev). The schematic ID noted in `[hardware-configuration.mdc](mdc:hardware-configuration.mdc)` and present in `[talconfig.yaml](mdc:talos/talconfig.yaml)` is `064d2c892ac9a3a7da7fa550dbdd1516908bd9dfe355ad345ff4e9d8f8b34930`.
-
-**Procedure to Change/Add/Remove Extensions:**
-
-1.  **Visit Talos Image Factory:**
-    Go to the [Talos Linux Image Factory](mdc:https:/factory.talos.dev).
-2.  **Select Talos Version and Extensions:**
-    Choose the Talos OS version (ideally matching or planned for your `talosVersion` in `[talenv.yaml](mdc:talos/talenv.yaml)`) and select/deselect the desired system extensions.
-    As per `[README.md](mdc:README.md)` Stage 1: "Be sure to only choose the **bare-minimum system extensions** as some might require additional configuration and prevent Talos from booting without it. You can always add system extensions after Talos is installed and working."
-3.  **Obtain New Schematic ID:**
-    After configuring, the factory will provide a new schematic ID.
-4.  **Update `[talconfig.yaml](mdc:talos/talconfig.yaml)`:**
-    For each node under the `nodes:` section, update the `talosImageURL` by replacing the old schematic ID with the new one.
-    Example for `k8s-1`:
-    ```yaml
-    # talos/talconfig.yaml
-    nodes:
-      - hostname: "k8s-1"
-        # ... other settings ...
-        talosImageURL: factory.talos.dev/installer/<NEW_SCHEMATIC_ID> # Replace old schematic ID
-        # ...
-    ```
-    Repeat for all nodes (k8s-1, k8s-2, k8s-3).
-5.  **(Re)generate Talos Configuration:**
-    This step is crucial to ensure the machine configurations reflect the new installer image.
-    ```bash
-    task configure
-    ```
-6.  **Apply Updated Configuration to Nodes:**
-    Apply the newly generated configuration to each node.
-    ```bash
-    task talos:apply-node IP=<NODE_IP> MODE=auto
-    # Example for k8s-1
-    # task talos:apply-node IP=192.168.1.98 MODE=auto
-    ```
-7.  **Upgrade Nodes (If Necessary):**
-    As mentioned in the `[README.md](mdc:README.md)` under "Updating Talos node configuration": "In some cases you **not only need to apply the configuration but also upgrade talos** to apply new configuration."
-    If changing extensions involves what Talos considers an OS-level change (which is likely if the installer image itself changes), or if you are also changing the `talosVersion`, you will likely need to run the upgrade task for each node:
-    ```bash
-    task talos:upgrade-node IP=<NODE_IP>
-    ```
-    This will make the node reboot and use the new installer image with the updated extensions.
-
-## Important Considerations
-
-- **Sequential Operations:** Always upgrade/apply configurations to one node at a time, especially for control plane nodes, to maintain cluster stability.
-- **Backup `[age.key](mdc:age.key)`**: While not directly related to upgrades, remember `[sops](mdc:.sops.yaml)` is used for secrets. Ensure your `age.key` (referenced as `[age.key](mdc:age.key)`) is securely backed up.
-- **Read Release Notes:** Before any Talos or Kubernetes upgrade, consult the official release notes for breaking changes or specific instructions.
-- **Git Commits:** Commit changes to `[talenv.yaml](mdc:talos/talenv.yaml)`, `[talconfig.yaml](mdc:talos/talconfig.yaml)`, and any generated files to your Git repository to maintain the GitOps workflow.
+Talos system extensions (e.g., drivers, custom runtimes) are baked into the Talos installer image specified by the `talosImageURL` in `[talconfig.yaml](mdc:talos/talconfig.yaml)`. This URL includes a **schematic ID** obtained from the [Talos Linux Image Factory](mdc:https:/factory.talos.dev). The schematic ID noted in `[hardware-configuration.mdc](mdc:hardware-configuration.mdc)` and present in `
