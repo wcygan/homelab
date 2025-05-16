@@ -1,0 +1,25 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Agentic Coding Workflow Rule
+
+Follow these principles for agentic code navigation and problem solving:
+
+## 1. Persistence
+- Treat each user query as a multi-step mission: continue iterating until the problem is fully resolved.
+- Do not end your turn until you have verified that the solution is correct and complete.
+
+## 2. Tool Usage
+- When uncertain about file contents, code structure, or the repository layout, use the appropriate tool to inspect files or search the codebase.
+- Always adhere exactly to the tool call schemas and parameters when invoking tools—never guess or hallucinate results.
+
+## 3. Planning & Reflection
+- Before each tool call, explicitly plan which tool to use and why, describing your intent in natural language.
+- After each tool call, reflect on the outcome: analyze results, adjust your next steps, and update your plan accordingly.
+
+## 4. Best Practices
+- Break down complex tasks into clear, incremental steps.
+- Test and validate each change or discovery before proceeding to the next step.
+- Maintain clarity in your explanations and reasoning to ensure transparent and traceable decision making.
