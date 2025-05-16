@@ -84,5 +84,44 @@ talosctl get extensions <EXTENSION_ID> -n <NODE_IP_OR_NAME> -o yaml
 
 System extensions are container images with a specific folder structure. For details on creating your own extensions, refer to the official Talos documentation on [Authoring System Extensions](mdc:https:/www.talos.dev/v1.10/talos-guides/configuration/system-extensions/#authoring-system-extensions). Sidero Labs also maintains a [repository of common extensions](mdc:https:/github.com/siderolabs/extensions/blob/main/README.md).
 
+## Adding Extensions to an Existing Talos System
+To append new system extensions without reinstalling Talos:
+
+1. Find the Extension Image and Digest:
+   - Use `crane` to list compatible extensions for your Talos version:
+     ```bash
+     crane export ghcr.io/siderolabs/extensions:v1.10.0 \
+       | tar x -O image-digests \
+       | grep <extension-name>
+     ```
+     Replace `<extension-name>` and `v1.10.0` with your target extension and Talos version.
+2. Update the Node Machine Configuration:
+   - Open the machine config (e.g., `talos/clusterconfig/k8s-1.yaml`) and add under `machine.install.extensions`:
+     ```yaml
+     machine:
+       install:
+         extensions:
+         - ghcr.io/siderolabs/<extension-image>@sha256:<digest>
+     ```
+3. Stage the Configuration:
+   ```bash
+   task talos:generate-config
+   task talos:apply-node IP=<NODE_IP> MODE=auto
+   ```
+   This schedules the extension installation without rebooting immediately.
+4. Trigger Extension Installation:
+   - Perform an in-place upgrade using the installer image with the new extensions:
+     ```bash
+     talosctl upgrade \
+       --nodes <NODE_IP> \
+       --image ghcr.io/siderolabs/installer:v1.10.0
+     ```
+   Talos will pull and apply the new extensions during the upgrade.
+5. Verify Extension Activation:
+   ```bash
+   talosctl get extensions -n <NODE_IP>
+   ```
+   Ensure the newly added extension is listed and active.
+
 ---
 *This guide is based on information from the [Talos System Extensions documentation](mdc:https:/www.talos.dev/v1.10/talos-guides/configuration/system-extensions) and the [Sidero Labs extensions repository](mdc:https:/github.com/siderolabs/extensions/blob/main/README.md).*

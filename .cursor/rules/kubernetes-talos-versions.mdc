@@ -1,0 +1,44 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Finding Talos and Kubernetes Versions
+
+This document outlines how to determine the currently running Talos OS and Kubernetes versions in your cluster.
+
+## Primary Method: `kubectl`
+
+The most reliable way to find the active Talos and Kubernetes versions is by inspecting the nodes directly using `kubectl`.
+
+Execute the following command:
+```bash
+kubectl get nodes -o wide
+```
+The output will show a `VERSION` column (for Kubernetes) and an `OS-IMAGE` column (which includes the Talos version) for each node.
+
+**Example Output:**
+```
+NAME    STATUS   ROLES           AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE          KERNEL-VERSION   CONTAINER-RUNTIME
+k8s-1   Ready    control-plane   47h   v1.33.0   192.168.1.98    <none>        Talos (v1.10.0)   6.12.25-talos    containerd://2.0.5
+k8s-2   Ready    control-plane   47h   v1.33.0   192.168.1.99    <none>        Talos (v1.10.0)   6.12.25-talos    containerd://2.0.5
+k8s-3   Ready    control-plane   47h   v1.33.0   192.168.1.100   <none>        Talos (v1.10.0)   6.12.25-talos    containerd://2.0.5
+```
+In this example:
+- Kubernetes version is `v1.33.0`
+- Talos OS version is `v1.10.0`
+
+## Fallback Method: Configuration File
+
+As a fallback, or to see the *intended* versions (which might not yet be fully rolled out or could be stale), you can check the `[talos/talenv.yaml](mdc:talos/talenv.yaml)` file.
+
+The `talosVersion` and `kubernetesVersion` fields in this file specify the target versions for the cluster.
+
+**`[talos/talenv.yaml](mdc:talos/talenv.yaml)` Example:**
+```yaml
+# renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+talosVersion: v1.10.0
+# renovate: datasource=docker depName=ghcr.io/siderolabs/kubelet
+kubernetesVersion: v1.33.0
+```
+**Note:** The versions in `[talos/talenv.yaml](mdc:talos/talenv.yaml)` represent the desired state defined in your configuration. The `kubectl get nodes -o wide` command reflects the actual running state of the cluster nodes. Always prioritize the `kubectl` output for the current live versions.
