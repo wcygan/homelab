@@ -64,6 +64,25 @@ touch kubernetes/apps/default/echo-2/app/helmrelease.yaml
 touch kubernetes/apps/default/echo-2/ks.yaml
 ```
 
+### Renaming and configuration changes
+
+Because this application is a clone of the `echo` application, we need to make some changes to the files to make it unique:
+
+After scaffolding the files, update their contents to reference your new application name (`echo-2`) instead of the original (`echo`):
+
+1. kubernetes/apps/default/echo-2/ks.yaml
+   - Change `metadata.name` (and its `&app` anchor) to `echo-2`.
+   - Update `spec.path` to `./kubernetes/apps/default/echo-2/app`.
+2. kubernetes/apps/default/echo-2/app/kustomization.yaml
+   - Confirm it points to `./helmrelease.yaml`; no edits needed here.
+3. kubernetes/apps/default/echo-2/app/helmrelease.yaml
+   - Change `metadata.name:` to `echo-2`.
+   - In `values.controllers:`, rename the `"echo":` key to `"echo-2":`.
+   - Update `service.controller:` from `echo` to `echo-2`.
+   - Update `serviceMonitor.serviceName:` from `echo` to `echo-2`.
+4. kubernetes/apps/default/kustomization.yaml
+   - Add `- ./echo-2/ks.yaml` under `resources:` so Flux picks up your new app.
+
 ## With secrets
 
 TBD: we will revisit this.
