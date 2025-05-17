@@ -1,12 +1,17 @@
 # Anton
 
-![Anton](static/anton.jpg)
+<img src="static/anton.jpg" alt="Anton" width="300px">
 
-Anton runs in my basement.
+Anton runs in my basement. It is based on [onedr0p's cluster-template](https://github.com/onedr0p/cluster-template).
 
-Anton is based on [onedr0p's cluster-template](https://github.com/onedr0p/cluster-template).
+## 🔧 Hardware
 
-Below you will find more information on how the cluster is configured and operated.
+| Name  | Device | CPU       | Disk       | RAM   | OS    | Purpose           |
+|-------|--------|-----------|------------|-------|-------|-------------------|
+| k8s-1 | MS-01  | i9-13900H | 500GB NVMe | 96GB | Talos | k8s control-plane |
+| k8s-2 | MS-01  | i9-13900H | 500GB NVMe | 96GB | Talos | k8s control-plane |
+| k8s-3 | MS-01  | i9-13900H | 500GB NVMe | 96GB | Talos | k8s control-plane |
+
 
 ## ✨ Features
 
