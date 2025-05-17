@@ -1,0 +1,66 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Flux Integration and Reconciliation Rule
+
+This rule explains in detail how the `kubernetes/apps`, `kubernetes/flux`, and `kubernetes/components` directories are integrated with the Kubernetes cluster via Flux, and how changes in these directories are picked up and reconciled into the live cluster state.
+
+## 1. Flux Bootstrapping and GitRepository
+- Flux is installed in the `flux-system` namespace.
+- The primary [GitRepository](mdc:kubernetes/flux/meta/repos/...) CRD (named `flux-system`) points to this Git repository.
+- All cluster state is defined declaratively in this repo; Flux continuously syncs it to the cluster.
+
+## 2. Cluster-Level Kustomizations
+- The main entry point for reconciliation is [`kubernetes/flux/cluster/ks.yaml`](mdc:kubernetes/flux/cluster/ks.yaml), which defines two key Flux `Kustomization` CRDs:
+  - **`cluster-meta`**: Watches [`./kubernetes/flux/meta`](mdc:kubernetes/flux/meta/kustomization.yaml) and applies all source definitions (HelmRepository, OCIRepository, etc.) into `flux-system`.
+  - **`cluster-apps`**: Watches [`./kubernetes/apps`](mdc:kubernetes/apps) and discovers all namespace-level Kustomization CRDs (the `ks.yaml` files under each app/namespace), applying them into the cluster.
+  - `cluster-apps` depends on `cluster-meta` to ensure sources are available before apps are deployed.
+
+## 3. Namespace and App Structure
+- Each namespace (e.g., `default`, `kube-system`, `flux-system`, `cert-manager`, `network`) has its own [`kustomization.yaml`](mdc:kubernetes/apps/default/kustomization.yaml) at `kubernetes/apps/<namespace>/kustomization.yaml`.
+- Each app under a namespace is a subdirectory (e.g., `kubernetes/apps/default/echo/`), containing:
+  - [`ks.yaml`](mdc:kubernetes/apps/default/echo/ks.yaml): A Flux Kustomization CRD pointing to the app's `app/` subdirectory.
+  - [`app/kustomization.yaml`](mdc:kubernetes/apps/default/echo/app/kustomization.yaml): A Kustomize root that includes the actual manifests (typically a `HelmRelease` CRD, ConfigMaps, etc.).
+
+## 4. Change Propagation and Reconciliation Flow
+- **Automatic Reconciliation:**
+  1. The GitRepository controller detects new commits in the repo (on its polling interval).
+  2. It updates the `revision` on the `flux-system` GitRepository CRD.
+  3. Each Kustomization CRD (cluster-meta, cluster-apps, and all child ks.yaml) sees the new revision and reconciles:
+     - `cluster-meta` reapplies source definitions.
+     - `cluster-apps` discovers/patches namespace-level Kustomizations and applies them.
+     - Each namespace-level Kustomization builds its Kustomize root and applies the output.
+     - Each `HelmRelease` is then deployed or upgraded by the Helm controller.
+- **Reconciliation Interval:**
+  - Each Kustomization and HelmRelease has an `interval` (e.g., `1h`), controlling how often Flux checks for changes.
+- **Manual Reconciliation:**
+  - You can force reconciliation at any time with:
+    ```bash
+    flux reconcile gitrepository flux-system --namespace flux-system --with-source
+    flux reconcile kustomization cluster-apps --namespace flux-system --with-source
+    flux reconcile kustomization <app> --namespace <namespace> --with-source
+    ```
+
+## 5. Components and Sources
+- The [`kubernetes/components`](mdc:kubernetes/components) directory contains reusable Kustomize components (e.g., common secrets, namespace definitions, Helm/OCIRepository sources).
+- These are referenced in namespace-level kustomization.yaml files under `components:`.
+- Example: [`kubernetes/components/repos/app-template/ocirepository.yaml`](mdc:kubernetes/components/repos/app-template/ocirepository.yaml) defines the OCIRepository for the app-template Helm chart.
+
+## 6. Intuitive Navigation and Debugging
+- To understand what is deployed in any namespace, start at `kubernetes/apps/<namespace>/kustomization.yaml` and follow the `resources:` to each app's `ks.yaml` and then to `app/kustomization.yaml` and `helmrelease.yaml`.
+- To add a new app, create a new subdirectory under the namespace, add a `ks.yaml` and `app/kustomization.yaml`+`helmrelease.yaml`, and reference the app's `ks.yaml` in the namespace's `kustomization.yaml`.
+- All changes are picked up automatically by Flux, ensuring the cluster state always matches the Git repository.
+
+## 7. Summary Table
+| Layer                | File/Resource                                             | Role/Function                                                      |
+|----------------------|----------------------------------------------------------|--------------------------------------------------------------------|
+| Git Source           | [GitRepository](mdc:kubernetes/flux/meta/repos/...)      | Watches this repo for changes                                      |
+| Cluster Kustomize    | [ks.yaml](mdc:kubernetes/flux/cluster/ks.yaml)           | Orchestrates meta and apps sync                                    |
+| Namespace Kustomize  | [kustomization.yaml](mdc:kubernetes/apps/default/kustomization.yaml) | Entry point for apps in a namespace                                |
+| App Kustomize        | [ks.yaml](mdc:kubernetes/apps/default/echo/ks.yaml)       | Flux Kustomization CRD for the app                                 |
+| App Manifests        | [app/kustomization.yaml](mdc:kubernetes/apps/default/echo/app/kustomization.yaml) | Kustomize root for app resources                                   |
+| HelmRelease          | [helmrelease.yaml](mdc:kubernetes/apps/default/echo/app/helmrelease.yaml) | Deploys the app via Helm                                           |
+
+This rule should be referenced whenever you need to understand, extend, or debug how the GitOps pipeline works, how changes flow from Git to the cluster, or how to add new apps or namespaces in a modular, scalable way.
