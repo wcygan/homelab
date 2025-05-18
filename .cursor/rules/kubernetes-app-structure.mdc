@@ -1,0 +1,95 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Kubernetes App Directory and Manifest Structure Rule
+
+## Directory Pattern
+
+When adding new software ("apps" or controllers) to the cluster, follow this structure:
+
+- Each **Kubernetes namespace** gets its own directory under `kubernetes/apps/`.
+  - Example: `kubernetes/apps/external-secrets/`
+- Each **piece of software** (app) within a namespace gets its own subdirectory under the namespace directory.
+  - Example: `kubernetes/apps/external-secrets/external-secrets/`
+- All Kubernetes manifests for that app live inside its app directory, typically in an `app/` subfolder:
+  - Example: `kubernetes/apps/external-secrets/external-secrets/app/`
+
+## Required Files and Their Purpose
+
+### 1. Namespace Kustomization
+- `kubernetes/apps/<namespace>/kustomization.yaml`
+  - Declares the namespace, includes the shared namespace component, and references all apps in that namespace.
+  - Example:
+    ```yaml
+    apiVersion: kustomize.config.k8s.io/v1beta1
+    kind: Kustomization
+    namespace: <namespace>
+    components:
+      - ../../components/common
+    resources:
+      - ./<app-name>/ks.yaml
+    ```
+
+### 2. App Flux Kustomization CRD
+- `kubernetes/apps/<namespace>/<app-name>/ks.yaml`
+  - A Flux Kustomization CRD that tells Flux to apply the manifests in the app's `app/` directory.
+  - Example:
+    ```yaml
+    apiVersion: kustomize.toolkit.fluxcd.io/v1
+    kind: Kustomization
+    metadata:
+      name: <app-name>
+      namespace: flux-system
+    spec:
+      interval: 10m
+      path: ./kubernetes/apps/<namespace>/<app-name>/app
+      prune: true
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+      targetNamespace: <namespace>
+    ```
+
+### 3. App Kustomization
+- `kubernetes/apps/<namespace>/<app-name>/app/kustomization.yaml`
+  - Kustomize root for the app's manifests. Typically references the HelmRelease or other manifest files.
+  - Example:
+    ```yaml
+    apiVersion: kustomize.config.k8s.io/v1beta1
+    kind: Kustomization
+    resources:
+      - helmrelease.yaml
+    ```
+
+### 4. App Manifests
+- `kubernetes/apps/<namespace>/<app-name>/app/helmrelease.yaml` (if using Helm)
+  - Defines the HelmRelease for the app, including chart, version, values, etc.
+- Other manifest files may include:
+  - `deployment.yaml`, `service.yaml`, `ingress.yaml`, `configmap.yaml`, etc., if not using Helm.
+  - **Secrets for new software must be managed via 1Password and the External Secrets Operator (ESO):**
+    - Define an `ExternalSecret` resource to sync secrets from 1Password into Kubernetes.
+    - Reference the synced Secret in your app manifests via `valuesFrom` or `env.valueFrom.secretKeyRef`.
+  - **SOPS-encrypted secrets (`secret.sops.yaml`) are only permitted for legacy/existing software.**
+
+## Summary Table
+| Level      | Path Example                                               | Purpose                                    |
+|------------|-----------------------------------------------------------|--------------------------------------------|
+| Namespace  | `kubernetes/apps/external-secrets/kustomization.yaml`     | Declares namespace, includes all apps      |
+| App CRD    | `kubernetes/apps/external-secrets/external-secrets/ks.yaml` | Flux Kustomization for the app             |
+| App Root   | `kubernetes/apps/external-secrets/external-secrets/app/`  | All manifests for the app                  |
+| App Kustom | `kubernetes/apps/external-secrets/external-secrets/app/kustomization.yaml` | Kustomize root for app manifests           |
+| HelmRelease| `kubernetes/apps/external-secrets/external-secrets/app/helmrelease.yaml`   | HelmRelease CRD for the app (if using Helm)|
+
+## Best Practices
+- All software should be grouped by the namespace it will run in.
+- Each app should have its own folder under the namespace.
+- Use the `components/common` component to ensure namespace creation.
+- Use Flux Kustomization CRDs (`ks.yaml`) to manage app reconciliation.
+- Pin Helm chart versions and image tags.
+- **For new software, all secrets must be provisioned via 1Password and the External Secrets Operator (ESO).**
+  - Do not use SOPS for new secrets; use `ExternalSecret` resources to sync from 1Password.
+  - Reference synced secrets in app manifests using `valuesFrom` or `env.valueFrom.secretKeyRef`.
+- **SOPS-encrypted secrets are only allowed for legacy/existing software.**
+- For multi-app namespaces, add each app as a resource in the namespace's `kustomization.yaml`.
