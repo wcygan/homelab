@@ -1,0 +1,52 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Flux Source CRDs Placement Rule
+
+## Problem
+
+When a source CRD (like a `HelmRepository`) is defined under `kubernetes/components/repos/`, Flux's **cluster-meta** Kustomization does not pick it up, so the repository never gets created in the `flux-system` namespace.
+
+
+## Correct Approach
+
+1.  Place **ALL** Flux source resources (HelmRepository, GitRepository, OCIRepository, etc.) under:
+
+    ```plaintext
+    kubernetes/flux/meta/repos/
+    ```
+
+2.  Add each file to the **Flux sources kustomization** at:
+
+    ```markdown
+    [kubernetes/flux/meta/repos/kustomization.yaml](mdc:kubernetes/flux/meta/repos/kustomization.yaml)
+    ```
+
+    Example entry:
+    ```yaml
+    resources:
+      - ./external-dns.yaml
+      - ./ingress-nginx.yaml
+      - ./external-secrets.yaml  # <- newly added
+    ```
+
+3.  The **cluster-meta** Kustomization in:
+
+    ```markdown
+    [kubernetes/flux/cluster/ks.yaml](mdc:kubernetes/flux/cluster/ks.yaml)
+    ```
+
+    automatically syncs everything under `kubernetes/flux/meta/`, ensuring your sources are created in `flux-system`.
+
+4.  **Delete** any stray source CRDs under `kubernetes/components/repos/` to avoid confusion.
+
+
+## Why This Matters
+
+- Flux must see and create your HelmRepository before any `HelmRelease` can reference it.
+- Keeping sources in `kubernetes/flux/meta/repos` centralizes where Flux bootstraps external charts.
+- Prevents silent failures where apps reference missing resources.
+
+This rule ensures your HelmRepository (and other Flux source CRDs) are always in the correct location and properly synced by Flux.
