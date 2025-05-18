@@ -9,21 +9,21 @@ This guide outlines how to upgrade Talos OS, Kubernetes, and manage Talos system
 
 ## 1. Understanding Key Configuration Files
 
-- **`[talenv.yaml](mdc:talos/talenv.yaml)`**: Defines the target `talosVersion` and `kubernetesVersion` for the cluster. This file is the source of truth for version upgrades.
+- **`[talenv.yaml](mdc:talos/talenv.yaml)`**: Defines the target `talosVersion` and `kubernetesVersion` for the cluster. This file is typically generated from `templates/config/talos/talenv.yaml.j2` (mdc:templates/config/talos/talenv.yaml.j2). **To ensure changes persist and are not overwritten by `task configure` or `task talos:generate-config`, updates to Talos or Kubernetes versions should be made in the `templates/config/talos/talenv.yaml.j2` template file.**
 - **`[talconfig.yaml](mdc:talos/talconfig.yaml)`**: Contains the detailed Talos cluster configuration, including node definitions and the `talosImageURL` for each node. The `talosImageURL` (e.g., `factory.talos.dev/installer/<SCHEMATIC_ID>`) embeds the chosen Talos version and any pre-selected system extensions based on a schematic ID from the [Talos Linux Image Factory](mdc:https:/factory.talos.dev).
 - **`[README.md](mdc:README.md)`**: Provides general project setup, workflow, and includes crucial `task` commands for cluster operations.
 - **`[hardware-configuration.mdc](mdc:hardware-configuration.mdc)`**: Details the specific hardware setup, including node IPs (e.g., 192.168.1.98 for k8s-1) and names (k8s-1, k8s-2, k8s-3), which are used in `task` commands. It also notes the Talos schematic ID currently in use.
 
 ## 2. Upgrading Talos OS Version
 
-The Talos OS version for the cluster is managed via `[talenv.yaml](mdc:talos/talenv.yaml)` and applied using a task.
+The Talos OS version for the cluster is managed via `[talenv.yaml](mdc:talos/talenv.yaml)` (generated from `templates/config/talos/talenv.yaml.j2` (mdc:templates/config/talos/talenv.yaml.j2)) and applied using a task.
 
 **Procedure:**
 
 1.  **Update Target Version:**
-    Modify the `talosVersion` in `[talenv.yaml](mdc:talos/talenv.yaml)` to the desired new version. For example:
+    Modify the `talosVersion` in `templates/config/talos/talenv.yaml.j2` (mdc:templates/config/talos/talenv.yaml.j2) to the desired new version. For example:
     ```yaml
-    # talos/talenv.yaml
+    # templates/config/talos/talenv.yaml.j2
     talosVersion: v1.10.0 # Changed from a previous version
     kubernetesVersion: v1.32.0 # Or your current/target k8s version
     ```
@@ -50,14 +50,14 @@ The Talos OS version for the cluster is managed via `[talenv.yaml](mdc:talos/tal
 
 ## 3. Upgrading Kubernetes Version
 
-The Kubernetes version for the cluster is also managed via `[talenv.yaml](mdc:talos/talenv.yaml)` and applied using a task.
+The Kubernetes version for the cluster is also managed via `[talenv.yaml](mdc:talos/talenv.yaml)` (generated from `templates/config/talos/talenv.yaml.j2` (mdc:templates/config/talos/talenv.yaml.j2)) and applied using a task.
 
 **Procedure:**
 
 1.  **Update Target Version:**
-    Modify the `kubernetesVersion` in `[talenv.yaml](mdc:talos/talenv.yaml)` to the desired new version.
+    Modify the `kubernetesVersion` in `templates/config/talos/talenv.yaml.j2` (mdc:templates/config/talos/talenv.yaml.j2) to the desired new version.
     ```yaml
-    # talos/talenv.yaml
+    # templates/config/talos/talenv.yaml.j2
     talosVersion: v1.10.0 # Or your current/target Talos version
     kubernetesVersion: v1.33.0 # Changed from a previous version
     ```

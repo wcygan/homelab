@@ -11,6 +11,8 @@ This guide outlines the process for upgrading Talos Linux on a machine or cluste
 
 Talos Linux OS upgrades are performed via an API call, typically using the `talosctl` CLI utility. The process involves providing the target node(s) with an installer image specific to the desired Talos version. Talos utilizes an A-B image scheme, retaining the previous OS version to enable rollbacks if an upgrade fails or if a manual rollback is initiated.
 
+**Project-Specific Version Management:** In the context of this specific repository, while the `talosctl upgrade --image <IMAGE>` command executes the immediate upgrade using the specified installer, the persistent desired Talos and Kubernetes versions for the cluster are defined in `templates/config/talos/talenv.yaml.j2` (mdc:templates/config/talos/talenv.yaml.j2). This file is used by tasks like `task talos:generate-config` to generate `talos/talenv.yaml` (mdc:talos/talenv.yaml) and other configurations. For a persistent version change that survives configuration regeneration, always update `templates/config/talos/talenv.yaml.j2` first. Refer to `cluster-upgrades-and-extensions.mdc` (mdc:.cursor/rules/cluster-upgrades-and-extensions.mdc) for this project's full upgrade workflow.
+
 **Important:** Upgrading the Talos Linux OS does not automatically upgrade the Kubernetes version running on the cluster. Kubernetes upgrades are a separate process.
 
 ## Supported Upgrade Paths
