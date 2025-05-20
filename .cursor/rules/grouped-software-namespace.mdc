@@ -1,0 +1,23 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Grouped Software Namespace Rule
+
+All software that is logically grouped (such as controllers, operators, or applications that together form a single functional unit) **must be deployed to the same Kubernetes namespace**.
+
+## Rationale
+- This ensures clear separation of concerns, easier RBAC management, and more predictable resource scoping.
+- It aligns with the repository's convention of organizing apps by namespace under `kubernetes/apps/<namespace>/`.
+
+## Example
+- All secret-management infrastructure (e.g., External Secrets Operator, 1Password Connect) should be deployed in the `external-secrets` namespace.
+- All networking controllers (e.g., ingress-nginx, external-dns) should be deployed in the `network` namespace.
+
+## Implementation Pattern
+- When adding a new app or controller that is part of a group, place its manifests under the appropriate namespace directory (e.g., `kubernetes/apps/external-secrets/` for secret-management tools).
+- Ensure the `namespace:` field in Kustomization and resource manifests matches the group namespace.
+
+## Reference
+- See [kubernetes-app-structure.mdc](mdc:kubernetes-app-structure.mdc) for the directory and manifest structure pattern.
