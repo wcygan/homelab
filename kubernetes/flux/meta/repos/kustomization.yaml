@@ -6,3 +6,4 @@ resources:
   - ./external-dns.yaml
   - ./ingress-nginx.yaml
   - ./external-secrets.yaml
+  - ./1password-connect.yaml
