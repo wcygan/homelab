@@ -1,0 +1,18 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Flux Kustomization Namespace Requirement
+
+Flux Kustomization CRD files (`ks.yaml`) under `kubernetes/apps/<namespace>/<app>/ks.yaml` **must** include:
+
+```yaml
+metadata:
+  namespace: flux-system
+```
+
+to ensure they are applied in the `flux-system` namespace.
+
+Example reference:
+- [kubernetes/apps/external-secrets/external-secrets/ks.yaml](mdc:kubernetes/apps/external-secrets/external-secrets/ks.yaml)
