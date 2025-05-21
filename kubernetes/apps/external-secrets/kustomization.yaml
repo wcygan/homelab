@@ -8,3 +8,4 @@ components:
 resources:
   - ./external-secrets/ks.yaml
   - ./onepassword-connect/ks.yaml
+  - ./clustersecretstore.yaml
