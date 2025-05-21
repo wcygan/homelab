@@ -11,7 +11,6 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-    namespace: flux-system
   targetNamespace: tailscale
   dependsOn:
     - name: external-secrets
