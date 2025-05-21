@@ -40,3 +40,8 @@ kubectl create secret generic onepassword-connect-token \
 ```
 
 For a fully GitOps-managed approach, store the credentials in 1Password and create an `ExternalSecret` in the `onepassword-connect` namespace that references the credentials item. ESO will sync the secret into the cluster, ensuring the secret is never stored in Git.
+
+## Create an ExternalSecret
+
+https://external-secrets.io/latest/provider/1password-automation/#creating-compatible-1password-items
+

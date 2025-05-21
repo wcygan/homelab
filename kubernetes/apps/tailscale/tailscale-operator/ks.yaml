@@ -1,0 +1,19 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tailscale-operator
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./kubernetes/apps/tailscale/tailscale-operator/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  targetNamespace: tailscale
+  dependsOn:
+    - name: external-secrets
+      namespace: flux-system
+    - name: onepassword-connect
+      namespace: flux-system
