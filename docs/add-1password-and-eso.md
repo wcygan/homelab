@@ -31,8 +31,12 @@ Once the Connect server is deployed by Flux, you must provide the API credential
 
 ```bash
 kubectl create secret generic op-credentials \
-  --namespace onepassword-connect \
-  --from-file=1password-credentials.json=/path/to/1password-credentials.json
+  --namespace external-secrets \
+  --from-file=1password-credentials.json=/Users/wcygan/Downloads/1password-credentials.json
+
+kubectl create secret generic onepassword-connect-token \
+  --from-literal=token='<YOUR_CONNECT_TOKEN>' \
+  -n external-secrets
 ```
 
 For a fully GitOps-managed approach, store the credentials in 1Password and create an `ExternalSecret` in the `onepassword-connect` namespace that references the credentials item. ESO will sync the secret into the cluster, ensuring the secret is never stored in Git.
