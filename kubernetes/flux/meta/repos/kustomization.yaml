@@ -7,4 +7,3 @@ resources:
   - ./ingress-nginx.yaml
   - ./external-secrets.yaml
   - ./1password-connect.yaml
-  - ./tailscale.yaml
