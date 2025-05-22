@@ -20,3 +20,6 @@ spec:
   values:
     connect:
       serviceType: ClusterIP
+      credentials:
+        secretName: op-credentials
+        fileName: 1password-credentials.json
