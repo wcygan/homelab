@@ -20,3 +20,7 @@ talosconfig
 .DS_Store
 Thumbs.db
 examples
+
+# Tailscale OAuth credentials (managed by install script)
+tailscale-oauth-client-id.txt
+tailscale-oauth-client-secret.txt
