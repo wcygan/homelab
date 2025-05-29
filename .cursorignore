@@ -4,3 +4,7 @@ github-deploy.key
 github-deploy.key.pub
 kubeconfig
 github-push-token.txt
+
+# Tailscale OAuth credentials (managed by install script)
+tailscale-oauth-client-id.txt
+tailscale-oauth-client-secret.txt
