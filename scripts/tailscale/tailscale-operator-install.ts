@@ -77,6 +77,37 @@ async function checkPrerequisites(): Promise<boolean> {
   return allGood;
 }
 
+async function isTailscaleOperatorReady(): Promise<boolean> {
+  try {
+    const cmd = new Deno.Command("kubectl", {
+      args: [
+        "get",
+        "deployment",
+        "operator",
+        "-n",
+        "tailscale",
+        "-o",
+        "json"
+      ],
+      stdout: "piped",
+      stderr: "null"
+    });
+    const { code, stdout } = await cmd.output();
+    if (code !== 0) {
+      // Deployment not found or error
+      return false;
+    }
+    const json = JSON.parse(new TextDecoder().decode(stdout));
+    const readyReplicas = json.status?.readyReplicas || 0;
+    const desiredReplicas = json.spec?.replicas || 1;
+    // Consider ready if at least one replica is ready (or all desired replicas are ready)
+    return readyReplicas >= Math.min(desiredReplicas, 1);
+  } catch {
+    // Any error: treat as not ready
+    return false;
+  }
+}
+
 async function installTailscaleOperator(options: { dryRun: boolean; skipCredentials: boolean }): Promise<void> {
   console.log("🚀 Tailscale Kubernetes Operator Installation\n");
   console.log("This script will install the Tailscale Kubernetes Operator with secure");
@@ -87,6 +118,13 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
   if (!prereqsOk) {
     console.log("\n❌ Cannot proceed without required tools.");
     console.log("\nPlease install the missing prerequisites and try again.");
+    return;
+  }
+
+  // Step 1.5: Check if operator is already installed and ready (before user prompt)
+  const alreadyReady = await isTailscaleOperatorReady();
+  if (alreadyReady) {
+    console.log("\n✅ Tailscale Operator is already installed and ready in the cluster. Exiting.\n");
     return;
   }
 
@@ -171,7 +209,6 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
     console.log("");
     console.log("📚 Documentation and examples:");
     console.log("   • Tailscale K8s Operator: https://tailscale.com/kb/1185/kubernetes");
-    console.log("   • Local README: scripts/README-tailscale.md");
     console.log("=".repeat(60));
   }
 }
@@ -230,10 +267,6 @@ HELPER SCRIPTS:
 
     • setup-tailscale-credentials.ts - OAuth credential setup
     • install-tailscale-operator.ts  - Core installation logic
-
-DOCUMENTATION:
-    For detailed documentation, troubleshooting, and usage examples:
-    scripts/README-tailscale.md
 
 REQUIREMENTS:
     • Deno runtime

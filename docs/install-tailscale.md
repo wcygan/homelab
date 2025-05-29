@@ -13,3 +13,9 @@ The scripts are in [scripts/tailscale](../scripts/tailscale/):
 ```bash
 deno run --allow-all scripts/tailscale/tailscale-operator-install.ts
 ```
+
+If you need to uninstall the operator, you can run:
+
+```bash
+deno run --allow-all scripts/tailscale/uninstall-tailscale-operator.ts
+```

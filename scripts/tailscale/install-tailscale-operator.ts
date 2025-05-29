@@ -68,6 +68,15 @@ class TailscaleOperatorInstaller {
       // Step 5: Install operator
       await this.installOperator(credentials);
 
+      // Step 5.5: Wait for operator readiness
+      const operatorReady = await this.waitForOperatorReady();
+      if (!operatorReady) {
+        console.warn("\n⚠️  Tailscale operator deployment is not ready after waiting. Skipping kubeconfig setup and credential cleanup.");
+        console.warn("   You can check the status with: kubectl get deployment operator -n tailscale");
+        console.warn("   And view logs with: kubectl logs -n tailscale -l app=operator");
+        return;
+      }
+
       // Step 6: Configure kubeconfig
       await this.configureKubeconfig();
 
@@ -329,18 +338,58 @@ class TailscaleOperatorInstaller {
 
     const process = new Deno.Command(args[0], {
       args: args.slice(1),
-      stdout: "piped",
-      stderr: "piped"
+      stdout: "inherit",
+      stderr: "inherit"
     });
 
-    const { code, stdout, stderr } = await process.output();
+    const { code } = await process.output();
 
     if (code !== 0) {
-      const error = new TextDecoder().decode(stderr);
-      throw new Error(`Command failed: ${args.join(" ")}\n${error}`);
+      throw new Error(`Command failed: ${args.join(" ")}`);
     }
 
-    return new TextDecoder().decode(stdout);
+    // No output to return since output is streamed live
+    return "";
+  }
+
+  /**
+   * Waits for the Tailscale operator deployment to become ready.
+   * Returns true if ready, false if not ready after timeout.
+   */
+  private async waitForOperatorReady(timeoutMs = 180000, pollIntervalMs = 5000): Promise<boolean> {
+    console.log("\n⏳ Waiting for Tailscale operator deployment to become ready...");
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const proc = new Deno.Command("kubectl", {
+          args: [
+            "get", "deployment", "operator",
+            "-n", this.options.namespace,
+            "-o", "json"
+          ],
+          stdout: "piped",
+          stderr: "null"
+        });
+        const { code, stdout } = await proc.output();
+        if (code === 0) {
+          const json = JSON.parse(new TextDecoder().decode(stdout));
+          // Check .status.conditions[] for Available=True
+          const conditions = json.status?.conditions || [];
+          const available = conditions.find((c: any) => c.type === "Available" && c.status === "True");
+          const availableReplicas = json.status?.availableReplicas || 0;
+          if (available && availableReplicas >= 1) {
+            console.log("  ✅ Operator deployment is ready.");
+            return true;
+          }
+        }
+      } catch (e) {
+        // Ignore errors, just retry
+      }
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+      await Deno.stdout.write(new TextEncoder().encode("."));
+    }
+    console.warn("\n❌ Operator deployment did not become ready within timeout.");
+    return false;
   }
 }
 
