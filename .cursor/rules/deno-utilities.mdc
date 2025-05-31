@@ -1,0 +1,859 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Deno Scripting Utilities & Standard Library Guide
+
+Deno scripts should be set to executable
+
+```bash
+chmod +x script.ts
+```
+
+## 📦 Standard Library (JSR) Configuration
+
+This workspace uses the modern JSR registry for all @std packages. Configuration is centralized in [deno.json](mdc:development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/deno.json) with import maps for easy version management.
+
+### Current @std Packages in Use
+- `@std/cli` - Command line argument parsing
+- `@std/path` - Path manipulation utilities  
+- `@std/fs` - File system operations
+- `@std/async` - Async utilities (delay, debounce, etc.)
+- `@std/assert` - Testing assertions
+- `@std/datetime` - Date and time utilities
+
+## 🛠️ Essential Deno Utilities for Scripts
+
+### CLI & Argument Parsing
+```typescript
+import { parseArgs } from "@std/cli/parse-args";
+
+const args = parseArgs(Deno.args, {
+  string: ["name", "output", "config"],
+  boolean: ["help", "verbose", "force", "dry-run"],
+  alias: { 
+    h: "help", 
+    v: "verbose", 
+    o: "output",
+    c: "config",
+    f: "force"
+  },
+  default: {
+    verbose: false,
+    output: "output.txt"
+  }
+});
+```
+
+### File System Operations
+```typescript
+import { walk, copy, ensureDir, exists, move } from "@std/fs";
+import { join, dirname, basename, extname, resolve } from "@std/path";
+
+// Directory traversal
+for await (const entry of walk(".", { 
+  exts: [".ts", ".js", ".md"], 
+  includeDirs: false,
+  skip: [/node_modules/, /\.git/]
+})) {
+  console.log(entry.path);
+}
+
+// File operations
+await ensureDir("./output/nested");
+await copy("source.txt", "dest.txt");
+await move("old.txt", "new.txt");
+
+// Path utilities
+const fullPath = resolve("./relative/path");
+const fileName = basename(fullPath, ".ts");
+const dirName = dirname(fullPath);
+const extension = extname(fullPath);
+```
+
+### Command Execution
+```typescript
+// Modern Deno.Command API (recommended)
+async function runCommand(cmd: string[], cwd?: string): Promise<{success: boolean, output: string}> {
+  const command = new Deno.Command(cmd[0], {
+    args: cmd.slice(1),
+    cwd,
+    stdout: "piped",
+    stderr: "piped",
+  });
+
+  const result = await command.output();
+  const output = new TextDecoder().decode(result.stdout) + 
+                 new TextDecoder().decode(result.stderr);
+  
+  return {
+    success: result.success,
+    output: output.trim()
+  };
+}
+
+// Spawn for long-running processes
+const server = new Deno.Command("deno", {
+  args: ["run", "--allow-net", "server.ts"],
+  stdout: "piped"
+}).spawn();
+```
+
+### HTTP & Networking
+```typescript
+import { serve } from "@std/http/server";
+
+// HTTP Client
+const response = await fetch("https://api.example.com/data", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ key: "value" })
+});
+const data = await response.json();
+
+// HTTP Server
+serve((_req) => new Response("Hello World!"), { port: 8000 });
+
+// File download with progress
+async function downloadFile(url: string, filepath: string) {
+  const response = await fetch(url);
+  const file = await Deno.open(filepath, { write: true, create: true });
+  await response.body?.pipeTo(file.writable);
+}
+```
+
+### Async Utilities
+```typescript
+import { delay, debounce, retry, pooledMap } from "@std/async";
+
+// Delay execution
+await delay(1000); // 1 second
+
+// Debounce function calls
+const debouncedFn = debounce(() => console.log("Called!"), 300);
+
+// Retry with backoff
+const result = await retry(async () => {
+  const response = await fetch("https://api.example.com");
+  if (!response.ok) throw new Error("Failed");
+  return response.json();
+}, { maxAttempts: 3, minTimeout: 1000 });
+
+// Process items in parallel with concurrency limit
+const results = pooledMap(
+  3, // max 3 concurrent operations
+  [1, 2, 3, 4, 5],
+  async (item) => processItem(item)
+);
+```
+
+### Testing Utilities
+```typescript
+import { assertEquals, assertThrows, assertMatch } from "@std/assert";
+
+Deno.test("string manipulation", () => {
+  assertEquals("hello".toUpperCase(), "HELLO");
+  assertMatch("hello@example.com", /\w+@\w+\.\w+/);
+});
+
+Deno.test("async operation", async () => {
+  const result = await someAsyncFunction();
+  assertEquals(result.status, "success");
+});
+
+Deno.test("error handling", () => {
+  assertThrows(() => {
+    throw new Error("Expected error");
+  }, Error, "Expected error");
+});
+```
+
+### JSON & Data Processing
+```typescript
+import { parse as parseJsonc, stringify } from "@std/jsonc";
+import { parse as parseCsv } from "@std/csv";
+import { parse as parseYaml } from "@std/yaml";
+
+// JSONC (JSON with comments)
+const config = parseJsonc(await Deno.readTextFile("config.jsonc"));
+
+// CSV processing
+const csvData = await Deno.readTextFile("data.csv");
+const records = parseCsv(csvData, { skipFirstRow: true });
+
+// YAML processing  
+const yamlConfig = parseYaml(await Deno.readTextFile("config.yaml"));
+```
+
+### SQLite Database Operations
+**Note:** Requires Deno v2.2+ and `--allow-ffi` permission.
+
+```typescript
+import { DatabaseSync } from "node:sqlite";
+
+// Create/open database
+const db = new DatabaseSync("app.db"); // Or ":memory:" for in-memory
+
+// Basic operations
+try {
+  // Create table with schema
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) STRICT
+  `);
+
+  // Insert data with prepared statements (recommended)
+  const insertUser = db.prepare("INSERT INTO users (name, email) VALUES (?, ?)");
+  insertUser.run("John Doe", "john@example.com");
+  insertUser.run("Jane Smith", "jane@example.com");
+
+  // Query data
+  const selectUsers = db.prepare("SELECT * FROM users WHERE name LIKE ?");
+  const users = selectUsers.all("%John%");
+  console.log("Users:", users);
+
+  // Single row query
+  const getUser = db.prepare("SELECT * FROM users WHERE id = ?");
+  const user = getUser.get(1);
+  console.log("User:", user);
+
+  // Iterator for large datasets
+  const allUsers = db.prepare("SELECT * FROM users");
+  for (const user of allUsers.iterate()) {
+    console.log(`Processing user: ${user.name}`);
+  }
+
+} finally {
+  // Always close the database
+  db.close();
+}
+```
+
+### Advanced SQLite Patterns
+```typescript
+import { DatabaseSync } from "node:sqlite";
+
+// Database class wrapper for better error handling
+class AppDatabase {
+  private db: DatabaseSync;
+  private statements: Map<string, any> = new Map();
+
+  constructor(path: string) {
+    this.db = new DatabaseSync(path);
+    this.setupDatabase();
+  }
+
+  private setupDatabase(): void {
+    this.db.exec(`
+      PRAGMA foreign_keys = ON;
+      PRAGMA journal_mode = WAL;
+      
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) STRICT;
+      
+      CREATE TABLE IF NOT EXISTS posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      ) STRICT;
+    `);
+  }
+
+  // Prepare and cache statements
+  private getStatement(key: string, sql: string) {
+    if (!this.statements.has(key)) {
+      this.statements.set(key, this.db.prepare(sql));
+    }
+    return this.statements.get(key);
+  }
+
+  // Transaction wrapper
+  withTransaction<T>(callback: () => T): T {
+    const transaction = this.db.prepare("BEGIN");
+    const commit = this.db.prepare("COMMIT");
+    const rollback = this.db.prepare("ROLLBACK");
+
+    transaction.run();
+    try {
+      const result = callback();
+      commit.run();
+      return result;
+    } catch (error) {
+      rollback.run();
+      throw error;
+    }
+  }
+
+  // User operations
+  createUser(name: string, email: string): number {
+    const stmt = this.getStatement("createUser", 
+      "INSERT INTO users (name, email) VALUES (?, ?)");
+    const result = stmt.run(name, email);
+    return result.lastInsertRowid as number;
+  }
+
+  getUser(id: number): any {
+    const stmt = this.getStatement("getUser", 
+      "SELECT * FROM users WHERE id = ?");
+    return stmt.get(id);
+  }
+
+  updateUser(id: number, updates: { name?: string; email?: string }): boolean {
+    const fields = Object.keys(updates).map(key => `${key} = ?`).join(", ");
+    const values = Object.values(updates);
+    
+    const stmt = this.db.prepare(`UPDATE users SET ${fields} WHERE id = ?`);
+    const result = stmt.run(...values, id);
+    return result.changes > 0;
+  }
+
+  // Bulk operations
+  createUsers(users: Array<{ name: string; email: string }>): void {
+    this.withTransaction(() => {
+      const stmt = this.getStatement("createUser", 
+        "INSERT INTO users (name, email) VALUES (?, ?)");
+      for (const user of users) {
+        stmt.run(user.name, user.email);
+      }
+    });
+  }
+
+  // Search and filtering
+  searchUsers(term: string, limit = 10): any[] {
+    const stmt = this.getStatement("searchUsers", `
+      SELECT * FROM users 
+      WHERE name LIKE ? OR email LIKE ? 
+      ORDER BY created_at DESC 
+      LIMIT ?
+    `);
+    return stmt.all(`%${term}%`, `%${term}%`, limit);
+  }
+
+  close(): void {
+    this.db.close();
+  }
+}
+
+// Usage example
+const database = new AppDatabase("app.db");
+try {
+  // Single operations
+  const userId = database.createUser("Alice Johnson", "alice@example.com");
+  
+  // Bulk operations in transaction
+  database.createUsers([
+    { name: "Bob Wilson", email: "bob@example.com" },
+    { name: "Carol Davis", email: "carol@example.com" }
+  ]);
+  
+  // Search
+  const results = database.searchUsers("alice");
+  console.log("Search results:", results);
+  
+} finally {
+  database.close();
+}
+```
+
+### SQLite Configuration and Options
+```typescript
+import { DatabaseSync } from "node:sqlite";
+
+// Database with custom options
+const db = new DatabaseSync("app.db", {
+  readOnly: false,
+  enableForeignKeyConstraints: true,
+  enableDoubleQuotedStringLiterals: false,
+  allowExtension: false,
+  open: true
+});
+
+// Performance optimizations
+db.exec(`
+  PRAGMA journal_mode = WAL;        -- Write-Ahead Logging for better concurrency
+  PRAGMA synchronous = NORMAL;      -- Balance between safety and performance
+  PRAGMA cache_size = 10000;        -- Increase cache size (pages)
+  PRAGMA temp_store = MEMORY;       -- Store temporary tables in memory
+  PRAGMA mmap_size = 268435456;     -- Use memory-mapped I/O (256MB)
+`);
+
+// Register custom functions
+db.function("json_valid", {
+  deterministic: true,
+  varargs: false
+}, (text: string) => {
+  try {
+    JSON.parse(text);
+    return 1;
+  } catch {
+    return 0;
+  }
+});
+
+// Use custom function
+const result = db.prepare("SELECT json_valid(?) as is_valid").get('{"key": "value"}');
+console.log("JSON is valid:", result.is_valid);
+```
+
+### Encoding & Cryptography
+```typescript
+import { encode, decode } from "@std/encoding/base64";
+import { encode as hexEncode, decode as hexDecode } from "@std/encoding/hex";
+import { crypto } from "@std/crypto";
+
+// Base64 encoding
+const encoded = encode(new TextEncoder().encode("hello"));
+const decoded = new TextDecoder().decode(decode(encoded));
+
+// Hex encoding
+const hexString = hexEncode(new TextEncoder().encode("data"));
+
+// Hashing
+const data = new TextEncoder().encode("password");
+const hash = await crypto.subtle.digest("SHA-256", data);
+const hashHex = hexEncode(new Uint8Array(hash));
+```
+
+### Environment & Configuration
+```typescript
+// Environment variables
+const apiKey = Deno.env.get("API_KEY") || "default-key";
+const port = parseInt(Deno.env.get("PORT") || "3000");
+const debug = Deno.env.get("DEBUG") === "true";
+
+// Configuration loading
+interface Config {
+  database: { host: string; port: number };
+  features: { enableLogging: boolean };
+}
+
+async function loadConfig(): Promise<Config> {
+  try {
+    const configFile = await Deno.readTextFile("config.json");
+    return JSON.parse(configFile);
+  } catch {
+    return {
+      database: { host: "localhost", port: 5432 },
+      features: { enableLogging: false }
+    };
+  }
+}
+```
+
+### Logging & Output Formatting
+```typescript
+import { format } from "@std/datetime";
+
+// Structured logging
+function log(level: "INFO" | "WARN" | "ERROR", message: string, extra?: any) {
+  const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+  const logEntry = { timestamp, level, message, ...extra };
+  console.log(JSON.stringify(logEntry));
+}
+
+// Progress indicators
+function showProgress(current: number, total: number, description = "") {
+  const percent = Math.round((current / total) * 100);
+  const bar = "█".repeat(percent / 2) + "░".repeat(50 - percent / 2);
+  Deno.stdout.writeSync(new TextEncoder().encode(
+    `\r[${bar}] ${percent}% ${description}`
+  ));
+}
+```
+
+### Stream Processing
+```typescript
+import { readLines } from "@std/io";
+
+// Process large files line by line
+const file = await Deno.open("large-file.txt");
+for await (const line of readLines(file)) {
+  // Process each line without loading entire file
+  console.log(line);
+}
+file.close();
+
+// Transform streams
+const transform = new TransformStream({
+  transform(chunk, controller) {
+    const text = new TextDecoder().decode(chunk);
+    const upper = text.toUpperCase();
+    controller.enqueue(new TextEncoder().encode(upper));
+  }
+});
+```
+
+### Pattern: Script Template Structure
+```typescript
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
+
+import { parseArgs } from "@std/cli/parse-args";
+
+interface ScriptOptions {
+  input?: string;
+  output?: string;
+  verbose: boolean;
+  help: boolean;
+}
+
+function showHelp(): void {
+  console.log(`
+Usage: deno run --allow-read --allow-write script.ts [options]
+
+Options:
+  -i, --input <file>     Input file path
+  -o, --output <file>    Output file path  
+  -v, --verbose          Verbose output
+  -h, --help             Show help
+  `);
+}
+
+async function main(): Promise<void> {
+  const args = parseArgs(Deno.args, {
+    string: ["input", "output"],
+    boolean: ["verbose", "help"],
+    alias: { i: "input", o: "output", v: "verbose", h: "help" }
+  }) as ScriptOptions;
+
+  if (args.help) {
+    showHelp();
+    return;
+  }
+
+  try {
+    // Script logic here
+    if (args.verbose) console.log("Processing...");
+    
+  } catch (error) {
+    console.error("Error:", error instanceof Error ? error.message : error);
+    Deno.exit(1);
+  }
+}
+
+if (import.meta.main) {
+  main();
+}
+```
+
+## 📚 Additional Utility Packages
+
+For specialized tasks, consider these additional JSR packages:
+
+### Data Structures & Algorithms
+- `@std/collections` - Set operations, grouping, sorting utilities
+- `@std/data-structures` - Advanced data structures
+
+### Web & Protocols  
+- `@std/http` - HTTP server and client utilities
+- `@std/websocket` - WebSocket support
+- `@std/url` - URL parsing and manipulation
+
+### Development Tools
+- `@std/testing` - Testing utilities and benchmarks
+- `@std/fmt` - String formatting utilities
+- `@std/log` - Structured logging
+
+### System Integration
+- `@std/flags` - Advanced CLI flag parsing
+- `@std/signal` - Signal handling
+- `@std/streams` - Stream utilities
+
+## 🔄 Version Management
+
+See [JSR_MIGRATION.md](mdc:development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/development-workspace/JSR_MIGRATION.md) for details on:
+- How to update @std versions
+- Migration benefits and best practices
+- Adding new standard library dependencies
+
+Use `deno task update-std --check-only` to check for available updates to your @std packages.
+
+## 🧪 CLI Integration Testing Patterns
+
+When building CLI tools with Deno, comprehensive testing is crucial. Here are patterns for testing CLI scripts with proper environment isolation and subprocess management.
+
+### CLI Test Runner Class Pattern
+```typescript
+import { assertEquals, assertExists } from "@std/assert";
+import { join } from "@std/path";
+import { exists } from "@std/fs/exists";
+
+class CLITestRunner {
+  private testDir: string;
+  private originalCwd: string;
+  private originalEnv: Record<string, string>;
+
+  constructor() {
+    this.testDir = "";
+    this.originalCwd = Deno.cwd();
+    this.originalEnv = {};
+  }
+
+  async setup(): Promise<void> {
+    // Create isolated test directory
+    this.testDir = await Deno.makeTempDir({ prefix: "cli_test_" });
+    
+    // Store original environment
+    this.originalEnv = { ...Deno.env.toObject() };
+    
+    // Change to test directory
+    Deno.chdir(this.testDir);
+  }
+
+  async cleanup(): Promise<void> {
+    // Restore original working directory
+    Deno.chdir(this.originalCwd);
+    
+    // Restore environment variables
+    Deno.env.clear();
+    for (const [key, value] of Object.entries(this.originalEnv)) {
+      Deno.env.set(key, value);
+    }
+    
+    // Clean up test directory
+    try {
+      await Deno.remove(this.testDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  async runCLI(scriptPath: string, args: string[] = [], input?: string): Promise<{
+    success: boolean;
+    stdout: string;
+    stderr: string;
+    code: number;
+  }> {
+    const cmd = new Deno.Command("deno", {
+      args: ["run", "--allow-all", scriptPath, ...args],
+      cwd: this.testDir,
+      stdin: input ? "piped" : "null",
+      stdout: "piped",
+      stderr: "piped",
+    });
+
+    const process = cmd.spawn();
+
+    // Write input if provided
+    if (input && process.stdin) {
+      const writer = process.stdin.getWriter();
+      await writer.write(new TextEncoder().encode(input));
+      await writer.close();
+    }
+
+    const result = await process.output();
+
+    return {
+      success: result.success,
+      stdout: new TextDecoder().decode(result.stdout),
+      stderr: new TextDecoder().decode(result.stderr),
+      code: result.code,
+    };
+  }
+
+  async createFile(path: string, content: string): Promise<void> {
+    const fullPath = join(this.testDir, path);
+    await Deno.writeTextFile(fullPath, content);
+  }
+
+  async fileExists(path: string): Promise<boolean> {
+    const fullPath = join(this.testDir, path);
+    return await exists(fullPath);
+  }
+
+  async readFile(path: string): Promise<string> {
+    const fullPath = join(this.testDir, path);
+    return await Deno.readTextFile(fullPath);
+  }
+
+  getTestDir(): string {
+    return this.testDir;
+  }
+}
+```
+
+### Integration Test Examples
+```typescript
+Deno.test("CLI tool installation", async () => {
+  const runner = new CLITestRunner();
+  await runner.setup();
+
+  try {
+    // Create mock config files
+    await runner.createFile(".zshrc", "# Original config");
+    await runner.createFile("dotfiles/.aliases", "alias ll='ls -la'");
+
+    // Run installation script
+    const result = await runner.runCLI("scripts/install-safely.ts", ["--force"]);
+
+    // Verify success
+    assertEquals(result.success, true);
+    assertEquals(result.code, 0);
+
+    // Verify backup was created
+    const backupExists = await runner.fileExists("dotfiles_backup_*/.zshrc");
+    assertEquals(backupExists, true);
+
+    // Verify config was updated
+    const newConfig = await runner.readFile(".zshrc");
+    assertEquals(newConfig.includes("dotfiles/.aliases"), true);
+
+  } finally {
+    await runner.cleanup();
+  }
+});
+
+Deno.test("CLI tool rollback functionality", async () => {
+  const runner = new CLITestRunner();
+  await runner.setup();
+
+  try {
+    // Setup initial state
+    await runner.createFile(".zshrc", "# Original");
+    await runner.createFile("dotfiles_backup_123/.zshrc", "# Backup content");
+
+    // Run rollback with force flag (avoid interactive prompts)
+    const result = await runner.runCLI("scripts/rollback.ts", ["--force"]);
+
+    assertEquals(result.success, true);
+    
+    // Verify rollback worked
+    const restoredContent = await runner.readFile(".zshrc");
+    assertEquals(restoredContent, "# Backup content");
+
+  } finally {
+    await runner.cleanup();
+  }
+});
+```
+
+### Avoiding Common Testing Pitfalls
+
+#### ❌ Don't use stdin piping for interactive commands in tests
+```typescript
+// This will fail in automated tests
+const result = await runner.runCLI("script.ts", [], "y\n");
+```
+
+#### ✅ Use --force flags for automation
+```typescript
+// Design CLI tools with non-interactive flags
+const result = await runner.runCLI("script.ts", ["--force"]);
+
+// Or use environment variables
+Deno.env.set("AUTO_CONFIRM", "true");
+const result = await runner.runCLI("script.ts");
+```
+
+#### ❌ Don't rely on global state between tests
+```typescript
+// Shared state can cause test failures
+Deno.env.set("GLOBAL_CONFIG", "test");
+```
+
+#### ✅ Isolate test environments
+```typescript
+// Each test gets its own directory and environment
+const runner = new CLITestRunner();
+await runner.setup(); // Fresh environment
+// ... test logic ...
+await runner.cleanup(); // Complete isolation
+```
+
+### Cross-Platform Testing Patterns
+```typescript
+Deno.test("cross-platform path handling", async () => {
+  const runner = new CLITestRunner();
+  await runner.setup();
+
+  try {
+    // Test works on both Windows and Unix
+    const result = await runner.runCLI("scripts/path-tool.ts", [
+      "--config", join("config", "app.json"),
+      "--output", join("output", "result.txt")
+    ]);
+
+    assertEquals(result.success, true);
+    
+    // Verify output path is correct for current platform
+    const outputExists = await runner.fileExists(join("output", "result.txt"));
+    assertEquals(outputExists, true);
+
+  } finally {
+    await runner.cleanup();
+  }
+});
+```
+
+### Testing Error Conditions
+```typescript
+Deno.test("handles missing required flags", async () => {
+  const runner = new CLITestRunner();
+  await runner.setup();
+
+  try {
+    const result = await runner.runCLI("scripts/tool.ts", []);
+
+    assertEquals(result.success, false);
+    assertEquals(result.code, 1);
+    assertEquals(result.stderr.includes("Missing required"), true);
+
+  } finally {
+    await runner.cleanup();
+  }
+});
+```
+
+### Performance and Resource Testing
+```typescript
+Deno.test("handles large file operations", async () => {
+  const runner = new CLITestRunner();
+  await runner.setup();
+
+  try {
+    // Create large test file
+    const largeContent = "x".repeat(1_000_000);
+    await runner.createFile("large.txt", largeContent);
+
+    const startTime = Date.now();
+    const result = await runner.runCLI("scripts/process-file.ts", ["large.txt"]);
+    const duration = Date.now() - startTime;
+
+    assertEquals(result.success, true);
+    // Ensure reasonable performance (adjust threshold as needed)
+    assertEquals(duration < 5000, true); // Less than 5 seconds
+
+  } finally {
+    await runner.cleanup();
+  }
+});
+```
+
+### Key Testing Principles
+1. **Environment Isolation**: Each test gets its own directory and environment
+2. **Automated Flags**: Design CLI tools with `--force`/`--yes` flags for automation
+3. **Cross-Platform**: Use `@std/path` functions consistently
+4. **Resource Cleanup**: Always clean up test directories and restore environment
+5. **Realistic Testing**: Test with actual files and realistic data sizes
+6. **Error Coverage**: Test both success and failure scenarios
+
+## 🚀 Performance Tips
+
+1. **Use streaming for large files** instead of reading entirely into memory
+2. **Leverage async/await** with proper error handling
+3. **Use pooledMap** for controlled concurrency
+4. **Cache expensive operations** using Deno.cwd() + file timestamps
+5. **Use Deno.Command** instead of deprecated Deno.run
+6. **Prefer web standard APIs** (fetch, ReadableStream, etc.)
+
+This comprehensive utility guide covers the most powerful tools available for Deno scripting in this workspace.

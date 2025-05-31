@@ -1,0 +1,422 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Dax Shell Scripting Guide
+
+## Overview
+[Dax](mdc:development-workspace/development-workspace/development-workspace/https:/github.com/dsherret/dax) is a cross-platform shell tools library for Deno and Node.js that provides TypeScript-friendly shell scripting capabilities. It's superior to traditional bash scripts and offers better Windows compatibility than zx.
+
+## Installation & Setup
+
+### Deno (Recommended)
+```typescript
+import $ from "@david/dax";
+// or direct JSR import
+import $ from "jsr:@david/dax";
+```
+
+## Core Dax Patterns
+
+### Basic Command Execution
+```typescript
+#!/usr/bin/env -S deno run --allow-all
+import $ from "@david/dax";
+
+// Simple command execution
+await $`echo "Hello World"`;
+
+// Get output as text
+const output = await $`git status --porcelain`.text();
+
+// Get output as JSON
+const packageInfo = await $`cat package.json`.json();
+
+// Get output as lines array
+const files = await $`find . -name "*.ts"`.lines();
+```
+
+### Error Handling
+```typescript
+// Default: throws on non-zero exit codes
+try {
+  await $`git push origin main`;
+} catch (error) {
+  console.error("Push failed:", error.message);
+}
+
+// Disable throwing for specific commands
+const result = await $`git status`.noThrow();
+if (result.code !== 0) {
+  console.log("Git command failed");
+}
+
+// Handle specific exit codes
+await $`exit 123`.noThrow(123);
+```
+
+### Argument Handling & Safety
+```typescript
+// Safe argument escaping (automatic)
+const filename = "file with spaces.txt";
+await $`touch ${filename}`; // Automatically quoted
+
+// Multiple arguments
+const files = ["file1.txt", "file2.txt", "dir with spaces"];
+await $`rm ${files}`;
+
+// Raw arguments (no escaping)
+const rawArgs = "*.txt *.js";
+await $.raw`ls ${rawArgs}`;
+
+// Escape specific arguments in raw mode
+await $.raw`command ${$.escapeArg(unsafeArg)} ${rawArg}`;
+```
+
+### Piping & Redirection
+```typescript
+// Pipe between commands
+const result = await $`git log --oneline`
+  .pipe($`head -10`)
+  .pipe($`grep "feat"`)
+  .text();
+
+// File redirection
+await $`echo "Build log"`.stdout($.path("build.log"));
+await $`git log > changelog.txt`;
+
+// Pipe to WritableStream
+await $`npm test`.stdout(process.stdout);
+```
+
+### File System Integration
+```typescript
+// Path utilities
+const configPath = $.path("config.json");
+if (await configPath.exists()) {
+  const config = await configPath.readJson();
+}
+
+// File operations
+await $.path("output.txt").writeText("Hello World");
+const content = await $.path("input.txt").readText();
+
+// Directory operations
+await $.path("dist").ensureDir();
+await $.path("temp").remove({ recursive: true });
+```
+
+## Development Workspace Patterns
+
+### Git Operations
+```typescript
+// Safe git operations with error handling
+async function gitPush(branch: string = "main") {
+  const status = await $`git status --porcelain`.text();
+  if (status.trim()) {
+    console.log("Uncommitted changes detected");
+    return false;
+  }
+  
+  const result = await $`git push origin ${branch}`.noThrow();
+  return result.code === 0;
+}
+
+// Multi-repository operations
+async function updateAllSubmodules() {
+  const submodules = await $`git submodule status`.lines();
+  
+  for (const line of submodules) {
+    const path = line.split(' ')[2];
+    if (path) {
+      console.log(`Updating ${path}...`);
+      await $`cd ${path} && git pull origin main`;
+    }
+  }
+}
+```
+
+### Build & Development Scripts
+```typescript
+// Cross-platform development setup
+async function setupDevelopment() {
+  // Check prerequisites
+  const checks = await Promise.all([
+    $.commandExists("deno"),
+    $.commandExists("git"),
+    $.commandExists("docker")
+  ]);
+  
+  if (!checks.every(Boolean)) {
+    throw new Error("Missing required tools");
+  }
+  
+  // Install dependencies
+  await $`deno task install`;
+  
+  // Setup git hooks
+  await $`cp scripts/pre-commit .git/hooks/`;
+  await $`chmod +x .git/hooks/pre-commit`;
+  
+  console.log("Development environment ready!");
+}
+
+// Build with progress and error handling
+async function buildProject() {
+  console.log("🔨 Building project...");
+  
+  // Clean build directory
+  await $.path("dist").remove({ recursive: true });
+  await $.path("dist").ensureDir();
+  
+  // Run build steps
+  const steps = [
+    { name: "TypeScript compilation", cmd: $`deno task build:ts` },
+    { name: "Asset optimization", cmd: $`deno task build:assets` },
+    { name: "Bundle generation", cmd: $`deno task build:bundle` }
+  ];
+  
+  for (const step of steps) {
+    console.log(`📦 ${step.name}...`);
+    const result = await step.cmd.noThrow();
+    
+    if (result.code !== 0) {
+      console.error(`❌ ${step.name} failed`);
+      console.error(result.stderr);
+      throw new Error(`Build step failed: ${step.name}`);
+    }
+    
+    console.log(`✅ ${step.name} completed`);
+  }
+  
+  console.log("🎉 Build completed successfully!");
+}
+```
+
+### Testing & Validation Scripts
+```typescript
+// Comprehensive testing workflow
+async function runTests() {
+  const testSuites = [
+    { name: "Unit Tests", cmd: $`deno test --allow-all` },
+    { name: "Integration Tests", cmd: $`deno task test:integration` },
+    { name: "Linting", cmd: $`deno lint` },
+    { name: "Type Checking", cmd: $`deno check **/*.ts` }
+  ];
+  
+  const results = await Promise.allSettled(
+    testSuites.map(async (suite) => {
+      console.log(`🧪 Running ${suite.name}...`);
+      const result = await suite.cmd.noThrow();
+      
+      if (result.code === 0) {
+        console.log(`✅ ${suite.name} passed`);
+        return { suite: suite.name, success: true };
+      } else {
+        console.error(`❌ ${suite.name} failed`);
+        console.error(result.stderr);
+        return { suite: suite.name, success: false, error: result.stderr };
+      }
+    })
+  );
+  
+  const failures = results
+    .filter(result => result.status === 'fulfilled' && !result.value.success)
+    .map(result => result.status === 'fulfilled' ? result.value.suite : 'Unknown');
+  
+  if (failures.length > 0) {
+    console.error(`\n❌ Test failures in: ${failures.join(", ")}`);
+    Deno.exit(1);
+  }
+  
+  console.log("\n🎉 All tests passed!");
+}
+```
+
+### Environment & Configuration
+```typescript
+// Environment-aware operations
+const isDev = Deno.env.get("NODE_ENV") !== "production";
+const verbose = Deno.env.get("VERBOSE") === "true";
+
+if (verbose) {
+  await $`set -x`; // Enable verbose mode in shell
+}
+
+// Configuration loading with fallbacks
+async function loadConfig() {
+  const configPaths = [
+    $.path("config.local.json"),
+    $.path("config.json"),
+    $.path("config.default.json")
+  ];
+  
+  for (const path of configPaths) {
+    if (await path.exists()) {
+      return await path.readJson();
+    }
+  }
+  
+  throw new Error("No configuration file found");
+}
+```
+
+## Utility Functions & Helpers
+
+### Async Operations
+```typescript
+// Sleep with various time formats
+await $.sleep(1000); // 1 second
+await $.sleep("1.5s");
+await $.sleep("2m30s");
+
+// Retry with exponential backoff
+await $.withRetries({
+  count: 5,
+  delay: "2s",
+  action: async () => {
+    await $`curl -f https://api.example.com/health`;
+  },
+});
+
+// Parallel execution with concurrency control
+async function processFiles(files: string[], concurrency = 3) {
+  const batches = [];
+  for (let i = 0; i < files.length; i += concurrency) {
+    batches.push(files.slice(i, i + concurrency));
+  }
+  
+  for (const batch of batches) {
+    await Promise.all(
+      batch.map(file => $`process-file ${file}`)
+    );
+  }
+}
+```
+
+### String & Text Processing
+```typescript
+// Remove indentation
+const script = $.dedent`
+  #!/bin/bash
+  echo "Hello"
+  echo "World"
+`;
+
+// Strip ANSI escape codes
+const cleanOutput = $.stripAnsi(coloredText);
+
+// Process command output
+const gitLog = await $`git log --oneline -10`.lines();
+const commits = gitLog.map(line => {
+  const [hash, ...message] = line.split(' ');
+  return { hash, message: message.join(' ') };
+});
+```
+
+### HTTP Integration
+```typescript
+// API calls with error handling
+async function fetchAndProcess(url: string) {
+  try {
+    const data = await $.request(url)
+      .header("User-Agent", "Dax Script")
+      .json();
+    
+    return data;
+  } catch (error) {
+    console.error(`Failed to fetch ${url}:`, error.message);
+    throw error;
+  }
+}
+
+// Download with progress
+await $.request("https://releases.example.com/latest.zip")
+  .showProgress()
+  .pipeToPath($.path("downloads/latest.zip"));
+```
+
+## Best Practices
+
+### 1. **Script Structure**
+```typescript
+#!/usr/bin/env -S deno run --allow-all
+import $ from "@david/dax";
+
+// Configuration at the top
+const CONFIG = {
+  timeout: "30s",
+  retries: 3,
+  verbose: Deno.env.get("VERBOSE") === "true"
+};
+
+// Helper functions
+async function validateEnvironment() {
+  // Validation logic
+}
+
+// Main function
+async function main() {
+  try {
+    await validateEnvironment();
+    // Script logic
+    console.log("✅ Script completed successfully");
+  } catch (error) {
+    console.error("❌ Script failed:", error.message);
+    Deno.exit(1);
+  }
+}
+
+// Execute only if run directly
+if (import.meta.main) {
+  await main();
+}
+```
+
+### 2. **Error Handling Strategy**
+- Use `.noThrow()` for commands where failure is expected
+- Always check command existence with `$.commandExists()`
+- Provide meaningful error messages with context
+- Use proper exit codes for script success/failure
+
+### 3. **Cross-Platform Compatibility**
+- Prefer Dax built-in commands over platform-specific ones
+- Use `$.path()` for file operations instead of string concatenation
+- Test scripts on multiple platforms when possible
+- Use environment variables for platform-specific configurations
+
+### 4. **Performance Considerations**
+- Use parallel execution where appropriate with `Promise.all()`
+- Stream large files instead of loading into memory
+- Cache expensive operations when possible
+- Use `.stdout("piped")` only when you need to capture output
+
+## Integration with Existing Scripts
+
+For this development workspace, Dax can enhance existing scripts in:
+- [development-workspace/scripts/](mdc:development-workspace/development-workspace/development-workspace/development-workspace/scripts) - Workspace management automation
+- [anton/scripts/](mdc:anton/scripts) - Kubernetes cluster management
+- [notes/scripts/](mdc:notes/scripts) - Note management automation
+- [simple-web-stack/scripts/](mdc:simple-web-stack/scripts) - Build and deployment scripts
+- [wcygan.github.io/scripts/](mdc:wcygan.github.io/scripts) - Blog and content management
+
+## Common Use Cases
+
+1. **Submodule Management** - Automate git submodule operations across repositories
+2. **Build Pipelines** - Cross-platform build and deployment automation
+3. **Development Setup** - Environment initialization and dependency management
+4. **Testing Workflows** - Comprehensive testing and validation pipelines
+5. **Content Management** - Blog post creation and publishing automation
+6. **System Administration** - Server and infrastructure management tasks
+
+## Migration from Bash/Shell Scripts
+
+When migrating existing shell scripts to Dax:
+1. Replace command substitution `$(...)` with `await $\`...\`.text()`
+2. Use Dax's built-in error handling instead of `set -e`
+3. Replace string interpolation with template literals and argument escaping
+4. Use `$.path()` for file operations instead of string manipulation
+5. Leverage TypeScript types for better error catching
+
+Dax provides a modern, type-safe, and cross-platform alternative to traditional shell scripting while maintaining the familiar template literal syntax for command execution.

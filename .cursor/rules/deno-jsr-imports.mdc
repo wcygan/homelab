@@ -1,0 +1,78 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Deno JSR Standard Library Import Rule
+
+## Requirement
+**Always use JSR (@std) imports instead of deno.land/std for Deno standard library imports.**
+
+## Correct Import Format
+```typescript
+// ✅ CORRECT - Use JSR @std imports
+import { parseArgs } from "@std/cli/parse-args";
+import { join, dirname, basename } from "@std/path";
+import { exists } from "@std/fs/exists";
+import { copy } from "@std/fs/copy";
+import { ensureDir } from "@std/fs/ensure-dir";
+import { delay } from "@std/async/delay";
+import { assertEquals } from "@std/assert";
+```
+
+## Incorrect Format (Never Use)
+```typescript
+// ❌ INCORRECT - Old deno.land/std format
+import { parseArgs } from "https://deno.land/std@0.208.0/cli/parse_args.ts";
+import { join } from "https://deno.land/std@0.208.0/path/mod.ts";
+import { exists } from "https://deno.land/std@0.208.0/fs/exists.ts";
+```
+
+## Benefits of JSR (@std)
+- **Automatic Version Management**: No need to specify version numbers in imports
+- **Better Caching**: JSR provides improved caching and resolution
+- **Future-Proof**: JSR is the modern standard for Deno package management
+- **Cleaner Imports**: Shorter, more readable import statements
+- **Centralized Configuration**: Version management through [deno.json](mdc:development-workspace/development-workspace/deno.json)
+
+## Configuration Reference
+The workspace is configured for JSR in [deno.json](mdc:development-workspace/development-workspace/deno.json) with import maps that handle @std package resolution automatically.
+
+## Common Standard Library Imports
+- `@std/cli/parse-args` - Command line argument parsing
+- `@std/path` - Path manipulation utilities
+- `@std/fs` - File system operations (exists, copy, ensureDir, walk)
+- `@std/async` - Async utilities (delay, debounce, pooledMap)
+- `@std/assert` - Testing assertions
+- `@std/datetime` - Date and time utilities
+- `@std/collections` - Collection utilities
+- `@std/crypto` - Cryptographic functions
+- `@std/http` - HTTP utilities
+- `@std/uuid` - UUID generation
+
+## Migration Pattern
+When updating existing Deno scripts:
+1. Replace all `https://deno.land/std@X.X.X/` imports with `@std/`
+2. Remove version specifiers from imports
+3. Update import specifiers to match JSR naming conventions
+4. Test imports work correctly with `deno check`
+
+## Examples in Workspace
+For reference implementations using JSR imports, see existing Deno scripts in [scripts/](mdc:development-workspace/development-workspace/scripts).
+
+## Testing with JSR Imports
+When writing integration tests for CLI tools, JSR imports provide clean, reliable testing utilities:
+```typescript
+// ✅ Clean testing imports with JSR
+import { assertEquals, assertExists } from "@std/assert";
+import { join } from "@std/path";
+import { exists } from "@std/fs/exists";
+
+// Works seamlessly with Deno.test() and CLITestRunner patterns
+Deno.test("example test", async () => {
+  const result = await someFunction();
+  assertEquals(result.success, true);
+});
+```
+
+This rule ensures all Deno code in the workspace uses modern, maintainable import standards.
