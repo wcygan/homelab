@@ -1,0 +1,117 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Flux Kustomization sourceRef Namespace Requirement
+
+## Critical Rule: Always Include Namespace in sourceRef
+
+When creating Flux `Kustomization` CRDs in `kubernetes/apps/<namespace>/<app>/ks.yaml`, **ALWAYS** include the `namespace` field in the `sourceRef`, even when the GitRepository is in the same namespace as specified in the Kustomization's metadata.
+
+## The Problem
+
+Flux's cluster-apps Kustomization applies child Kustomizations to their `targetNamespace` rather than keeping them in `flux-system`. This means:
+
+1. A Kustomization with `targetNamespace: monitoring` gets created in the `monitoring` namespace
+2. Without an explicit `namespace` in `sourceRef`, it looks for the GitRepository in the same namespace (`monitoring`)
+3. The GitRepository `flux-system` actually exists in the `flux-system` namespace
+4. This causes the error: `GitRepository.source.toolkit.fluxcd.io "flux-system" not found`
+
+## Correct Pattern
+
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: <app-name>
+  namespace: flux-system  # This is often ignored due to cluster-apps behavior
+spec:
+  interval: 10m
+  path: ./kubernetes/apps/<namespace>/<app>/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system  # ← CRITICAL: Always include this
+  targetNamespace: <namespace>
+```
+
+## Incorrect Pattern (Will Fail)
+
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: <app-name>
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./kubernetes/apps/<namespace>/<app>/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    # ← MISSING: namespace field causes lookup in wrong namespace
+  targetNamespace: <namespace>
+```
+
+## Why This Happens
+
+The cluster-apps Kustomization in `kubernetes/flux/cluster/ks.yaml` processes all apps under `kubernetes/apps/` and applies them. Due to how Flux handles namespace targeting:
+
+1. Child Kustomizations are created in their `targetNamespace`
+2. Without explicit `namespace` in `sourceRef`, they look for sources in their own namespace
+3. The GitRepository `flux-system` is always in the `flux-system` namespace
+
+## Error Symptoms
+
+- Kustomization shows: `GitRepository.source.toolkit.fluxcd.io "flux-system" not found`
+- Apps fail to deploy despite correct file structure
+- Kustomization appears in target namespace instead of flux-system namespace
+
+## Prevention Checklist
+
+When creating any new `ks.yaml` file:
+
+- [ ] Verify `sourceRef` includes `namespace: flux-system`
+- [ ] Check that `metadata.namespace` is `flux-system`
+- [ ] Ensure `targetNamespace` matches the intended deployment namespace
+- [ ] Test deployment and verify Kustomization can find the GitRepository
+
+## Examples from Repository
+
+✅ **Correct** (after fix):
+```yaml
+# kubernetes/apps/monitoring/kube-prometheus-stack/ks.yaml
+sourceRef:
+  kind: GitRepository
+  name: flux-system
+  namespace: flux-system  # Explicitly specified
+```
+
+✅ **Correct** (existing working examples):
+```yaml
+# kubernetes/apps/external-secrets/external-secrets/ks.yaml
+sourceRef:
+  kind: GitRepository
+  name: flux-system
+  namespace: flux-system
+```
+
+## Related Files
+
+- All `ks.yaml` files under `kubernetes/apps/<namespace>/<app>/ks.yaml`
+- Cluster-apps configuration: `kubernetes/flux/cluster/ks.yaml`
+- GitRepository definition: `kubernetes/flux/meta/repos/` (various files)
+
+## Testing
+
+After creating or modifying a `ks.yaml`:
+
+1. Commit and push changes
+2. Run: `flux reconcile kustomization cluster-apps -n flux-system --with-source`
+3. Verify: `kubectl get kustomization <app-name> -n <target-namespace>`
+4. Check status: `kubectl describe kustomization <app-name> -n <target-namespace>`
+
+The Kustomization should show "Applied revision" status, not GitRepository errors.
