@@ -1,0 +1,52 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "72.8.0"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+      interval: 5m
+  releaseName: kube-prometheus-stack
+  targetNamespace: monitoring
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  # Default values are generally good for a start.
+  # You can customize values here as needed, for example:
+  values:
+    alertmanager:
+      enabled: true
+    grafana:
+      enabled: true
+      # Default admin password is "prom-operator"
+      # Consider managing this via 1Password/ESO for production
+      adminPassword: "prom-operator"
+    prometheus:
+      enabled: true
+    kubeStateMetrics:
+      enabled: true
+    nodeExporter:
+      enabled: true
+    # Example: Adjust resource requests/limits if needed
+    # prometheusOperator:
+    #   resources:
+    #     requests:
+    #       cpu: 100m
+    #       memory: 128Mi
+    #     limits:
+    #       cpu: 200m
+    #       memory: 256Mi
