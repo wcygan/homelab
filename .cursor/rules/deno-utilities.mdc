@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
 ---
 # Deno Scripting Utilities & Standard Library Guide
@@ -17,11 +17,106 @@ This workspace uses the modern JSR registry for all @std packages. Configuration
 
 ### Current @std Packages in Use
 - `@std/cli` - Command line argument parsing
-- `@std/path` - Path manipulation utilities  
+- `@std/path` - Path manipulation utilities
 - `@std/fs` - File system operations
 - `@std/async` - Async utilities (delay, debounce, etc.)
 - `@std/assert` - Testing assertions
 - `@std/datetime` - Date and time utilities
+
+### Adding New @std Dependencies
+
+When you need to use a new standard library package, follow these steps:
+
+1. **Add to deno.json imports**: Update the `imports` section in `deno.json` with the new package:
+   ```json
+   {
+     "imports": {
+       "@std/async": "jsr:@std/async@^1.0.11",
+       "@std/cli": "jsr:@std/cli@^1.0.18",
+       "@std/fs": "jsr:@std/fs@^1.0.17",
+       "@std/path": "jsr:@std/path@^1.1.0"
+     }
+   }
+   ```
+
+2. **Import in your script**: Use the standard JSR import syntax:
+   ```typescript
+   import { delay } from "@std/async/delay";
+   import { parseArgs } from "@std/cli/parse-args";
+   ```
+
+3. **Replace custom implementations**: Remove any custom implementations of functionality that exists in the standard library.
+
+**Example: Adding @std/async/delay**
+
+Before (custom implementation):
+```typescript
+// Custom delay function
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+```
+
+After (using @std):
+```typescript
+import { delay } from "@std/async/delay";
+
+// Now use delay() directly - no custom implementation needed
+await delay(1000); // 1 second delay
+```
+
+This approach ensures:
+- **Consistency**: All scripts use the same well-tested implementations
+- **Maintainability**: No need to maintain custom utility functions
+- **Version Management**: Centralized dependency management through deno.json
+- **Standards Compliance**: Following Deno's recommended practices
+
+## 📦 Using @std/async/delay
+
+To use the standard delay function in your Deno scripts, follow these steps:
+
+### 1. Add @std/async to Import Map
+
+Edit your `deno.json` and add the following to the `imports` section:
+
+```json
+{
+  "imports": {
+    "@std/async": "jsr:@std/async@^1.0.11"
+    // ... other imports ...
+  }
+}
+```
+
+This enables you to import any async utility (including `delay`) using the `@std/async` prefix.
+
+### 2. Import and Use delay
+
+In your script, import the delay function like this:
+
+```typescript
+import { delay } from "@std/async/delay";
+
+await delay(1000); // Waits for 1 second
+```
+
+### 3. Remove Custom delay Implementations
+
+If you previously had a custom delay function (e.g., using `setTimeout`), you can safely remove it and use the standard one for better maintainability and consistency.
+
+### Example
+
+```typescript
+import { delay } from "@std/async/delay";
+
+console.log("Waiting...");
+await delay(2000);
+console.log("Done!");
+```
+
+---
+
+(See the main guide above for more on import maps and standard library usage.)
 
 ## 🛠️ Essential Deno Utilities for Scripts
 
@@ -32,9 +127,9 @@ import { parseArgs } from "@std/cli/parse-args";
 const args = parseArgs(Deno.args, {
   string: ["name", "output", "config"],
   boolean: ["help", "verbose", "force", "dry-run"],
-  alias: { 
-    h: "help", 
-    v: "verbose", 
+  alias: {
+    h: "help",
+    v: "verbose",
     o: "output",
     c: "config",
     f: "force"
@@ -52,8 +147,8 @@ import { walk, copy, ensureDir, exists, move } from "@std/fs";
 import { join, dirname, basename, extname, resolve } from "@std/path";
 
 // Directory traversal
-for await (const entry of walk(".", { 
-  exts: [".ts", ".js", ".md"], 
+for await (const entry of walk(".", {
+  exts: [".ts", ".js", ".md"],
   includeDirs: false,
   skip: [/node_modules/, /\.git/]
 })) {
@@ -84,9 +179,9 @@ async function runCommand(cmd: string[], cwd?: string): Promise<{success: boolea
   });
 
   const result = await command.output();
-  const output = new TextDecoder().decode(result.stdout) + 
+  const output = new TextDecoder().decode(result.stdout) +
                  new TextDecoder().decode(result.stderr);
-  
+
   return {
     success: result.success,
     output: output.trim()
@@ -182,7 +277,7 @@ const config = parseJsonc(await Deno.readTextFile("config.jsonc"));
 const csvData = await Deno.readTextFile("data.csv");
 const records = parseCsv(csvData, { skipFirstRow: true });
 
-// YAML processing  
+// YAML processing
 const yamlConfig = parseYaml(await Deno.readTextFile("config.yaml"));
 ```
 
@@ -252,14 +347,14 @@ class AppDatabase {
     this.db.exec(`
       PRAGMA foreign_keys = ON;
       PRAGMA journal_mode = WAL;
-      
+
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       ) STRICT;
-      
+
       CREATE TABLE IF NOT EXISTS posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -297,14 +392,14 @@ class AppDatabase {
 
   // User operations
   createUser(name: string, email: string): number {
-    const stmt = this.getStatement("createUser", 
+    const stmt = this.getStatement("createUser",
       "INSERT INTO users (name, email) VALUES (?, ?)");
     const result = stmt.run(name, email);
     return result.lastInsertRowid as number;
   }
 
   getUser(id: number): any {
-    const stmt = this.getStatement("getUser", 
+    const stmt = this.getStatement("getUser",
       "SELECT * FROM users WHERE id = ?");
     return stmt.get(id);
   }
@@ -312,7 +407,7 @@ class AppDatabase {
   updateUser(id: number, updates: { name?: string; email?: string }): boolean {
     const fields = Object.keys(updates).map(key => `${key} = ?`).join(", ");
     const values = Object.values(updates);
-    
+
     const stmt = this.db.prepare(`UPDATE users SET ${fields} WHERE id = ?`);
     const result = stmt.run(...values, id);
     return result.changes > 0;
@@ -321,7 +416,7 @@ class AppDatabase {
   // Bulk operations
   createUsers(users: Array<{ name: string; email: string }>): void {
     this.withTransaction(() => {
-      const stmt = this.getStatement("createUser", 
+      const stmt = this.getStatement("createUser",
         "INSERT INTO users (name, email) VALUES (?, ?)");
       for (const user of users) {
         stmt.run(user.name, user.email);
@@ -332,9 +427,9 @@ class AppDatabase {
   // Search and filtering
   searchUsers(term: string, limit = 10): any[] {
     const stmt = this.getStatement("searchUsers", `
-      SELECT * FROM users 
-      WHERE name LIKE ? OR email LIKE ? 
-      ORDER BY created_at DESC 
+      SELECT * FROM users
+      WHERE name LIKE ? OR email LIKE ?
+      ORDER BY created_at DESC
       LIMIT ?
     `);
     return stmt.all(`%${term}%`, `%${term}%`, limit);
@@ -350,17 +445,17 @@ const database = new AppDatabase("app.db");
 try {
   // Single operations
   const userId = database.createUser("Alice Johnson", "alice@example.com");
-  
+
   // Bulk operations in transaction
   database.createUsers([
     { name: "Bob Wilson", email: "bob@example.com" },
     { name: "Carol Davis", email: "carol@example.com" }
   ]);
-  
+
   // Search
   const results = database.searchUsers("alice");
   console.log("Search results:", results);
-  
+
 } finally {
   database.close();
 }
@@ -513,7 +608,7 @@ Usage: deno run --allow-read --allow-write script.ts [options]
 
 Options:
   -i, --input <file>     Input file path
-  -o, --output <file>    Output file path  
+  -o, --output <file>    Output file path
   -v, --verbose          Verbose output
   -h, --help             Show help
   `);
@@ -534,7 +629,7 @@ async function main(): Promise<void> {
   try {
     // Script logic here
     if (args.verbose) console.log("Processing...");
-    
+
   } catch (error) {
     console.error("Error:", error instanceof Error ? error.message : error);
     Deno.exit(1);
@@ -554,7 +649,7 @@ For specialized tasks, consider these additional JSR packages:
 - `@std/collections` - Set operations, grouping, sorting utilities
 - `@std/data-structures` - Advanced data structures
 
-### Web & Protocols  
+### Web & Protocols
 - `@std/http` - HTTP server and client utilities
 - `@std/websocket` - WebSocket support
 - `@std/url` - URL parsing and manipulation
@@ -602,10 +697,10 @@ class CLITestRunner {
   async setup(): Promise<void> {
     // Create isolated test directory
     this.testDir = await Deno.makeTempDir({ prefix: "cli_test_" });
-    
+
     // Store original environment
     this.originalEnv = { ...Deno.env.toObject() };
-    
+
     // Change to test directory
     Deno.chdir(this.testDir);
   }
@@ -613,13 +708,13 @@ class CLITestRunner {
   async cleanup(): Promise<void> {
     // Restore original working directory
     Deno.chdir(this.originalCwd);
-    
+
     // Restore environment variables
     Deno.env.clear();
     for (const [key, value] of Object.entries(this.originalEnv)) {
       Deno.env.set(key, value);
     }
-    
+
     // Clean up test directory
     try {
       await Deno.remove(this.testDir, { recursive: true });
@@ -726,7 +821,7 @@ Deno.test("CLI tool rollback functionality", async () => {
     const result = await runner.runCLI("scripts/rollback.ts", ["--force"]);
 
     assertEquals(result.success, true);
-    
+
     // Verify rollback worked
     const restoredContent = await runner.readFile(".zshrc");
     assertEquals(restoredContent, "# Backup content");
@@ -784,7 +879,7 @@ Deno.test("cross-platform path handling", async () => {
     ]);
 
     assertEquals(result.success, true);
-    
+
     // Verify output path is correct for current platform
     const outputExists = await runner.fileExists(join("output", "result.txt"));
     assertEquals(outputExists, true);

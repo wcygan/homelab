@@ -1,11 +1,7 @@
 #!/usr/bin/env -S deno run --allow-all
 
 import { parseArgs } from "@std/cli/parse-args";
-
-// Simple delay function using web standard setTimeout
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+import { delay } from "@std/async/delay";
 
 interface HealthCheckOptions {
   verbose: boolean;
