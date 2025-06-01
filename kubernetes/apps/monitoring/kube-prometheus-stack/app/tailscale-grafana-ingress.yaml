@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-tailscale-ingress
+  namespace: monitoring
+  # Optional: Add Tailscale Funnel annotation if public exposure via Tailscale Funnel is desired
+  # annotations:
+  #   tailscale.com/funnel: "true"
+spec:
+  ingressClassName: tailscale # Use ingressClassName as per Tailscale docs and K8s best practice
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kube-prometheus-stack-grafana
+            port:
+              number: 80
+  tls:
+    - hosts:
+        - grafana
