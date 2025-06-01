@@ -11,5 +11,3 @@ resources:
   - ./external-dns.yaml
   - ./prometheus-community.yaml
   - ./1password-connect.yaml
-  # renovate: datasource=helm depName=hugs lookupName=hugs registryUrl=https://raw.githubusercontent.com/huggingface/hugs-helm-chart/main/charts/hugs
-  - ./hugs.yaml
