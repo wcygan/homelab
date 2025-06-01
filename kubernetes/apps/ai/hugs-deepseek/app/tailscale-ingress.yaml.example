@@ -1,0 +1,26 @@
+---
+# Example Tailscale Ingress for HUGS DeepSeek
+# To use:
+# 1. Rename this file to tailscale-ingress.yaml
+# 2. Add it to the kustomization.yaml resources list
+# 3. Commit and push
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hugs-deepseek-tailscale-ingress
+  namespace: ai
+spec:
+  ingressClassName: tailscale
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hugs-deepseek
+            port:
+              number: 8080
+  tls:
+    - hosts:
+        - deepseek  # Results in deepseek.<tailnet-name>.ts.net
