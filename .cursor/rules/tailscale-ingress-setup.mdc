@@ -1,0 +1,125 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Tailscale Ingress Setup for Exposing Kubernetes Services
+
+This rule documents how to expose Kubernetes services to your Tailnet using the Tailscale Kubernetes operator and Ingress resources.
+
+Reference: https://tailscale.com/kb/1439/kubernetes-operator-cluster-ingress
+
+## Prerequisites
+
+- Tailscale Kubernetes operator must be installed and running in the cluster (managed outside of Flux for security reasons)
+- The operator should be running in the `tailscale` namespace
+- Tailscale operator handles authentication and secret management independently
+
+## Implementation Pattern
+
+### 1. Create Tailscale Ingress Resource
+
+Add an Ingress resource to your application's `app/` directory following this pattern:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: <service-name>-tailscale-ingress
+  namespace: <target-namespace>
+  # Optional: Add Tailscale Funnel annotation for public internet exposure
+  # annotations:
+  #   tailscale.com/funnel: "true"
+spec:
+  ingressClassName: tailscale
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: <kubernetes-service-name>
+            port:
+              number: <service-port>
+  tls:
+    - hosts:
+        - <desired-hostname>  # Results in <desired-hostname>.<tailnet-name>.ts.net
+```
+
+### 2. Update Application Kustomizationc
+
+Add the Ingress resource to your application's [`kustomization.yaml`](mdc:kubernetes/apps/monitoring/kube-prometheus-stack/app/kustomization.yaml):
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - helmrelease.yaml
+  - <service-name>-tailscale-ingress.yaml  # Add this line
+```
+
+### 3. Verify Service Configuration
+
+Before creating the Ingress, confirm the target service details:
+
+```bash
+kubectl get svc <service-name> -n <namespace> -o jsonpath='{.spec.ports[0].port}'
+```
+
+Ensure the `port.number` in your Ingress matches the service's exposed port.
+
+## Example: Grafana Exposure
+
+Reference implementation: [`tailscale-grafana-ingress.yaml`](mdc:kubernetes/apps/monitoring/kube-prometheus-stack/app/tailscale-grafana-ingress.yaml)
+
+This exposes the `kube-prometheus-stack-grafana` service on port 80 to the Tailnet as `https://grafana.<tailnet-name>.ts.net`.
+
+## What Happens When Applied
+
+1. **Flux Reconciliation**: Flux detects and applies the new Ingress resource
+2. **Tailscale Operator Response**:
+   - Creates a StatefulSet in the `tailscale` namespace (e.g., `ts-<ingress-name>-<hash>`)
+   - Deploys a Tailscale proxy pod that connects to your Tailnet
+   - Creates a corresponding Service in the `tailscale` namespace
+3. **Tailnet Integration**: The service becomes accessible at `https://<hostname>.<tailnet-name>.ts.net`
+4. **TLS Certificates**: Automatically provisioned on first connection
+
+## Verification Steps
+
+After applying the Ingress:
+
+1. **Check Ingress Status**:
+   ```bash
+   kubectl describe ingress <ingress-name> -n <namespace>
+   ```
+   Look for the assigned Tailscale address.
+
+2. **Verify Tailscale Proxy**:
+   ```bash
+   kubectl get pods -n tailscale
+   ```
+   Should show a running proxy pod for your service.
+
+3. **Check Proxy Logs**:
+   ```bash
+   kubectl logs -n tailscale <proxy-pod-name>
+   ```
+   Should show successful Tailnet connection and proxy configuration.
+
+## Important Notes
+
+- **Operator Management**: The Tailscale operator is intentionally managed outside of Flux to keep authentication secrets separate from GitOps
+- **TLS Required**: Tailscale Ingress requires TLS; certificates are auto-provisioned
+- **First Connection**: Initial access may be slower due to certificate provisioning
+- **Access Control**: Configure Tailscale ACLs to control which users/devices can access exposed services
+- **Port Configuration**: Ensure the Ingress port matches your Kubernetes service's exposed port
+
+## Troubleshooting
+
+- **Ingress Not Working**: Check if Tailscale operator pods are running in the `tailscale` namespace
+- **Connection Issues**: Verify Tailscale ACLs allow access to the service
+- **Certificate Problems**: First connection may timeout; subsequent connections should work
+- **Service Discovery**: Ensure the backend service name and port are correct in the Ingress spec
+
+This pattern can be applied to any Kubernetes service you want to expose securely to your Tailnet.
