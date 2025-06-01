@@ -26,8 +26,9 @@ spec:
       remediateLastFailure: true
   values:
     image:
-      repository: hfhugs
-      name: unsloth-gemma-3-4b-it-GGUF
+      # https://huggingface.co/unsloth/gemma-3-4b-it-GGUF
+      repository: unsloth
+      name: gemma-3-4b-it-GGUF
       tag: Q4_K_XL  # Using tag for specific GGUF quantization
 
     # Resource configuration
