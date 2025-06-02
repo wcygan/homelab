@@ -1,16 +1,16 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: deepseek-coder-1-5b
+  name: deepseek-r1-1-5b
   namespace: flux-system
 spec:
   interval: 10m
-  path: ./kubernetes/apps/kubeai/deepseek-coder-1-5b/app
+  path: ./kubernetes/apps/kubeai/deepseek-r1-1-5b/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
-    namespace: flux-system # Explicitly set sourceRef namespace
+    namespace: flux-system
   targetNamespace: kubeai
   dependsOn:
-    - name: kubeai-operator # Ensure operator is up before models
+    - name: kubeai-operator

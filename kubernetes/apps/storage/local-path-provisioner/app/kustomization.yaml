@@ -1,0 +1,51 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+patches:
+  - target:
+      kind: Namespace
+      name: local-path-storage
+    patch: |
+      - op: replace
+        path: /metadata/name
+        value: storage
+  - target:
+      kind: Deployment
+      name: local-path-provisioner
+    patch: |
+      - op: replace
+        path: /metadata/namespace
+        value: storage
+  - target:
+      kind: ServiceAccount
+      name: local-path-provisioner-service-account
+    patch: |
+      - op: replace
+        path: /metadata/namespace
+        value: storage
+  - target:
+      kind: Role
+      name: local-path-provisioner-role
+    patch: |
+      - op: replace
+        path: /metadata/namespace
+        value: storage
+  - target:
+      kind: RoleBinding
+      name: local-path-provisioner-bind
+    patch: |
+      - op: replace
+        path: /metadata/namespace
+        value: storage
+      - op: replace
+        path: /subjects/0/namespace
+        value: storage
+  - target:
+      kind: StorageClass
+      name: local-path
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          storageclass.kubernetes.io/is-default-class: "true"
