@@ -1,0 +1,202 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Kubernetes Storage Architecture and Management Guide
+
+## Overview
+This rule documents the complete storage architecture for the Kubernetes cluster, including the local-path-provisioner implementation, Flux integration patterns, and troubleshooting workflows.
+
+## Storage Infrastructure Components
+
+### Local Path Provisioner
+The cluster uses Rancher's local-path-provisioner as the default dynamic storage provisioner for CPU-only workloads.
+
+**Core Configuration Files:**
+- [kubernetes/apps/storage/kustomization.yaml](mdc:anton/kubernetes/apps/storage/kustomization.yaml) - Storage namespace entry point
+- [kubernetes/apps/storage/local-path-provisioner/ks.yaml](mdc:anton/kubernetes/apps/storage/local-path-provisioner/ks.yaml) - Flux Kustomization for provisioner
+- [kubernetes/apps/storage/local-path-provisioner/app/kustomization.yaml](mdc:anton/kubernetes/apps/storage/local-path-provisioner/app/kustomization.yaml) - Provisioner app configuration with namespace patches
+
+### Storage Class Configuration
+```yaml
+# Automatically created by local-path-provisioner
+NAME: local-path (default)
+PROVISIONER: rancher.io/local-path
+RECLAIM POLICY: Delete
+VOLUME BINDING MODE: WaitForFirstConsumer
+```
+
+**Key Features:**
+- **Default Storage Class**: Automatically selected for PVCs without explicit storageClassName
+- **WaitForFirstConsumer**: Volumes created only when pod is scheduled to avoid cross-AZ issues
+- **Local Storage**: Uses host filesystem paths for persistence
+
+## Architecture Pattern
+
+### Namespace Structure
+```
+storage/
+├── local-path-provisioner (deployment)
+└── local-path-provisioner-service-account (RBAC)
+```
+
+### Flux Integration Pattern
+1. **Source Registration**: Not required (uses direct YAML from GitHub)
+2. **Namespace Management**: `storage` namespace with common components
+3. **Dependency Chain**: Storage → Applications requiring persistent storage
+
+### Resource Lifecycle
+1. **PVC Creation**: Application requests storage via PersistentVolumeClaim
+2. **Dynamic Provisioning**: local-path-provisioner creates PersistentVolume on first pod bind
+3. **Volume Binding**: PV bound to PVC when pod scheduled to specific node
+4. **Host Path Creation**: Directory created on node filesystem at `/opt/local-path-provisioner/`
+5. **Cleanup**: PV deleted when PVC is deleted (reclaim policy: Delete)
+
+## Application Integration Patterns
+
+### KubeAI Storage Dependencies
+Reference: [kubernetes/apps/kubeai/kubeai-operator/ks.yaml](mdc:anton/kubernetes/apps/kubeai/kubeai-operator/ks.yaml)
+
+```yaml
+dependsOn:
+  - name: local-path-provisioner
+    namespace: storage  # Critical: Must specify correct namespace
+```
+
+**Dependencies Resolution:**
+- KubeAI operator depends on storage being available
+- Models depend on KubeAI operator being ready
+- Ensures proper startup order in GitOps workflow
+
+### PVC Usage Example
+The `open-webui` component demonstrates typical PVC usage:
+```bash
+# PVC automatically created by KubeAI operator
+kubectl get pvc open-webui -n kubeai
+# Status: Bound to dynamically provisioned PV
+```
+
+## Troubleshooting Storage Issues
+
+### Common Symptoms
+1. **Pods Stuck in Pending**: `0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims`
+2. **PVC Unbound**: PVC shows `Pending` status indefinitely
+3. **Dependency Failures**: Flux Kustomizations fail with "dependency not found"
+
+### Diagnostic Commands
+```bash
+# Check storage class availability
+kubectl get storageclass
+
+# Verify provisioner is running
+kubectl get all -n storage
+
+# Check PVC status
+kubectl get pvc -A
+
+# Check PV creation
+kubectl get pv
+
+# Check Flux dependencies
+kubectl get kustomization -A | grep -E "(storage|local-path)"
+```
+
+### Resolution Patterns
+
+#### Missing Storage Class
+**Problem**: No default storage class available
+**Solution**: Deploy local-path-provisioner with default annotation:
+```yaml
+storageclass.kubernetes.io/is-default-class: "true"
+```
+
+#### Dependency Namespace Issues
+**Problem**: Flux dependency references wrong namespace
+**Solution**: Explicit namespace specification in dependsOn:
+```yaml
+dependsOn:
+  - name: local-path-provisioner
+    namespace: storage  # Required for cross-namespace dependencies
+```
+
+#### Provisioner Not Ready
+**Problem**: PVCs remain unbound despite storage class existing
+**Solution**: 
+1. Check provisioner pod status in `storage` namespace
+2. Verify RBAC permissions for service account
+3. Check node disk space and permissions
+
+## Performance Characteristics
+
+### Resource Requirements
+- **CPU**: 10m request, 100m limit
+- **Memory**: 32Mi request, 128Mi limit
+- **Storage**: Uses node local filesystem (no additional overhead)
+
+### Limitations
+- **Single Node Binding**: PVs tied to specific nodes (not suitable for multi-AZ)
+- **No Replication**: Data exists only on single node filesystem
+- **Host Path Dependency**: Requires writable `/opt/local-path-provisioner/` on all nodes
+
+### Use Cases
+✅ **Suitable for:**
+- Development and homelab environments
+- Single-node or tightly coupled multi-node clusters
+- Applications that can tolerate data locality
+- CPU-only workloads requiring persistent storage
+
+❌ **Not suitable for:**
+- Multi-AZ production environments
+- Applications requiring data replication
+- Workloads needing guaranteed IOPS or throughput
+- Compliance environments requiring data encryption at rest
+
+## Monitoring and Maintenance
+
+### Health Checks
+```bash
+# Verify provisioner health
+kubectl get deployment local-path-provisioner -n storage
+
+# Check recent PV creation activity
+kubectl get events -n storage --sort-by='.metadata.creationTimestamp'
+
+# Monitor storage usage across nodes
+kubectl describe nodes | grep -A 5 "Allocated resources"
+```
+
+### Backup Considerations
+- **Data Location**: `/opt/local-path-provisioner/` on each node
+- **Backup Strategy**: Node-level filesystem backup required
+- **Recovery**: Manual data restoration to same paths on replacement nodes
+
+## Integration with GitOps
+
+### Flux Deployment Flow
+1. **Cluster-meta** applies storage namespace and RBAC
+2. **Cluster-apps** discovers storage Kustomization
+3. **Storage Kustomization** deploys local-path-provisioner
+4. **Dependent applications** (KubeAI, monitoring) wait for storage readiness
+5. **Dynamic provisioning** handles PVC requests automatically
+
+### Configuration Management
+- **Upstream Source**: Uses official Rancher YAML from GitHub
+- **Namespace Patching**: Relocates from `local-path-storage` to `storage`
+- **Default Annotation**: Automatically added to make it default storage class
+- **RBAC**: Service account permissions patched for correct namespace
+
+## Future Considerations
+
+### Migration Paths
+- **To Cloud Storage**: CSI drivers for cloud providers (EBS, Azure Disk, GCE PD)
+- **To Distributed Storage**: Ceph, Longhorn, OpenEBS for multi-node reliability
+- **To NFS**: For shared storage requirements across pods
+
+### Scaling Recommendations
+- Monitor node disk usage as cluster grows
+- Consider storage quotas for tenant isolation
+- Plan for backup strategy before production use
+- Evaluate need for storage classes with different performance characteristics
+
+This storage architecture provides a solid foundation for development and homelab Kubernetes clusters while maintaining clear upgrade paths for production requirements.
