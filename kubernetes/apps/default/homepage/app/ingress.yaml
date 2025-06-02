@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homepage
+  namespace: default
+  labels:
+    app.kubernetes.io/name: homepage
+  annotations:
+    gethomepage.dev/description: Dynamically Detected Homepage
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Cluster Management
+    # gethomepage.dev/icon: homepage.png # You might need to provide this icon or change the path
+    gethomepage.dev/name: Homepage
+    # Annotations for public ingress controllers and cert-manager are no longer needed
+    # kubernetes.io/ingress.class: "nginx"
+    # cert-manager.io/cluster-issuer: "letsencrypt-production"
+spec:
+  ingressClassName: tailscale # Set IngressClass to tailscale
+  rules:
+    - host: "homepage" # CHANGE THIS to your desired simple hostname for the Tailnet
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage
+                port:
+                  number: 3000
+  tls: # TLS is handled by Tailscale; this section will make it available over https
+    - hosts:
+        - "homepage" # This should match the host above
