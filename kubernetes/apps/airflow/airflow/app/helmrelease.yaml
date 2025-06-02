@@ -36,6 +36,13 @@ spec:
     # Basic configuration
     executor: "KubernetesExecutor"  # Or CeleryExecutor, etc.
 
+    # Configure the database connection
+    config:
+      database:
+        # This connection string uses the 'airflow' user and the 'airflow' database.
+        # The password will be substituted from the AIRFLOW_DB_PASSWORD environment variable.
+        sql_alchemy_conn: "postgresql+psycopg2://airflow:$(AIRFLOW_DB_PASSWORD)@airflow-postgresql.airflow.svc.cluster.local:5432/airflow"
+
     # Ingress configuration
     ingress:
       web:
@@ -107,6 +114,16 @@ spec:
     env:
       - name: AIRFLOW__CORE__LOAD_EXAMPLES
         value: "False"
+
+    # Expose the database password as an environment variable to all Airflow components
+    # This assumes the chart makes these env vars available to scheduler, webserver, workers, triggerer.
+    # If not, this block might need to be repeated under each component's section.
+    extraEnv:
+      - name: AIRFLOW_DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: airflow-postgresql  # The secret created by the PostgreSQL sub-chart
+            key: password           # The key containing the 'airflow' user's password
 
     # Extra secrets/configmaps without Helm hooks
     extraSecrets: {}
