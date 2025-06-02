@@ -1,0 +1,128 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Apache Airflow Helm Chart Deployment Guide
+
+## Overview
+Apache Airflow deployments using the official `apache-airflow/airflow` Helm chart require specific configuration patterns that differ from typical Helm charts. This guide covers common issues and solutions based on troubleshooting experience.
+
+## Database Configuration Patterns
+
+### Correct Structure
+Use `data.metadataConnection` for database configuration, **NOT** `config.database.sql_alchemy_conn`:
+
+```yaml
+# ✅ Correct - in values section of HelmRelease
+data:
+  metadataConnection:
+    user: airflow
+    pass: your-password-here
+    protocol: postgresql
+    host: airflow-postgresql.airflow.svc.cluster.local
+    port: 5432
+    db: airflow
+    sslmode: disable
+```
+
+### Password Synchronization
+When using built-in PostgreSQL (`postgresql.enabled: true`), passwords must match:
+- `data.metadataConnection.pass` must equal `postgresql.auth.password`
+- Auto-generated passwords often cause `airflow-metadata` secret mismatches
+
+### Example Configuration
+Reference: [kubernetes/apps/airflow/airflow/app/helmrelease.yaml](mdc:kubernetes/apps/airflow/airflow/app/helmrelease.yaml)
+
+```yaml
+postgresql:
+  enabled: true
+  auth:
+    username: "airflow"
+    password: "same-as-metadata-connection"  # Must match!
+    database: "airflow"
+
+data:
+  metadataConnection:
+    user: airflow
+    pass: "same-as-metadata-connection"  # Must match!
+    # ... other fields
+```
+
+## Schema Validation Issues
+
+### Common Error
+```
+extraEnv: Invalid type. Expected: [null,string], given: array
+```
+
+**Cause**: The `extraEnv` field expects templated YAML string, not array format.
+
+**Solution**: Remove `extraEnv` arrays and use `env` arrays instead:
+```yaml
+# ✅ Correct
+env:
+  - name: AIRFLOW__CORE__LOAD_EXAMPLES
+    value: "False"
+
+# ❌ Incorrect
+extraEnv:
+  - name: SOME_VAR
+    value: "value"
+```
+
+## Troubleshooting Workflow
+
+### 1. Check Migration Job Status
+The `airflow-run-airflow-migrations` job must complete successfully:
+```bash
+kubectl get jobs -n airflow
+kubectl logs job/airflow-run-airflow-migrations -n airflow
+```
+
+### 2. Verify Database Secret
+Check the `airflow-metadata` secret contains correct connection string:
+```bash
+kubectl get secret airflow-metadata -n airflow -o jsonpath='{.data.connection}' | base64 -d
+```
+
+### 3. Init Container Logs
+If pods stuck in Init state, check migration init container:
+```bash
+kubectl logs <pod-name> -n airflow -c wait-for-airflow-migrations
+```
+
+### 4. Success Indicators
+- All pods Running: scheduler (2/2), webserver (1/1), triggerer (2/2)
+- Migration job status: Completed (not Failed)
+- No "password authentication failed" errors in logs
+
+## Clean Deployment Process
+
+For persistent issues, perform clean installation:
+
+1. **Suspend and Clean**:
+   ```bash
+   flux suspend helmrelease airflow -n airflow
+   helm uninstall airflow -n airflow
+   kubectl delete pvc -n airflow --all
+   ```
+
+2. **Clear Cache**:
+   ```bash
+   kubectl delete helmchart airflow-airflow -n flux-system
+   ```
+
+3. **Resume**:
+   ```bash
+   flux resume helmrelease airflow -n airflow
+   ```
+
+## References
+- [Apache Airflow Helm Chart Parameters](mdc:https:/airflow.apache.org/docs/helm-chart/stable/parameters-ref.html)
+- [Example HelmRelease Configuration](mdc:kubernetes/apps/airflow/airflow/app/helmrelease.yaml)
+
+## Common Authentication Failures
+Watch for logs containing: `password authentication failed for user "postgres"`
+- Usually indicates mismatch between `airflow-metadata` secret and actual PostgreSQL credentials
+- Solution: Ensure password consistency between `data.metadataConnection.pass` and `postgresql.auth.password`

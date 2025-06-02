@@ -1,0 +1,146 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Flux HelmRelease Debugging and Cache Management
+
+## Overview
+When Flux HelmReleases show persistent schema validation errors despite correct Git configuration, the issue is often cached state in Kubernetes resources. This guide provides systematic debugging approaches.
+
+## Cache-Related Issues
+
+### Common Symptoms
+- HelmRelease shows "values don't meet specifications" with fields not in current config
+- `kubectl describe helmrelease` shows old values despite Git being updated
+- Schema validation errors persist after configuration fixes
+- Error messages reference configuration that was previously committed but since removed
+
+### Example Error Pattern
+```
+Helm install failed: values don't meet the specifications of the schema(s):
+- extraEnv: Invalid type. Expected: [null,string], given: array
+```
+*Even when `extraEnv` is no longer in your current HelmRelease configuration.*
+
+## Diagnostic Steps
+
+### 1. Verify Git Revision
+Check if Flux has pulled the latest changes:
+```bash
+flux get sources git -n flux-system
+```
+Compare the revision SHA with your local Git commit:
+```bash
+git log --oneline -1
+```
+
+### 2. Inspect Applied Values
+Check what values Flux is actually applying:
+```bash
+kubectl describe helmrelease <app-name> -n <namespace>
+```
+Look for discrepancies between the `Values` section and your current Git configuration.
+
+### 3. Check HelmChart Resource
+HelmChart resources can cache old values:
+```bash
+kubectl get helmchart -n flux-system
+kubectl describe helmchart <app>-<app> -n flux-system
+```
+
+## Cache Invalidation Process
+
+### Standard Cache Clearing
+1. **Delete HelmChart Resource**:
+   ```bash
+   kubectl delete helmchart <app>-<app> -n flux-system
+   ```
+
+2. **Force Reconciliation**:
+   ```bash
+   flux reconcile helmrelease <app> -n <namespace>
+   ```
+
+3. **Verify Success**:
+   ```bash
+   flux get helmrelease <app> -n <namespace>
+   ```
+
+### Advanced: Complete Clean Deployment
+
+When standard cache clearing fails, perform complete reset:
+
+1. **Suspend Management**:
+   ```bash
+   flux suspend helmrelease <app> -n <namespace>
+   ```
+
+2. **Manual Cleanup**:
+   ```bash
+   helm uninstall <app> -n <namespace>
+   kubectl delete pvc -n <namespace> --all  # Only if stateful
+   kubectl delete helmchart <app>-<app> -n flux-system
+   ```
+
+3. **Resume Management**:
+   ```bash
+   flux resume helmrelease <app> -n <namespace>
+   ```
+
+## Verification Commands
+
+### Monitor Reconciliation Progress
+```bash
+# Check HelmRelease status
+flux get helmrelease <app> -n <namespace>
+
+# Watch for "READY: True" status
+kubectl get helmrelease <app> -n <namespace> -w
+
+# Check applied values match expectations
+kubectl describe helmrelease <app> -n <namespace>
+```
+
+### Success Indicators
+- HelmRelease status shows `READY: True`
+- Message indicates successful install/upgrade
+- `kubectl describe` shows current Git configuration in Values section
+- No schema validation errors in events
+
+## Root Cause Prevention
+
+### Git Workflow Best Practices
+- Always commit and push changes before testing
+- Use meaningful commit messages for easier debugging
+- Verify Flux has pulled latest revision before troubleshooting
+
+### HelmRelease Configuration
+- Test configuration changes locally with `helm template` when possible
+- Use `--dry-run` flags during development
+- Keep configuration changes small and incremental
+
+## Related Resources
+- [Flux Troubleshooting Guide](mdc:https:/fluxcd.io/flux/cheatsheets/troubleshooting)
+- [HelmRelease API Reference](mdc:https:/fluxcd.io/flux/components/helm/helmreleases)
+
+## Emergency Recovery
+
+If HelmReleases become completely unresponsive:
+
+1. **Check Flux Controllers**:
+   ```bash
+   kubectl get pods -n flux-system
+   kubectl logs deployment/helm-controller -n flux-system
+   ```
+
+2. **Restart Controllers** (if needed):
+   ```bash
+   kubectl rollout restart deployment/helm-controller -n flux-system
+   kubectl rollout restart deployment/kustomize-controller -n flux-system
+   ```
+
+3. **Force Git Sync**:
+   ```bash
+   flux reconcile source git flux-system -n flux-system
+   ```
