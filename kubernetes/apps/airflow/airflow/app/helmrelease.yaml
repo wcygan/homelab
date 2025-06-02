@@ -1,0 +1,113 @@
+# kubernetes/apps/airflow/airflow/app/helmrelease.yaml
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: airflow
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: airflow
+      version: "1.16.0"  # Replace with desired version
+      sourceRef:
+        kind: HelmRepository
+        name: apache-airflow
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    # REQUIRED for Flux - Disable Helm hooks
+    createUserJob:
+      useHelmHooks: false
+      applyCustomEnv: false
+    migrateDatabaseJob:
+      useHelmHooks: false
+      applyCustomEnv: false
+
+    # Enable standard naming (recommended for new installations)
+    useStandardNaming: true
+
+    # Basic configuration
+    executor: "KubernetesExecutor"  # Or CeleryExecutor, etc.
+
+    # Ingress configuration
+    ingress:
+      web:
+        enabled: true
+        ingressClassName: "internal"  # or "external" based on your setup
+        hosts:
+          - name: "airflow.${SECRET_DOMAIN}"
+            tls:
+              enabled: true
+              secretName: "${SECRET_DOMAIN/./-}-production-tls"
+        annotations:
+          cert-manager.io/cluster-issuer: "letsencrypt-production"
+
+    # Database configuration (using built-in PostgreSQL)
+    postgresql:
+      enabled: true
+      auth:
+        enablePostgresUser: true
+        postgresPassword: ""  # Will be auto-generated
+        username: "airflow"
+        password: ""  # Will be auto-generated
+        database: "airflow"
+
+    # Redis configuration (if using CeleryExecutor)
+    redis:
+      enabled: false  # Set to true if using CeleryExecutor
+      # If enabled, set a static password for Flux
+      # password: "your-static-redis-password"
+
+    # Monitoring
+    prometheus:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+
+    # Security
+    webserverSecretKey: ""  # Will be auto-generated
+
+    # Resource limits
+    webserver:
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+
+    scheduler:
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+
+    # If using KubernetesExecutor, configure worker resources
+    workers:
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+
+    # Disable example DAGs in production
+    env:
+      - name: AIRFLOW__CORE__LOAD_EXAMPLES
+        value: "False"
+
+    # Extra secrets/configmaps without Helm hooks
+    extraSecrets: {}
+    extraConfigMaps: {}
