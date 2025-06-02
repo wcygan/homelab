@@ -12,6 +12,3 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: kubeai
-  dependsOn:
-    - name: local-path-provisioner
-      namespace: storage
