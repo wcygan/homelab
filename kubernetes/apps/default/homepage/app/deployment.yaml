@@ -28,7 +28,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS # This is a placeholder, you may need to adjust this
-              value: "gethomepage.dev, your.cluster.domain" # Example: homepage.yourdomain.com
+              value: "gethomepage.dev, your.cluster.domain, localhost, homepage.walleye-monster.ts.net" # Example: homepage.yourdomain.com
           ports:
             - name: http
               containerPort: 3000
