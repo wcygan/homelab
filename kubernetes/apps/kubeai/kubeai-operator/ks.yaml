@@ -14,3 +14,4 @@ spec:
   targetNamespace: kubeai
   dependsOn:
     - name: local-path-provisioner
+      namespace: storage
