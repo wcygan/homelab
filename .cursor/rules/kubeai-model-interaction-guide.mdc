@@ -1,0 +1,265 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# KubeAI Model Interaction and Deployment Guide
+
+## Overview
+This rule documents how to deploy, discover, and interact with AI models using KubeAI in the Kubernetes cluster. KubeAI provides OpenAI-compatible APIs for text generation and speech-to-text models with CPU and GPU support.
+
+## Deployment Architecture
+
+### Core Components
+- **KubeAI Operator**: [kubernetes/apps/kubeai/kubeai-operator/ks.yaml](mdc:anton/kubernetes/apps/kubeai/kubeai-operator/ks.yaml) - Main controller managing models
+- **Storage Integration**: [kubernetes/apps/storage/local-path-provisioner/ks.yaml](mdc:anton/kubernetes/apps/storage/local-path-provisioner/ks.yaml) - Required for model persistence
+- **Namespace Configuration**: [kubernetes/apps/kubeai/kustomization.yaml](mdc:anton/kubernetes/apps/kubeai/kustomization.yaml) - Kubeai namespace management
+
+### HelmRepository Configuration
+The KubeAI Helm repository is configured in [kubernetes/flux/meta/repos/kubeai.yaml](mdc:anton/kubernetes/flux/meta/repos/kubeai.yaml):
+```yaml
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: kubeai
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://www.kubeai.org
+```
+
+## Model Deployment Patterns
+
+### Text Generation Models
+Reference: [kubernetes/apps/kubeai/deepseek-r1-1-5b/app/model.yaml](mdc:anton/kubernetes/apps/kubeai/deepseek-r1-1-5b/app/model.yaml)
+
+**Model CRD Structure:**
+```yaml
+apiVersion: kubeai.org/v1
+kind: Model
+metadata:
+  name: deepseek-r1-1-5b
+  namespace: kubeai
+spec:
+  features: [TextGeneration]
+  url: ollama://deepseek-r1:1.5b
+  engine: OLlama  # Note: Capital L required
+  resourceProfile: cpu:1
+  minReplicas: 0  # Scale to zero when not in use
+```
+
+### Speech-to-Text Models
+Reference: [kubernetes/apps/kubeai/faster-whisper-medium-en-cpu/app/model.yaml](mdc:anton/kubernetes/apps/kubeai/faster-whisper-medium-en-cpu/app/model.yaml)
+
+**Whisper Model Configuration:**
+```yaml
+apiVersion: kubeai.org/v1
+kind: Model
+metadata:
+  name: faster-whisper-medium-en-cpu
+  namespace: kubeai
+spec:
+  features: [SpeechToText]
+  owner: Systran
+  url: hf://Systran/faster-whisper-medium.en
+  engine: FasterWhisper
+  resourceProfile: cpu:1
+  minReplicas: 0
+```
+
+### Resource Profiles
+CPU-only configuration in [kubernetes/apps/kubeai/kubeai-operator/app/helmrelease.yaml](mdc:anton/kubernetes/apps/kubeai/kubeai-operator/app/helmrelease.yaml):
+```yaml
+resourceProfiles:
+  cpu:
+    "1":
+      resources:
+        limits:
+          cpu: "1"
+          memory: 8Gi
+        requests:
+          cpu: "1" 
+          memory: 8Gi
+```
+
+## Storage Dependencies
+
+### Critical Requirement
+KubeAI requires persistent storage for model caching and the Open-WebUI component. The [local-path-provisioner](mdc:anton/kubernetes/apps/storage/local-path-provisioner/ks.yaml) must be deployed first:
+
+**Storage Class Created:**
+- Name: `local-path` (default)
+- Provisioner: `rancher.io/local-path`
+- Reclaim Policy: Delete
+- Volume Binding Mode: WaitForFirstConsumer
+
+**Common Issue**: PVCs remain unbound without storage provisioner, causing pods to stay in Pending state.
+
+## Model Discovery and Status
+
+### Check Deployed Models
+```bash
+# List all KubeAI model CRDs
+kubectl get models -n kubeai
+
+# Check model status and details
+kubectl describe model deepseek-r1-1-5b -n kubeai
+
+# Verify pods are running
+kubectl get pods -n kubeai
+```
+
+### Service Endpoints
+```bash
+# Check KubeAI service
+kubectl get svc -n kubeai
+
+# Expected services:
+# kubeai       ClusterIP   10.43.57.93    80/TCP
+# open-webui   ClusterIP   10.43.93.156   80/TCP
+```
+
+## Model Interaction Methods
+
+### 1. Local Port-Forward Access
+```bash
+# Forward KubeAI API to localhost
+kubectl port-forward svc/kubeai 8000:80 -n kubeai &
+
+# Forward Web UI to localhost  
+kubectl port-forward svc/open-webui 8080:80 -n kubeai &
+```
+
+### 2. API Discovery
+```bash
+# List available models
+curl http://localhost:8000/openai/v1/models
+
+# Expected response:
+# {"object":"list","data":[{"id":"deepseek-r1-1-5b","features":["TextGeneration"]}]}
+```
+
+### 3. Text Generation API
+**OpenAI-Compatible Chat Completions:**
+```bash
+curl "http://localhost:8000/openai/v1/chat/completions" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "deepseek-r1-1-5b",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "What is 2 * 3?"}
+        ]
+    }'
+```
+
+**Python SDK Integration:**
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="ignored", 
+    base_url="http://localhost:8000/openai/v1"
+)
+
+response = client.chat.completions.create(
+    model="deepseek-r1-1-5b",
+    messages=[
+        {"role": "user", "content": "Hello, how are you?"}
+    ]
+)
+```
+
+### 4. In-Cluster Access
+From within the cluster, use the service endpoint directly:
+```python
+# No port-forward needed when running inside cluster
+client = OpenAI(
+    api_key="ignored",
+    base_url="http://kubeai.kubeai.svc.cluster.local/openai/v1"
+)
+```
+
+## Troubleshooting Guide
+
+### Common Issues
+
+**1. Pod Pending with Unbound PVC:**
+- **Symptom**: `0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims`
+- **Solution**: Ensure [local-path-provisioner](mdc:anton/kubernetes/apps/storage/local-path-provisioner/ks.yaml) is deployed
+
+**2. Model Validation Errors:**
+- **Symptom**: Invalid engine name in model CRD
+- **Solution**: Use correct engine names (`OLlama` with capital L, not `Ollama`)
+
+**3. Flux Dependency Issues:**
+- **Symptom**: Kustomizations fail with dependency not found
+- **Solution**: Ensure dependencies reference correct namespaces in `dependsOn` blocks
+
+### Health Check Commands
+```bash
+# Check Flux Kustomizations
+kubectl get kustomization -n kubeai
+
+# Check storage provisioner
+kubectl get all -n storage
+
+# Check KubeAI operator logs
+kubectl logs -n kubeai deployment/kubeai
+```
+
+## Supported Model Engines
+
+### Text Generation
+- **OLlama** (CPU-optimized) - For models like DeepSeek, Llama, etc.
+- **VLLM** (GPU-optimized) - For high-throughput inference
+
+### Speech-to-Text  
+- **FasterWhisper** - Optimized Whisper implementation
+- **Whisper** - Original OpenAI Whisper
+
+## Model URLs and Sources
+
+### Ollama Models
+- Format: `ollama://model-name:tag`
+- Example: `ollama://deepseek-r1:1.5b`
+- Registry: [Ollama Library](mdc:development-workspace/https:/ollama.com/library)
+
+### HuggingFace Models
+- Format: `hf://organization/model-name`
+- Example: `hf://Systran/faster-whisper-medium.en`
+- No authentication required for public models
+
+## Scaling and Resource Management
+
+### Auto-scaling Configuration
+- `minReplicas: 0` - Scale to zero when idle
+- `maxReplicas: 1` - Control maximum instances
+- Resource profiles define CPU/memory limits
+
+### CPU vs GPU Resource Profiles
+- **CPU profiles**: `cpu:1`, `cpu:2` - For development and light workloads
+- **GPU profiles**: `nvidia-gpu-l4:1` - For production and heavy workloads
+
+## Web Interface Access
+
+### Open-WebUI Features
+- Chat interface for deployed models
+- Model management and configuration
+- User authentication and session management
+- File upload and document processing
+
+**Access**: Port-forward to `http://localhost:8080` and create an account for full access.
+
+## Integration Patterns
+
+### GitOps Deployment
+1. Add models to [kubernetes/apps/kubeai/](mdc:anton/kubernetes/apps/kubeai) following the established pattern
+2. Update [kustomization.yaml](mdc:anton/kubernetes/apps/kubeai/kustomization.yaml) to include new models
+3. Commit changes - Flux automatically deploys
+4. Verify with `kubectl get models -n kubeai`
+
+### CI/CD Integration
+Models can be referenced in applications using the consistent OpenAI API, making integration straightforward across development and production environments.
+
+This guide provides the complete workflow for deploying, managing, and interacting with AI models in the KubeAI-powered Kubernetes cluster.
