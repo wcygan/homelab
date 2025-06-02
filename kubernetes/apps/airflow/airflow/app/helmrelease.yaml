@@ -114,11 +114,7 @@ spec:
     env:
       - name: AIRFLOW__CORE__LOAD_EXAMPLES
         value: "False"
-
-    # Expose the database password as an environment variable to all Airflow components
-    # This assumes the chart makes these env vars available to scheduler, webserver, workers, triggerer.
-    # If not, this block might need to be repeated under each component's section.
-    extraEnv:
+      # Add the database password environment variable here
       - name: AIRFLOW_DB_PASSWORD
         valueFrom:
           secretKeyRef:
