@@ -1,0 +1,20 @@
+apiVersion: kubeai.org/v1
+kind: Model
+metadata:
+  name: deepseek-r1-1-5b
+  namespace: kubeai # Ensure model is in the kubeai namespace
+spec:
+  features: [TextGeneration]
+  url: ollama://deepseek-r1:1.5b
+  engine: Ollama
+  resourceProfile: cpu:1 # Using default CPU profile from KubeAI operator values
+  minReplicas: 0 # Default, scale to zero
+  # maxReplicas: 1 # Optional: set max replicas if needed
+  # Example of how to configure a chat template if needed, per KubeAI docs:
+  # args:
+  # - --chat-template=/config/chat-template.jinja
+  # files:
+  # - path: /config/chat-template.jinja
+  #   content: |
+  #     {% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content']}}{% if (loop.last and add_generation_prompt) or not loop.last %}{{ '<|im_end|>' + '\n'}}{% endif %}{% endfor %}
+  #     {% if add_generation_prompt and messages[-1]['role'] != 'assistant' %}{{ '<|im_start|>assistant\n' }}{% endif %}

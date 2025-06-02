@@ -11,3 +11,4 @@ resources:
   - ./external-dns.yaml
   - ./prometheus-community.yaml
   - ./1password-connect.yaml
+  - ./kubeai.yaml

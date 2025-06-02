@@ -1,0 +1,13 @@
+apiVersion: kubeai.org/v1
+kind: Model
+metadata:
+  name: faster-whisper-medium-en-cpu
+  namespace: kubeai # Ensure model is in the kubeai namespace
+spec:
+  features: [SpeechToText]
+  owner: Systran
+  url: hf://Systran/faster-whisper-medium.en
+  engine: FasterWhisper
+  resourceProfile: cpu:1 # Using default CPU profile from KubeAI operator values
+  minReplicas: 0 # Default, scale to zero
+  # maxReplicas: 1 # Optional: set max replicas if needed

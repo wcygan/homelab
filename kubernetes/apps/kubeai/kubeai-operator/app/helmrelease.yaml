@@ -1,0 +1,52 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kubeai-operator
+  namespace: kubeai
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: kubeai
+      version: "*" # Or pin to a specific version
+      sourceRef:
+        kind: HelmRepository
+        name: kubeai
+        namespace: flux-system
+  install:
+    createNamespace: false # Namespace is managed by Kustomize
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  values:
+    # Removed HuggingFace token configuration
+    # secrets:
+    #   huggingface:
+    #     tokenFromExistingSecret: huggingface-token
+
+    # Explicitly define CPU resource profiles for clarity,
+    # matching KubeAI defaults for CPU-only installation.
+    resourceProfiles:
+      cpu:
+        "1": # This is a profile named "1"
+          nodeSelector: {}
+          resources:
+            limits:
+              cpu: "1"
+              memory: 8Gi
+            requests:
+              cpu: "1"
+              memory: 8Gi
+        "2": # This is a profile named "2"
+          nodeSelector: {}
+          resources:
+            limits:
+              cpu: "2"
+              memory: 16Gi
+            requests:
+              cpu: "2"
+              memory: 16Gi
