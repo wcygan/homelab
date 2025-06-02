@@ -24,3 +24,8 @@ examples
 # Tailscale OAuth credentials (managed by install script)
 tailscale-oauth-client-id.txt
 tailscale-oauth-client-secret.txt
+
+# mp4s for testing
+kubeai.mp4
+test.mp4
+testing.mp4
