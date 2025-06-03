@@ -12,3 +12,6 @@ k get svc -n monitoring
 NAME                                             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
 kube-prometheus-stack-grafana                    ClusterIP   10.43.170.101   <none>        80/TCP                       23h
 ```
+
+Username: `admin`
+Password: `prom-operator`
