@@ -122,5 +122,33 @@ spec:
       - name: AIRFLOW__CORE__LOAD_EXAMPLES
         value: "False"
 
+    dags:
+      gitSync:
+        enabled: true
+        repo: "https://github.com/wcygan/anton.git"  # Replace with your actual repo URL if different
+        branch: "main"  # Or your default branch
+        subPath: "kubernetes/apps/airflow/airflow/dags" # Path to your DAGs within the repo
+        # Optional: if your repo is private, you'll need to configure credentials
+        # sshKeySecret: airflow-git-ssh-secret # Name of the K8s secret holding the SSH key
+        # credentialsSecret: airflow-git-credentials # Name of the K8s secret for https basic auth
+        # knownHosts: |
+        #   github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+        syncInterval: 60 # Sync every 60 seconds
+        # Resources for the git-sync sidecar
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+      # If you prefer to use a Persistent Volume for DAGs instead of gitSync:
+      # persistence:
+      #   enabled: false # Set to true to use PVC
+      #   # existingClaim: your-airflow-dags-pvc # Optional: if you have an existing PVC
+      #   size: 10Gi
+      #   storageClassName: local-path # Or your preferred storage class
+      #   accessMode: ReadWriteOnce
+
     # Extra secrets/configmaps without Helm hooks
     extraConfigMaps: {}

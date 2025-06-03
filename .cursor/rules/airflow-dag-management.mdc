@@ -1,0 +1,134 @@
+---
+description: Guide for creating, deploying, and testing Airflow DAGs using GitSync with Flux.
+globs:
+alwaysApply: false
+---
+Rule Name: airflow-dag-management
+Description: Guide for creating, deploying, and testing Airflow DAGs using GitSync with Flux.
+
+# Airflow DAG Management Guide (GitSync with Flux)
+
+This guide outlines the process for creating, deploying, and testing Apache Airflow DAGs when using the `gitSync` feature with FluxCD for GitOps-driven DAG management.
+
+## 1. DAG Creation
+
+### 1.1. Location for DAGs
+- All DAG Python files (`.py`) should be placed in the directory specified in your Airflow `HelmRelease` under `dags.gitSync.subPath`.
+- In this project, the standard location is: `[kubernetes/apps/airflow/airflow/dags/](mdc:kubernetes/apps/airflow/airflow/dags/)`
+
+### 1.2. Basic DAG Structure
+- Ensure your DAG file imports necessary modules from `airflow` and `pendulum` (or `datetime`).
+- Define a `DAG` object with a unique `dag_id`, `schedule`, `start_date`, and `tags`.
+- Use Airflow operators (e.g., `BashOperator`, `PythonOperator`) to define tasks.
+- Set task dependencies using `>>` or `<<` operators.
+
+**Example (`hello_world_dag.py`):**
+```python
+from __future__ import annotations
+
+import pendulum
+
+from airflow.models.dag import DAG
+from airflow.operators.bash import BashOperator
+
+with DAG(
+    dag_id="hello_world_hourly",
+    schedule="0 * * * *",  # Cron expression for hourly
+    start_date=pendulum.datetime(2023, 1, 1, tz="UTC"), # Adjust as needed
+    catchup=False,
+    tags=["example"],
+) as dag:
+    print_hello_task = BashOperator(
+        task_id="print_hello",
+        bash_command='echo "Hello from Airflow at $(date)"',
+    )
+```
+Reference: See the example DAG at `[kubernetes/apps/airflow/airflow/dags/hello_world_dag.py](mdc:kubernetes/apps/airflow/airflow/dags/hello_world_dag.py)`
+
+### 1.3. Naming Conventions and Best Practices
+- `dag_id`: Use lowercase with underscores (e.g., `my_data_pipeline`). Must be unique across all DAGs.
+- `task_id`: Similar convention (e.g., `extract_data_task`). Must be unique within its DAG.
+- Keep DAG files focused on a single workflow.
+- Use `tags` to categorize your DAGs in the UI.
+- Set `catchup=False` unless you specifically need to backfill historical runs upon DAG deployment/unpause.
+- Ensure `start_date` is a fixed date in the past.
+
+## 2. DAG Deployment (GitSync)
+
+### 2.1. GitSync Configuration
+- The Airflow `HelmRelease` (typically `[kubernetes/apps/airflow/airflow/app/helmrelease.yaml](mdc:kubernetes/apps/airflow/airflow/app/helmrelease.yaml)`) must have `dags.gitSync` enabled and correctly configured:
+  ```yaml
+  # In values section of HelmRelease
+  dags:
+    gitSync:
+      enabled: true
+      repo: "<YOUR_GIT_REPO_URL>" # e.g., https://github.com/user/repo.git
+      branch: "main" # Or your target branch
+      subPath: "kubernetes/apps/airflow/airflow/dags" # Path to DAGs within your repo
+      syncInterval: 60 # How often to sync, in seconds
+      # For private repos, configure credentialsSecret or sshKeySecret
+      # credentialsSecret: airflow-git-credentials
+      # sshKeySecret: airflow-git-ssh-key
+      resources: # Define resources for the git-sync sidecar
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          cpu: "100m"
+          memory: "128Mi"
+  ```
+- Ensure the `repo`, `branch`, and `subPath` correctly point to your DAGs folder.
+- For private repositories, you must create a Kubernetes secret containing your Git credentials (HTTPS token or SSH key) and reference it in `credentialsSecret` or `sshKeySecret` respectively.
+
+### 2.2. Committing and Pushing DAGs
+1. Add your new or modified DAG `.py` file to the designated DAGs directory (e.g., `kubernetes/apps/airflow/airflow/dags/`).
+2. Commit the changes to your Git repository.
+3. Push the commit to the branch monitored by `gitSync`.
+
+### 2.3. Flux and Airflow Sync Process
+1. **Flux Sync (if HelmRelease changed):** If you modified the `HelmRelease` (e.g., to enable `gitSync` or change its parameters), Flux will first reconcile the HelmRelease. This might involve pod restarts for Airflow components (scheduler, webserver, workers) to pick up the new `git-sync` sidecar configuration.
+   - Monitor with `flux get helmrelease airflow -n airflow` and `flux logs helmrelease airflow -n airflow`.
+2. **Airflow GitSync:** The `git-sync` sidecar container running in the Airflow scheduler (and sometimes webserver/workers depending on chart version and config) will periodically pull changes from your Git repository based on `syncInterval`.
+   - New/updated DAG files will be synced to the DAGs folder within the Airflow pods.
+3. **DAG Parsing:** The Airflow scheduler continuously parses the DAGs folder. New DAGs will appear in the Airflow UI, and updates to existing DAGs will be reflected.
+
+## 3. Testing and Verification in Airflow UI
+
+### 3.1. Accessing Airflow UI
+- Refer to `[docs/install-airflow.md](mdc:docs/install-airflow.md)` for instructions on accessing the Airflow UI (e.g., via `kubectl port-forward`).
+- Default credentials are often `admin`/`admin` unless changed in your `HelmRelease` values.
+
+### 3.2. Checking for DAGs
+- Once synced, your new DAG should appear in the DAGs list in the Airflow UI.
+- **Troubleshooting Missing DAGs:**
+    - **DAG Parsing Errors:** Check the Airflow UI for any import errors or syntax errors at the top of the DAGs page. These errors will prevent the DAG from loading.
+    - **Scheduler Logs:** Check the Airflow scheduler logs for errors related to DAG parsing or `git-sync`.
+      ```bash
+      kubectl logs deploy/airflow-scheduler -n airflow -c scheduler # Or the specific pod name
+      kubectl logs deploy/airflow-scheduler -n airflow -c git-sync # To check git-sync sidecar logs
+      ```
+    - **GitSync Configuration:** Double-check the `repo`, `branch`, and `subPath` in your `HelmRelease` are correct and that your Git repository is accessible (credentials if private).
+
+### 3.3. Manually Triggering a DAG
+- In the Airflow UI, find your DAG in the list.
+- Unpause the DAG (toggle switch on the left).
+- Click the "Play" button (Trigger DAG) on the right for your DAG.
+You can optionally provide configuration JSON if your DAG accepts it.
+
+### 3.4. Monitoring DAG Runs
+- **Grid View:** Shows historical and current runs. Click on a square to see task instances for that run.
+- **Graph View:** Visualizes task dependencies and their status for a specific run.
+- **Task Logs:** Click on a task instance in the Grid or Graph view, then click "Log" to see its output.
+
+### 3.5. Verifying Schedule
+- Confirm the DAG runs according to its defined `schedule` (e.g., hourly for `"0 * * * *"`).
+- Check the "Next Run" column in the DAGs list.
+
+## 4. Common Issues and Debugging
+
+- **DAG Import Errors:** Python errors in your DAG file. Check scheduler logs and the Airflow UI.
+- **GitSync Failures:** Problems cloning or syncing from Git. Check `git-sync` container logs. Ensure credentials for private repos are correctly configured and the secret exists in the Airflow namespace.
+- **Task Failures:** Errors within your operator's execution. Check task logs in the Airflow UI.
+- **Airflow Component Issues:** If Airflow itself is not healthy (scheduler, webserver not running), refer to the `[apache-airflow-helm-deployment.mdc](mdc:apache-airflow-helm-deployment.mdc)` rule for troubleshooting Airflow deployment.
+
+By following this guide, you can effectively manage your Airflow DAGs in a GitOps-centric manner, ensuring version control, collaboration, and automated deployment.
