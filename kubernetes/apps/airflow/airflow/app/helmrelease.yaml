@@ -88,7 +88,35 @@ spec:
     # Security
     webserverSecretKey: ""  # Will be auto-generated
 
-    # Resource limits
+    # Persistent logging configuration
+    logs:
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClassName: local-path  # Use your cluster's default storage class
+        accessMode: ReadWriteOnce
+
+    # Configure Airflow to use local file logging
+    config:
+      logging:
+        # Use local file logging instead of trying to fetch from pods
+        remote_logging: "False"
+        logging_level: "INFO"
+        fab_logging_level: "WARN"
+        # Configure log retention
+        log_retention_days: "30"
+      core:
+        # Ensure logs are written to the persistent volume
+        base_log_folder: "/opt/airflow/logs"
+        # Enable log fetching from local files
+        enable_xcom_pickling: "False"
+      webserver:
+        # Configure webserver to serve logs from local files
+        log_fetch_timeout_sec: "5"
+        log_auto_tailing_offset: "30"
+        log_animation_speed: "1000"
+
+    # Resource limits and volume mounts
     webserver:
       resources:
         requests:
@@ -97,6 +125,14 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
+      # Mount logs volume
+      extraVolumes:
+        - name: airflow-logs
+          persistentVolumeClaim:
+            claimName: airflow-logs
+      extraVolumeMounts:
+        - name: airflow-logs
+          mountPath: /opt/airflow/logs
 
     scheduler:
       resources:
@@ -106,6 +142,14 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
+      # Mount logs volume
+      extraVolumes:
+        - name: airflow-logs
+          persistentVolumeClaim:
+            claimName: airflow-logs
+      extraVolumeMounts:
+        - name: airflow-logs
+          mountPath: /opt/airflow/logs
 
     # If using KubernetesExecutor, configure worker resources
     workers:
@@ -116,6 +160,14 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
+      # Mount logs volume for workers too
+      extraVolumes:
+        - name: airflow-logs
+          persistentVolumeClaim:
+            claimName: airflow-logs
+      extraVolumeMounts:
+        - name: airflow-logs
+          mountPath: /opt/airflow/logs
 
     # Disable example DAGs in production
     env:
@@ -128,12 +180,6 @@ spec:
         repo: "https://github.com/wcygan/anton.git"  # Replace with your actual repo URL if different
         branch: "main"  # Or your default branch
         subPath: "kubernetes/apps/airflow/airflow/dags" # Path to your DAGs within the repo
-        # Optional: if your repo is private, you'll need to configure credentials
-        # sshKeySecret: airflow-git-ssh-secret # Name of the K8s secret holding the SSH key
-        # credentialsSecret: airflow-git-credentials # Name of the K8s secret for https basic auth
-        # knownHosts: |
-        #   github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
-        # Resources for the git-sync sidecar
         resources:
           requests:
             cpu: "50m"
