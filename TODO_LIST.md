@@ -32,5 +32,6 @@
 
 Search for new things on
 
+- https://github.com/awesome-selfhosted/awesome-selfhosted
 - https://kubesearch.dev/
 - https://selfh.st/
