@@ -1,0 +1,134 @@
+---
+description: Flux configuration standards and templates for consistent, reliable deployments. References standardized HelmRelease and Kustomization templates, configuration analysis, and health check scripts.
+globs:
+alwaysApply: false
+---
+description: "Flux configuration standards and templates for consistent, reliable deployments. References standardized HelmRelease and Kustomization templates, configuration analysis, and health check scripts."
+
+# Flux Configuration Standards and Templates
+
+This rule establishes the standards for Flux configuration to ensure consistency, reliability, and maintainability across all deployments.
+
+## Standardized Templates
+
+### HelmRelease Template
+- **Location**: `docs/helmrelease-template.yaml` (mdc:docs/helmrelease-template.yaml)
+- **Purpose**: Provides a standardized structure for all HelmRelease configurations
+- **Key Features**:
+  - Finite retry strategies (retries: 3)
+  - Resource constraints requirements
+  - Standard interval configurations
+  - Comprehensive commenting and examples
+  - Security best practices
+
+### Flux Kustomization Template
+- **Location**: `docs/kustomization-template.yaml` (mdc:docs/kustomization-template.yaml)
+- **Purpose**: Provides a standardized structure for Flux Kustomization CRDs
+- **Key Features**:
+  - Health checks for critical services
+  - Proper wait and timeout configurations
+  - Explicit namespace specifications in sourceRef
+  - Dependency management patterns
+  - Retry interval configurations
+
+## Configuration Standards
+
+### Retry Strategies
+- **Standard**: Use finite retries (3-5) instead of infinite retries (-1)
+- **Rationale**: Prevents resource consumption and masks underlying issues
+- **Implementation**: Set `retries: 3` in both install and upgrade remediation
+
+### Interval Configurations
+- **Critical Infrastructure** (Flux, cert-manager): 5m
+- **Core Services** (ingress, DNS, monitoring): 15m
+- **Applications**: 30m-1h
+- **Rationale**: Balances responsiveness with resource usage
+
+### Health Checks
+- **Requirement**: Add health checks to all critical Kustomizations
+- **Purpose**: Ensure pods are actually running before marking deployment successful
+- **Implementation**: Define healthChecks for Deployments, StatefulSets, and Jobs
+
+### Dependencies
+- **Requirement**: Explicitly define dependencies where logical relationships exist
+- **Examples**:
+  - Storage → monitoring → applications
+  - cert-manager → ingress → external services
+  - external-secrets-operator → secret-dependent apps
+
+### Resource Constraints
+- **Requirement**: All HelmReleases must specify resource requests and limits
+- **Purpose**: Prevent resource contention and ensure predictable performance
+- **Implementation**: Define CPU/memory constraints in values section
+
+### Timeout and Wait Configuration
+- **Simple configs**: 5m timeout
+- **Standard apps**: 5m-10m timeout
+- **Large deployments**: 15m timeout
+- **Wait**: Use `wait: true` for infrastructure and dependencies
+
+## Configuration Analysis and Health Checks
+
+### Analysis Document
+- **Location**: `docs/flux-configuration-analysis.md` (mdc:docs/flux-configuration-analysis.md)
+- **Purpose**: Comprehensive analysis of current configuration with improvement recommendations
+- **Content**: 8 key findings, detailed recommendations, implementation priorities
+
+### Health Check Script
+- **Location**: `scripts/check-flux-config.sh` (mdc:scripts/check-flux-config.sh)
+- **Purpose**: Automated checking for common Flux configuration issues
+- **Checks**:
+  - Infinite retries in HelmReleases
+  - Missing health checks in Kustomizations
+  - Missing wait/timeout configurations
+  - Missing namespace in sourceRef
+  - Missing resource constraints
+  - Inconsistent interval configurations
+
+### Usage
+```bash
+# Run configuration health check
+./scripts/check-flux-config.sh
+
+# Review analysis document for detailed recommendations
+cat docs/flux-configuration-analysis.md
+```
+
+## Implementation Guidelines
+
+### For New Deployments
+1. Start with the appropriate template (HelmRelease or Kustomization)
+2. Replace placeholders with actual values
+3. Follow the configuration standards outlined above
+4. Run the health check script to validate configuration
+5. Test deployment in a safe environment before production
+
+### For Existing Deployments
+1. Run the health check script to identify issues
+2. Prioritize fixes based on the analysis document recommendations
+3. Apply changes incrementally to minimize disruption
+4. Monitor deployments after changes
+
+### Best Practices
+- Always pin Helm chart versions and image tags
+- Include explicit namespace in all sourceRef configurations
+- Define logical dependencies to prevent race conditions
+- Use health checks for critical services
+- Specify resource constraints for all deployments
+- Follow the established interval standards
+- Use finite retry strategies
+
+## Integration with Other Rules
+
+This rule complements:
+- `flux-deployment-guide.mdc`: Comprehensive deployment management
+- `kubernetes-app-structure.mdc`: Directory and manifest structure
+- `flux-debug-techniques.mdc`: Troubleshooting and debugging
+- `flux-integration-and-reconciliation.mdc`: Understanding Flux workflow
+
+## Maintenance
+
+- Review and update templates quarterly
+- Run health checks before major cluster changes
+- Update standards based on operational experience
+- Keep analysis document current with cluster evolution

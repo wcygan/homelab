@@ -22,6 +22,9 @@ Before managing deployments, ensure you understand:
     *   `Taskfile.yaml` (mdc:Taskfile.yaml): Contains helper tasks for managing the cluster.
 *   **SOPS for Secrets:** All sensitive data (API keys, credentials) must be encrypted using SOPS with the master `age.key` (mdc:age.key). Flux decrypts these secrets on the fly.
 *   **Helm & Kustomize:** Flux orchestrates deployments primarily using `HelmRelease` and `Kustomization` Custom Resources (CRs).
+*   **Templates:** Use the standardized templates for consistency:
+    *   `docs/helmrelease-template.yaml` (mdc:docs/helmrelease-template.yaml): Template for HelmRelease configurations
+    *   `docs/kustomization-template.yaml` (mdc:docs/kustomization-template.yaml): Template for Flux Kustomization configurations
 
 ## 1. Adding a New Deployment
 
@@ -54,7 +57,7 @@ You have several options:
           # type: oci
           # url: oci://ghcr.io/my-org/charts
         ```
-    3.  **Create `HelmRelease` CR:** In `kubernetes/apps/webapp/helmrelease.yaml`:
+    3.  **Create `HelmRelease` CR:** Use the standardized template from `docs/helmrelease-template.yaml` (mdc:docs/helmrelease-template.yaml) as a starting point. In `kubernetes/apps/webapp/helmrelease.yaml`:
         ```yaml
         ---
         apiVersion: helm.toolkit.fluxcd.io/v2
@@ -63,7 +66,7 @@ You have several options:
           name: webapp # Release name
           namespace: webapp-ns # Target namespace for the application
         spec:
-          interval: 15m # How often Flux checks for changes to this HelmRelease or chart
+          interval: 30m # Standard interval for applications (see template for guidelines)
           chart:
             spec:
               chart: webapp-chart-name # Name of the chart in the repository
@@ -72,18 +75,11 @@ You have several options:
                 kind: HelmRepository
                 name: webapp-chart-repo # Matches metadata.name of the HelmRepository CR
                 namespace: flux-system # Namespace of the HelmRepository CR
-              # interval: 5m # Optional: override sourceRef's interval for this chart
-          releaseName: webapp # Can be same as metadata.name
           targetNamespace: webapp-ns # Explicitly define target namespace again (good practice)
-          # dependsOn: # If this app depends on another Flux-managed component
-          #   - name: cert-manager
-          #     namespace: cert-manager
-          #   - name: ingress-nginx-internal # Example
-          #     namespace: network
           install:
             createNamespace: true # Set to true to have Helm/Flux create the targetNamespace
             remediation:
-              retries: 3 # How many times to retry on installation failure
+              retries: 3 # Standard retry count (finite retries)
           upgrade:
             remediation:
               retries: 3
@@ -91,6 +87,14 @@ You have several options:
             cleanupOnFail: true
           # Values to override chart defaults
           values:
+            # ALWAYS specify resource constraints
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "128Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
             replicaCount: 1
             image:
               repository: my-docker-registry/webapp
@@ -110,13 +114,6 @@ You have several options:
                   paths:
                     - path: /
                       pathType: Prefix
-            resources:
-              requests:
-                cpu: "100m"
-                memory: "128Mi"
-              limits:
-                cpu: "500m"
-                memory: "512Mi"
             # valuesFrom: # To load values from ConfigMaps or Secrets
             # - kind: ConfigMap
             #   name: webapp-common-config
@@ -263,7 +260,7 @@ Flux needs to be told to look at `kubernetes/apps/webapp/`. This is usually mana
 
 *   **Option 2: Explicit `Kustomization` for the New App**
     If you need more granular control or don't use directory discovery:
-    1.  Create `kubernetes/apps/webapp/flux-kustomization.yaml`:
+    1.  Create `kubernetes/apps/webapp/flux-kustomization.yaml` using the template from `docs/kustomization-template.yaml` (mdc:docs/kustomization-template.yaml):
         ```yaml
         ---
         apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -278,7 +275,10 @@ Flux needs to be told to look at `kubernetes/apps/webapp/`. This is usually mana
           sourceRef:
             kind: GitRepository
             name: flux-system
+            namespace: flux-system # ALWAYS include namespace to avoid lookup errors
           targetNamespace: webapp-ns # Default namespace if not set in child manifests
+          wait: true # Wait for resources to be ready
+          timeout: 5m # Appropriate timeout for the deployment
           # healthChecks: # Specific to this app
           #   - apiVersion: apps/v1
           #     kind: Deployment

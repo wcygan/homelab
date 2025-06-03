@@ -37,6 +37,7 @@ When adding new software ("apps" or controllers) to the cluster, follow this str
 ### 2. App Flux Kustomization CRD
 - `kubernetes/apps/<namespace>/<app-name>/ks.yaml`
   - A Flux Kustomization CRD that tells Flux to apply the manifests in the app's `app/` directory.
+  - Use the template from `docs/kustomization-template.yaml` (mdc:docs/kustomization-template.yaml) for consistency.
   - Example:
     ```yaml
     apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -51,7 +52,10 @@ When adding new software ("apps" or controllers) to the cluster, follow this str
       sourceRef:
         kind: GitRepository
         name: flux-system
+        namespace: flux-system
       targetNamespace: <namespace>
+      wait: true
+      timeout: 5m
     ```
 
 ### 3. App Kustomization
@@ -68,6 +72,7 @@ When adding new software ("apps" or controllers) to the cluster, follow this str
 ### 4. App Manifests
 - `kubernetes/apps/<namespace>/<app-name>/app/helmrelease.yaml` (if using Helm)
   - Defines the HelmRelease for the app, including chart, version, values, etc.
+  - Use the template from `docs/helmrelease-template.yaml` (mdc:docs/helmrelease-template.yaml) for consistency.
 - Other manifest files may include:
   - `deployment.yaml`, `service.yaml`, `ingress.yaml`, `configmap.yaml`, etc., if not using Helm.
   - **Secrets for new software must be managed via 1Password and the External Secrets Operator (ESO):**
@@ -133,6 +138,9 @@ kubernetes/apps/
 - Each app should have its own folder under the namespace.
 - Use the `components/common` component to ensure namespace creation.
 - Use Flux Kustomization CRDs (`ks.yaml`) to manage app reconciliation.
+- **Use standardized templates for consistency:**
+  - `docs/helmrelease-template.yaml` (mdc:docs/helmrelease-template.yaml) for HelmRelease configurations
+  - `docs/kustomization-template.yaml` (mdc:docs/kustomization-template.yaml) for Flux Kustomization configurations
 - Pin Helm chart versions and image tags.
 - **For new software, all secrets must be provisioned via 1Password and the External Secrets Operator (ESO).**
   - Do not use SOPS for new secrets; use `ExternalSecret` resources to sync from 1Password.

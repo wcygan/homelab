@@ -9,6 +9,13 @@ Description: Memorizes the techniques for investigating, debugging, and fixing F
 
 This rule captures the step-by-step methods used to diagnose and resolve Flux reconciliation issues, including HelmRelease and Kustomization troubleshooting.
 
+## 0. Prevention & Configuration Standards
+- Follow standardized templates to prevent common issues:
+  - `docs/helmrelease-template.yaml` (mdc:docs/helmrelease-template.yaml): Standardized HelmRelease configuration
+  - `docs/kustomization-template.yaml` (mdc:docs/kustomization-template.yaml): Standardized Flux Kustomization configuration
+  - `docs/flux-configuration-analysis.md` (mdc:docs/flux-configuration-analysis.md): Comprehensive analysis and best practices
+- Run configuration health checks: `scripts/check-flux-config.sh` (mdc:scripts/check-flux-config.sh)
+
 ## 1. Inspect Flux Resources
 - List all Flux resources and their statuses:
   ```bash
