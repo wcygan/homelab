@@ -7,3 +7,5 @@ resources:
   - ./kubeai-operator/ks.yaml
   - ./faster-whisper-medium-en-cpu/ks.yaml
   - ./deepseek-r1-1-5b/ks.yaml
+  - ./gemma3-4b/ks.yaml
+  - ./deepcoder-1-5b/ks.yaml

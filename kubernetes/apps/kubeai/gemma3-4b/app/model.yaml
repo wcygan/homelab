@@ -1,0 +1,12 @@
+apiVersion: kubeai.org/v1
+kind: Model
+metadata:
+  name: gemma3-4b
+  namespace: kubeai
+spec:
+  features: [TextGeneration]
+  owner: Google
+  url: ollama://gemma3:4b
+  engine: OLlama
+  resourceProfile: cpu:1
+  minReplicas: 0

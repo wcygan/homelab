@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gemma3-4b
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./kubernetes/apps/kubeai/gemma3-4b/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: kubeai
+  dependsOn:
+    - name: kubeai-operator

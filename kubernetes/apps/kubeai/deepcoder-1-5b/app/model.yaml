@@ -1,0 +1,11 @@
+apiVersion: kubeai.org/v1
+kind: Model
+metadata:
+  name: deepcoder-1-5b
+  namespace: kubeai
+spec:
+  features: [TextGeneration]
+  url: ollama://deepcoder:1.5b
+  engine: OLlama
+  resourceProfile: cpu:1
+  minReplicas: 0
