@@ -1,7 +1,7 @@
 ---
-description:
+description: Guide for initial Talos Linux Kubernetes cluster setup using this project's `makejinja` and `Taskfile.yaml` workflow. Covers prerequisites, configuration generation, `talosctl apply-config`, and bootstrapping.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Talos Linux Cluster Setup Guide
 

@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+Mandates ALL Flux source CRDs (HelmRepository, GitRepository, etc.) be placed in `kubernetes/flux/meta/repos/` and included in its kustomization.yaml. Explains problem and correct approach for Flux to discover sources."
+
 # Flux Source CRDs Placement Rule
 
 ## Problem

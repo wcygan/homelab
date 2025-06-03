@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+Mandates including `namespace: flux-system` in the `sourceRef` of Flux Kustomization CRDs (`ks.yaml`) to prevent `GitRepository not found` errors. Explains the problem, patterns, and testing."
+
 # Flux Kustomization sourceRef Namespace Requirement
 
 ## Critical Rule: Always Include Namespace in sourceRef

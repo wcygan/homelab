@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "Explains Flux integration: how `kubernetes/apps`, `kubernetes/flux`, and `kubernetes/components` are reconciled. Covers GitRepository, cluster Kustomizations (cluster-meta, cluster-apps), app structure, change propagation, and the role of components."
+
 # Flux Integration and Reconciliation Rule
 
 This rule explains in detail how the `kubernetes/apps`, `kubernetes/flux`, and `kubernetes/components` directories are integrated with the Kubernetes cluster via Flux, and how changes in these directories are picked up and reconciled into the live cluster state.
@@ -43,10 +45,10 @@ This rule explains in detail how the `kubernetes/apps`, `kubernetes/flux`, and `
     flux reconcile kustomization <app> --namespace <namespace> --with-source
     ```
 
-## 5. Components and Sources
-- The [`kubernetes/components`](mdc:kubernetes/components) directory contains reusable Kustomize components (e.g., common secrets, namespace definitions, Helm/OCIRepository sources).
-- These are referenced in namespace-level kustomization.yaml files under `components:`.
-- Example: [`kubernetes/components/repos/app-template/ocirepository.yaml`](mdc:kubernetes/components/repos/app-template/ocirepository.yaml) defines the OCIRepository for the app-template Helm chart.
+## 5. Kustomize Components
+- The [`kubernetes/components`](mdc:kubernetes/components) directory contains reusable Kustomize components (e.g., common secrets, namespace definitions, standard ConfigMaps, or patch files).
+- These are referenced in namespace-level `kustomization.yaml` files (e.g., `kubernetes/apps/<namespace>/kustomization.yaml`) typically via the `components:` field or as `bases:` or `resources:`, depending on their nature.
+- **Note:** Flux source definitions (like `HelmRepository`, `GitRepository`, `OCIRepository`) are **not** placed in `kubernetes/components/`. They are managed exclusively under `kubernetes/flux/meta/repos/` and applied by the `cluster-meta` Kustomization, as described in Section 2 and referenced in the `flux-source-crds-placement-rule.mdc` (or similarly named rule for source placement).
 
 ## 6. Intuitive Navigation and Debugging
 - To understand what is deployed in any namespace, start at `kubernetes/apps/<namespace>/kustomization.yaml` and follow the `resources:` to each app's `ks.yaml` and then to `app/kustomization.yaml` and `helmrelease.yaml`.

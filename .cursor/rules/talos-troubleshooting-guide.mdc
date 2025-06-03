@@ -1,7 +1,7 @@
 ---
-description:
+description: Key insights and steps for troubleshooting Talos Linux clusters, focusing on control plane health (kube-apiserver, etcd), static pods, and using talosctl for diagnostics.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Talos Linux Cluster Troubleshooting Key Insights
 

@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "Mandates `metadata.namespace: flux-system` for Flux Kustomization CRDs (`ks.yaml`) to ensure they are processed correctly by Flux."
+
 # Flux Kustomization Namespace Requirement
 
 Flux Kustomization CRD files (`ks.yaml`) under `kubernetes/apps/<namespace>/<app>/ks.yaml` **must** include:

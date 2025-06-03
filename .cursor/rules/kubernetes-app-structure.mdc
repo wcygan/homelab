@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "Defines the standard directory and manifest structure for Kubernetes applications (namespace, app Kustomization, Flux ks.yaml, HelmRelease). Includes secret management policy (1Password/ESO vs SOPS)."
+
 # Kubernetes App Directory and Manifest Structure Rule
 
 ## Directory Pattern
@@ -82,6 +84,50 @@ When adding new software ("apps" or controllers) to the cluster, follow this str
 | App Kustom | `kubernetes/apps/external-secrets/external-secrets/app/kustomization.yaml` | Kustomize root for app manifests           |
 | HelmRelease| `kubernetes/apps/external-secrets/external-secrets/app/helmrelease.yaml`   | HelmRelease CRD for the app (if using Helm)|
 
+## Illustrative Directory Structure Example
+
+This modular pattern is used throughout the repository. Here's an example of how the `kubernetes/apps/` directory might look:
+
+```
+kubernetes/apps/
+├── default/
+│   ├── echo/
+│   │   ├── app/
+│   │   │   ├── helmrelease.yaml
+│   │   │   └── kustomization.yaml
+│   │   └── ks.yaml
+│   └── kustomization.yaml
+├── kube-system/
+│   ├── cilium/
+│   │   ├── app/
+│   │   │   ├── helmrelease.yaml
+│   │   │   └── kustomization.yaml
+│   │   └── ks.yaml
+│   └── kustomization.yaml
+├── flux-system/
+│   ├── flux-instance/
+│   │   ├── app/
+│   │   │   ├── helmrelease.yaml
+│   │   │   └── kustomization.yaml
+│   │   └── ks.yaml
+│   └── kustomization.yaml
+├── cert-manager/
+│   ├── cert-manager/
+│   │   ├── app/
+│   │   │   ├── helmrelease.yaml
+│   │   │   └── kustomization.yaml
+│   │   └── ks.yaml
+│   └── kustomization.yaml
+├── network/
+│   ├── external/
+│   │   ├── cloudflared/
+│   │   │   ├── helmrelease.yaml  # Assuming app/kustomization.yaml points here
+│   │   │   └── kustomization.yaml # In app/
+│   │   └── ks.yaml
+│   └── kustomization.yaml
+# ... and so on for other namespaces and apps
+```
+
 ## Best Practices
 - All software should be grouped by the namespace it will run in.
 - Each app should have its own folder under the namespace.
@@ -93,3 +139,6 @@ When adding new software ("apps" or controllers) to the cluster, follow this str
   - Reference synced secrets in app manifests using `valuesFrom` or `env.valueFrom.secretKeyRef`.
 - **SOPS-encrypted secrets are only allowed for legacy/existing software.**
 - For multi-app namespaces, add each app as a resource in the namespace's `kustomization.yaml`.
+- Adding or removing an app is generally as simple as adding/removing its app subdirectory and updating the parent namespace's `kustomization.yaml` to include/exclude the app's `ks.yaml`.
+- This pattern supports Helm-based deployments (via `HelmRelease`), plain Kubernetes manifests, and Kustomize overlays, allowing flexibility for different application needs.
+- The described structure scales well for managing numerous applications across multiple namespaces, keeping the configuration organized, modular, and maintainable.

@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "Details the specific hardware (Minisforum MS-01 PCs, IPs, node names), network gateway, and Talos schematic ID for the homelab Kubernetes cluster."
+
 ## Project Context
 
 This project is based on https://github.com/onedr0p/cluster-template to setup a Talos Linux Kubernetes cluster in my homelab.

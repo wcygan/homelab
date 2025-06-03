@@ -1,7 +1,7 @@
 ---
-description:
+description: Cluster Upgrade and System Extension Guide for This Repository: Covers Talos OS/Kubernetes upgrades and Talos system extension management using `talenv.yaml.j2` and `Taskfile.yaml`.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Cluster Upgrade and System Extension Guide for This Repository
 
@@ -83,4 +83,4 @@ kubectl get nodes -o wide
 
 ## 4. Managing Talos System Extensions
 
-Talos system extensions (e.g., drivers, custom runtimes) are baked into the Talos installer image specified by the `talosImageURL` in `[talconfig.yaml](mdc:talos/talconfig.yaml)`. This URL includes a **schematic ID** obtained from the [Talos Linux Image Factory](mdc:https:/factory.talos.dev). The schematic ID noted in `[hardware-configuration.mdc](mdc:hardware-configuration.mdc)` and present in `
+Talos system extensions (e.g., drivers, custom runtimes) are baked into the Talos installer image specified by the `talosImageURL` in `[talconfig.yaml](mdc:talos/talconfig.yaml)`. This URL includes a **schematic ID** obtained from the [Talos Linux Image Factory](mdc:https:/factory.talos.dev). The schematic ID is typically noted in `[hardware-configuration.mdc](mdc:hardware-configuration.mdc)` and used during the generation of `talconfig.yaml`. For detailed procedures on adding or modifying extensions, refer to the `talos-system-extensions-guide.mdc`.

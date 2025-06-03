@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "How to find the current Talos OS and Kubernetes versions running in the cluster using `kubectl get nodes -o wide` and by checking `talos/talenv.yaml` for intended versions."
+
 # Finding Talos and Kubernetes Versions
 
 This document outlines how to determine the currently running Talos OS and Kubernetes versions in your cluster.
@@ -42,3 +44,5 @@ talosVersion: v1.10.0
 kubernetesVersion: v1.33.0
 ```
 **Note:** The versions in `[talos/talenv.yaml](mdc:talos/talenv.yaml)` represent the desired state defined in your configuration. The `kubectl get nodes -o wide` command reflects the actual running state of the cluster nodes. Always prioritize the `kubectl` output for the current live versions.
+
+For information on upgrading these versions, refer to the `talos-upgrade-guide.mdc` and `cluster-upgrades-and-extensions.mdc` rules.

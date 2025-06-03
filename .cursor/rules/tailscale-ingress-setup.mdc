@@ -1,7 +1,7 @@
 ---
-description:
+description: Guide for setting up Tailscale Ingress to expose Kubernetes services to your Tailnet. Covers prerequisites, implementation patterns, verification, and troubleshooting.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Tailscale Ingress Setup for Exposing Kubernetes Services
 

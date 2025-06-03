@@ -1,7 +1,7 @@
 ---
-description:
+description: Guide for installing and managing Talos Linux system extensions. Covers installation methods (initial, custom images), upgrades, verification, authoring, and adding extensions to existing systems.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Talos Linux System Extensions Installation Guide
 

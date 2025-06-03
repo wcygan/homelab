@@ -1,7 +1,7 @@
 ---
-description:
+description: Step-by-step guide for troubleshooting Kubernetes node issues (e.g., NotReady status). Covers context verification, `kubectl describe node`, `kubectl debug node`, pod states, CNI, and control plane health
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Kubernetes Node Troubleshooting Guide
 

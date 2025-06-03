@@ -1,8 +1,10 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
 ---
+description: "Documents the Kubernetes cluster's storage architecture, focusing on local-path-provisioner, Flux integration, application dependencies, and troubleshooting."
+
 # Kubernetes Storage Architecture and Management Guide
 
 ## Overview
@@ -122,7 +124,7 @@ dependsOn:
 
 #### Provisioner Not Ready
 **Problem**: PVCs remain unbound despite storage class existing
-**Solution**: 
+**Solution**:
 1. Check provisioner pod status in `storage` namespace
 2. Verify RBAC permissions for service account
 3. Check node disk space and permissions

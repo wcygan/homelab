@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "Provides project origin and context: a Talos Kubernetes homelab derived from onedr0p/cluster-template, using makejinja, Flux, Sops, and cloudflared. References the main README.md."
+
 # Project Origin and Context
 
 This project is a homelab setup for a Talos Linux Kubernetes cluster. It is derived from the onedr0p/cluster-template.

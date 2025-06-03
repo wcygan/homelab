@@ -1,7 +1,7 @@
 ---
-description:
+description: Guide for deploying and troubleshooting Apache Airflow using the official Helm chart, covering common configuration issues and solutions.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Apache Airflow Helm Chart Deployment Guide
 

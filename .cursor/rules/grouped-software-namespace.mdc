@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "Mandates that logically grouped software (e.g., controllers, operators) must be deployed to the same Kubernetes namespace. Provides rationale and examples."
+
 # Grouped Software Namespace Rule
 
 All software that is logically grouped (such as controllers, operators, or applications that together form a single functional unit) **must be deployed to the same Kubernetes namespace**.

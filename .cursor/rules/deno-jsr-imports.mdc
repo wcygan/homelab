@@ -1,7 +1,7 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description:
+globs: *.ts
+alwaysApply: false
 ---
 # Deno JSR Standard Library Import Rule
 

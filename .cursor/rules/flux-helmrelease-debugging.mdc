@@ -1,7 +1,7 @@
 ---
-description:
+description: Provides detailed steps to debug Flux HelmRelease issues, especially caching problems and schema validation errors.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Flux HelmRelease Debugging and Cache Management
 

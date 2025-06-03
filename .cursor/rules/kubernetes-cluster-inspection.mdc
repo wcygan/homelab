@@ -3,6 +3,8 @@ description:
 globs:
 alwaysApply: true
 ---
+description: "Structured guide for Kubernetes cluster health checks and troubleshooting. Covers initial checks (nodes, pods, events), deeper inspection (describe, logs), component status (Flux, Talos), and references to other specific guides."
+
 # Kubernetes Cluster Health and Troubleshooting Guide
 
 This guide provides a structured approach to inspecting the state of your Kubernetes cluster, understanding its components, and diagnosing issues. It leverages existing project documentation and outlines a general workflow.

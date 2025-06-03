@@ -1,7 +1,7 @@
 ---
-description:
+description: Guide for upgrading Talos Linux OS, including project-specific version management, `talosctl upgrade` usage, supported paths, upgrade sequence, and FAQs.
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Talos Linux Upgrade Guide
 

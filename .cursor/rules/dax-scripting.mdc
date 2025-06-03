@@ -1,7 +1,7 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description:
+globs: *.ts
+alwaysApply: false
 ---
 # Dax Shell Scripting Guide
 
@@ -118,7 +118,7 @@ async function gitPush(branch: string = "main") {
     console.log("Uncommitted changes detected");
     return false;
   }
-  
+
   const result = await $`git push origin ${branch}`.noThrow();
   return result.code === 0;
 }
@@ -126,7 +126,7 @@ async function gitPush(branch: string = "main") {
 // Multi-repository operations
 async function updateAllSubmodules() {
   const submodules = await $`git submodule status`.lines();
-  
+
   for (const line of submodules) {
     const path = line.split(' ')[2];
     if (path) {
@@ -147,49 +147,49 @@ async function setupDevelopment() {
     $.commandExists("git"),
     $.commandExists("docker")
   ]);
-  
+
   if (!checks.every(Boolean)) {
     throw new Error("Missing required tools");
   }
-  
+
   // Install dependencies
   await $`deno task install`;
-  
+
   // Setup git hooks
   await $`cp scripts/pre-commit .git/hooks/`;
   await $`chmod +x .git/hooks/pre-commit`;
-  
+
   console.log("Development environment ready!");
 }
 
 // Build with progress and error handling
 async function buildProject() {
   console.log("🔨 Building project...");
-  
+
   // Clean build directory
   await $.path("dist").remove({ recursive: true });
   await $.path("dist").ensureDir();
-  
+
   // Run build steps
   const steps = [
     { name: "TypeScript compilation", cmd: $`deno task build:ts` },
     { name: "Asset optimization", cmd: $`deno task build:assets` },
     { name: "Bundle generation", cmd: $`deno task build:bundle` }
   ];
-  
+
   for (const step of steps) {
     console.log(`📦 ${step.name}...`);
     const result = await step.cmd.noThrow();
-    
+
     if (result.code !== 0) {
       console.error(`❌ ${step.name} failed`);
       console.error(result.stderr);
       throw new Error(`Build step failed: ${step.name}`);
     }
-    
+
     console.log(`✅ ${step.name} completed`);
   }
-  
+
   console.log("🎉 Build completed successfully!");
 }
 ```
@@ -204,12 +204,12 @@ async function runTests() {
     { name: "Linting", cmd: $`deno lint` },
     { name: "Type Checking", cmd: $`deno check **/*.ts` }
   ];
-  
+
   const results = await Promise.allSettled(
     testSuites.map(async (suite) => {
       console.log(`🧪 Running ${suite.name}...`);
       const result = await suite.cmd.noThrow();
-      
+
       if (result.code === 0) {
         console.log(`✅ ${suite.name} passed`);
         return { suite: suite.name, success: true };
@@ -220,16 +220,16 @@ async function runTests() {
       }
     })
   );
-  
+
   const failures = results
     .filter(result => result.status === 'fulfilled' && !result.value.success)
     .map(result => result.status === 'fulfilled' ? result.value.suite : 'Unknown');
-  
+
   if (failures.length > 0) {
     console.error(`\n❌ Test failures in: ${failures.join(", ")}`);
     Deno.exit(1);
   }
-  
+
   console.log("\n🎉 All tests passed!");
 }
 ```
@@ -251,13 +251,13 @@ async function loadConfig() {
     $.path("config.json"),
     $.path("config.default.json")
   ];
-  
+
   for (const path of configPaths) {
     if (await path.exists()) {
       return await path.readJson();
     }
   }
-  
+
   throw new Error("No configuration file found");
 }
 ```
@@ -286,7 +286,7 @@ async function processFiles(files: string[], concurrency = 3) {
   for (let i = 0; i < files.length; i += concurrency) {
     batches.push(files.slice(i, i + concurrency));
   }
-  
+
   for (const batch of batches) {
     await Promise.all(
       batch.map(file => $`process-file ${file}`)
@@ -323,7 +323,7 @@ async function fetchAndProcess(url: string) {
     const data = await $.request(url)
       .header("User-Agent", "Dax Script")
       .json();
-    
+
     return data;
   } catch (error) {
     console.error(`Failed to fetch ${url}:`, error.message);
