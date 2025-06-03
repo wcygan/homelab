@@ -6,6 +6,7 @@
     "@std/path": "jsr:@std/path@^1.1.0"
   },
   "tasks": {
-    "check-flux-config": "deno run --allow-read scripts/check-flux-config.ts"
+    "check-flux-config": "deno run --allow-read scripts/check-flux-config.ts",
+    "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts"
   }
 }
