@@ -9,6 +9,7 @@ interface HealthCheckOptions {
   continuous: boolean;
   interval: number;
   help: boolean;
+  includeFlux: boolean;
 }
 
 interface NodeInfo {
@@ -33,11 +34,29 @@ interface PodInfo {
   healthy: boolean;
 }
 
+interface FluxComponentInfo {
+  name: string;
+  namespace: string;
+  ready: boolean;
+  status: string;
+  version?: string;
+  conditions: Array<{type: string, status: string, reason?: string, message?: string}>;
+}
+
+interface NamespaceInfo {
+  name: string;
+  hasFluxResources: boolean;
+  podCount: number;
+  healthyPods: number;
+}
+
 class KubernetesHealthChecker {
   private verbose: boolean;
+  private includeFlux: boolean;
 
-  constructor(verbose = false) {
+  constructor(verbose = false, includeFlux = true) {
     this.verbose = verbose;
+    this.includeFlux = includeFlux;
   }
 
   private async runKubectl(args: string[]): Promise<{success: boolean, output: string, error?: string}> {
@@ -63,6 +82,33 @@ class KubernetesHealthChecker {
         success: false,
         output: "",
         error: `Failed to run kubectl: ${errorMessage}`
+      };
+    }
+  }
+
+  private async runFlux(args: string[]): Promise<{success: boolean, output: string, error?: string}> {
+    try {
+      const command = new Deno.Command("flux", {
+        args,
+        stdout: "piped",
+        stderr: "piped",
+      });
+
+      const result = await command.output();
+      const stdout = new TextDecoder().decode(result.stdout);
+      const stderr = new TextDecoder().decode(result.stderr);
+
+      return {
+        success: result.success,
+        output: stdout.trim(),
+        error: stderr.trim() || undefined
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        output: "",
+        error: `Failed to run flux: ${errorMessage}`
       };
     }
   }
@@ -130,6 +176,76 @@ class KubernetesHealthChecker {
     return nodes;
   }
 
+  async getNamespacesWithFluxResources(): Promise<NamespaceInfo[]> {
+    this.verboseLog("Discovering namespaces with Flux resources...");
+
+    // Get all namespaces
+    const nsResult = await this.runKubectl(["get", "namespaces", "-o", "json"]);
+    if (!nsResult.success) {
+      throw new Error(`Failed to get namespaces: ${nsResult.error}`);
+    }
+
+    const nsData = JSON.parse(nsResult.output);
+    const namespaces: NamespaceInfo[] = [];
+
+    // Check for Flux resources in each namespace
+    for (const ns of nsData.items || []) {
+      const namespaceName = ns.metadata?.name || "unknown";
+
+      // Skip system namespaces that typically don't have user workloads
+      if (namespaceName.startsWith("kube-") && namespaceName !== "kube-system") {
+        continue;
+      }
+
+      let hasFluxResources = false;
+      let podCount = 0;
+      let healthyPods = 0;
+
+      // Check for Flux resources (Kustomizations and HelmReleases)
+      if (this.includeFlux) {
+        const fluxCheck = await this.runKubectl([
+          "get", "kustomizations.kustomize.toolkit.fluxcd.io,helmreleases.helm.toolkit.fluxcd.io",
+          "-n", namespaceName, "--no-headers", "--ignore-not-found"
+        ]);
+
+        if (fluxCheck.success && fluxCheck.output.trim()) {
+          hasFluxResources = true;
+        }
+      }
+
+      // Get pod count and health for this namespace
+      const podResult = await this.runKubectl(["get", "pods", "-n", namespaceName, "-o", "json"]);
+      if (podResult.success) {
+        const podData = JSON.parse(podResult.output);
+        podCount = podData.items?.length || 0;
+
+        for (const pod of podData.items || []) {
+          const containerStatuses = pod.status?.containerStatuses || [];
+          const readyCount = containerStatuses.filter((c: any) => c.ready).length;
+          const totalCount = containerStatuses.length;
+          const isHealthy = pod.status?.phase === "Running" || pod.status?.phase === "Succeeded";
+
+          if (isHealthy && readyCount === totalCount) {
+            healthyPods++;
+          }
+        }
+      }
+
+      // Include namespace if it has pods or Flux resources, or is a critical system namespace
+      const criticalNamespaces = ["kube-system", "flux-system", "cert-manager", "external-secrets", "network", "monitoring"];
+      if (podCount > 0 || hasFluxResources || criticalNamespaces.includes(namespaceName)) {
+        namespaces.push({
+          name: namespaceName,
+          hasFluxResources,
+          podCount,
+          healthyPods
+        });
+      }
+    }
+
+    return namespaces;
+  }
+
   async getPods(namespace?: string): Promise<PodInfo[]> {
     this.verboseLog(`Fetching pod information${namespace ? ` for namespace: ${namespace}` : ""}...`);
 
@@ -169,6 +285,50 @@ class KubernetesHealthChecker {
     }
 
     return pods;
+  }
+
+  async getFluxComponents(): Promise<FluxComponentInfo[]> {
+    this.verboseLog("Checking Flux component health...");
+
+    const components: FluxComponentInfo[] = [];
+
+    // Check Flux system pods
+    const result = await this.runKubectl([
+      "get", "pods", "-n", "flux-system", "-o", "json"
+    ]);
+
+    if (!result.success) {
+      this.log(`Failed to get Flux components: ${result.error}`, "WARN");
+      return components;
+    }
+
+    const data = JSON.parse(result.output);
+
+    for (const pod of data.items || []) {
+      const containerStatuses = pod.status?.containerStatuses || [];
+      const readyCount = containerStatuses.filter((c: any) => c.ready).length;
+      const totalCount = containerStatuses.length;
+      const isReady = pod.status?.phase === "Running" && readyCount === totalCount;
+
+      // Extract version from image tag if available
+      const version = containerStatuses[0]?.image?.split(':')[1] || 'unknown';
+
+      components.push({
+        name: pod.metadata?.name || "unknown",
+        namespace: pod.metadata?.namespace || "flux-system",
+        ready: isReady,
+        status: pod.status?.phase || "unknown",
+        version,
+        conditions: pod.status?.conditions?.map((c: any) => ({
+          type: c.type,
+          status: c.status,
+          reason: c.reason,
+          message: c.message
+        })) || []
+      });
+    }
+
+    return components;
   }
 
   private calculateAge(creationTimestamp?: string): string {
@@ -222,52 +382,119 @@ class KubernetesHealthChecker {
     return allHealthy;
   }
 
-  async checkCriticalPods(): Promise<boolean> {
-    this.log("🔍 Checking critical system pods...");
+  async checkFluxHealth(): Promise<boolean> {
+    if (!this.includeFlux) return true;
 
-    const criticalNamespaces = [
-      "kube-system",
-      "flux-system",
-      "cert-manager",
-      "external-secrets"
-    ];
+    this.log("🔄 Checking Flux system health...");
 
+    // First check if Flux is installed
+    const fluxCheck = await this.runFlux(["check"]);
+    if (!fluxCheck.success) {
+      this.log("❌ Flux system check failed", "ERROR");
+      this.log(`   ${fluxCheck.error}`, "WARN");
+      return false;
+    }
+
+    // Check Flux components
+    const components = await this.getFluxComponents();
     let allHealthy = true;
 
-    for (const namespace of criticalNamespaces) {
-      try {
-        const pods = await this.getPods(namespace);
-        const unhealthyPods = pods.filter(pod => !pod.healthy);
-        const highRestartPods = pods.filter(pod => pod.restarts > 10);
+    const fluxControllers = components.filter(c =>
+      c.name.includes("controller") || c.name.includes("operator")
+    );
 
-        if (unhealthyPods.length === 0) {
-          this.log(`✅ Namespace ${namespace}: All ${pods.length} pods healthy`);
-        } else {
-          this.log(`❌ Namespace ${namespace}: ${unhealthyPods.length}/${pods.length} pods unhealthy`, "ERROR");
-          allHealthy = false;
+    if (fluxControllers.length === 0) {
+      this.log("⚠️  No Flux controllers found", "WARN");
+      return false;
+    }
 
-          for (const pod of unhealthyPods) {
-            this.log(`   ${pod.name}: ${pod.status} (${pod.ready}) - ${pod.restarts} restarts`, "WARN");
-            if (pod.node && this.verbose) {
-              this.verboseLog(`     Running on node: ${pod.node}`);
-            }
-          }
+    for (const component of fluxControllers) {
+      if (component.ready) {
+        this.log(`✅ Flux ${component.name}: Ready`);
+        if (this.verbose && component.version !== 'unknown') {
+          this.verboseLog(`   Version: ${component.version}`);
         }
-
-        if (highRestartPods.length > 0) {
-          this.log(`⚠️  High restart count in ${namespace}:`, "WARN");
-          for (const pod of highRestartPods) {
-            this.log(`   ${pod.name}: ${pod.restarts} restarts`, "WARN");
-          }
-        }
-
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log(`❌ Failed to check namespace ${namespace}: ${errorMessage}`, "ERROR");
+      } else {
+        this.log(`❌ Flux ${component.name}: ${component.status}`, "ERROR");
         allHealthy = false;
+
+        // Show error conditions
+        const errorConditions = component.conditions.filter(c =>
+          c.status === "False" && c.message
+        );
+
+        for (const condition of errorConditions) {
+          this.log(`   ${condition.type}: ${condition.reason} - ${condition.message}`, "WARN");
+        }
       }
     }
 
+    this.log(`📊 Flux Summary: ${fluxControllers.filter(c => c.ready).length}/${fluxControllers.length} controllers ready`);
+    return allHealthy;
+  }
+
+  async checkNamespaceHealth(): Promise<boolean> {
+    this.log("🔍 Checking namespace and pod health...");
+
+    const namespaces = await this.getNamespacesWithFluxResources();
+    let allHealthy = true;
+
+    for (const namespace of namespaces) {
+      if (namespace.podCount === 0) {
+        this.verboseLog(`📦 Namespace ${namespace.name}: No pods`);
+        continue;
+      }
+
+      const healthPercentage = Math.round((namespace.healthyPods / namespace.podCount) * 100);
+
+      if (namespace.healthyPods === namespace.podCount) {
+        this.log(`✅ Namespace ${namespace.name}: All ${namespace.podCount} pods healthy`);
+        if (this.verbose && namespace.hasFluxResources) {
+          this.verboseLog(`   Has Flux resources`);
+        }
+      } else {
+        this.log(`❌ Namespace ${namespace.name}: ${namespace.healthyPods}/${namespace.podCount} pods healthy (${healthPercentage}%)`, "ERROR");
+        allHealthy = false;
+
+        // Get detailed pod information for failed namespace
+        if (this.verbose) {
+          try {
+            const pods = await this.getPods(namespace.name);
+            const unhealthyPods = pods.filter(pod => !pod.healthy);
+
+            for (const pod of unhealthyPods.slice(0, 5)) { // Limit to first 5 unhealthy pods
+              this.log(`   ${pod.name}: ${pod.status} (${pod.ready}) - ${pod.restarts} restarts`, "WARN");
+            }
+
+            if (unhealthyPods.length > 5) {
+              this.log(`   ... and ${unhealthyPods.length - 5} more unhealthy pods`, "WARN");
+            }
+          } catch (error) {
+            this.verboseLog(`   Failed to get detailed pod info: ${error}`);
+          }
+        }
+      }
+
+      // Check for high restart counts
+      try {
+        const pods = await this.getPods(namespace.name);
+        const highRestartPods = pods.filter(pod => pod.restarts > 10);
+
+        if (highRestartPods.length > 0) {
+          this.log(`⚠️  High restart count in ${namespace.name}:`, "WARN");
+          for (const pod of highRestartPods.slice(0, 3)) { // Limit to first 3
+            this.log(`   ${pod.name}: ${pod.restarts} restarts`, "WARN");
+          }
+        }
+      } catch (error) {
+        this.verboseLog(`Failed to check restart counts for ${namespace.name}: ${error}`);
+      }
+    }
+
+    const totalPods = namespaces.reduce((sum, ns) => sum + ns.podCount, 0);
+    const totalHealthy = namespaces.reduce((sum, ns) => sum + ns.healthyPods, 0);
+
+    this.log(`📊 Overall Pod Summary: ${totalHealthy}/${totalPods} pods healthy across ${namespaces.length} namespaces`);
     return allHealthy;
   }
 
@@ -295,6 +522,38 @@ class KubernetesHealthChecker {
     this.verboseLog(`📊 Total storage classes: ${storageClasses.length}`);
   }
 
+  async checkNetworking(): Promise<void> {
+    this.verboseLog("Checking networking components...");
+
+    // Check for common networking components
+    const networkingComponents = [
+      { name: "CoreDNS", namespace: "kube-system", selector: "k8s-app=kube-dns" },
+      { name: "CNI (Cilium)", namespace: "kube-system", selector: "k8s-app=cilium" },
+      { name: "Ingress Controllers", namespace: "network", selector: "" }
+    ];
+
+    for (const component of networkingComponents) {
+      try {
+        const args = ["get", "pods", "-n", component.namespace];
+        if (component.selector) {
+          args.push("-l", component.selector);
+        }
+        args.push("--no-headers");
+
+        const result = await this.runKubectl(args);
+        if (result.success && result.output.trim()) {
+          const lines = result.output.trim().split('\n');
+          const runningPods = lines.filter(line => line.includes('Running')).length;
+          this.verboseLog(`✅ ${component.name}: ${runningPods}/${lines.length} pods running`);
+        } else {
+          this.verboseLog(`⚠️  ${component.name}: No pods found`);
+        }
+      } catch (error) {
+        this.verboseLog(`⚠️  Failed to check ${component.name}: ${error}`);
+      }
+    }
+  }
+
   async performFullHealthCheck(): Promise<boolean> {
     this.log("🚀 Starting comprehensive cluster health check...");
 
@@ -310,19 +569,30 @@ class KubernetesHealthChecker {
       overallHealthy = false;
     }
 
-    // Check critical pods
-    if (!(await this.checkCriticalPods())) {
+    // Check Flux system health
+    if (this.includeFlux && !(await this.checkFluxHealth())) {
       overallHealthy = false;
     }
 
-    // Check storage (informational)
+    // Check namespace and pod health
+    if (!(await this.checkNamespaceHealth())) {
+      overallHealthy = false;
+    }
+
+    // Check storage and networking (informational)
     await this.checkStorageClasses();
+    await this.checkNetworking();
 
     // Final summary
     if (overallHealthy) {
       this.log("🎉 Cluster health check PASSED - All systems operational!");
     } else {
       this.log("⚠️  Cluster health check FAILED - Issues detected", "ERROR");
+      this.log("💡 Consider checking individual component logs for more details", "INFO");
+
+      if (this.includeFlux) {
+        this.log("💡 Run 'flux get all -A' for detailed Flux status", "INFO");
+      }
     }
 
     return overallHealthy;
@@ -331,7 +601,7 @@ class KubernetesHealthChecker {
 
 function showHelp(): void {
   console.log(`
-🏥 Kubernetes Cluster Health Checker
+🏥 Kubernetes Cluster Health Checker (Optimized)
 
 Usage: deno run --allow-all k8s-health-check.ts [options]
 
@@ -340,20 +610,30 @@ Options:
   -n, --namespace <ns>  Check pods in specific namespace only
   -c, --continuous      Run continuously (use with --interval)
   -i, --interval <sec>  Interval between checks in seconds (default: 30)
+  --no-flux            Skip Flux-specific health checks
   -h, --help           Show this help message
 
 Examples:
-  deno run --allow-all k8s-health-check.ts                    # Basic health check
+  deno run --allow-all k8s-health-check.ts                    # Basic health check with Flux
   deno run --allow-all k8s-health-check.ts --verbose          # Detailed output
+  deno run --allow-all k8s-health-check.ts --no-flux          # Skip Flux checks
   deno run --allow-all k8s-health-check.ts -n flux-system     # Check only flux-system
   deno run --allow-all k8s-health-check.ts -c -i 60           # Monitor every 60 seconds
+
+Key Improvements:
+  ✅ Dynamic namespace discovery based on Flux resources
+  ✅ Integrated Flux component health checking
+  ✅ Better pod health criteria and error reporting
+  ✅ Networking and storage component checks
+  ✅ Comprehensive health scoring and recommendations
+  ✅ Optimized for GitOps environments
   `);
 }
 
 async function main(): Promise<void> {
   const parsedArgs = parseArgs(Deno.args, {
     string: ["namespace", "interval"],
-    boolean: ["verbose", "continuous", "help"],
+    boolean: ["verbose", "continuous", "help", "no-flux"],
     alias: {
       v: "verbose",
       n: "namespace",
@@ -364,6 +644,7 @@ async function main(): Promise<void> {
     default: {
       verbose: false,
       continuous: false,
+      "no-flux": false,
       interval: "30"
     }
   });
@@ -373,6 +654,7 @@ async function main(): Promise<void> {
     namespace: parsedArgs.namespace as string | undefined,
     continuous: Boolean(parsedArgs.continuous),
     help: Boolean(parsedArgs.help),
+    includeFlux: !Boolean(parsedArgs["no-flux"]),
     interval: String(parsedArgs.interval || "30")
   };
 
@@ -382,7 +664,7 @@ async function main(): Promise<void> {
   }
 
   const interval = parseInt(args.interval) * 1000; // Convert to milliseconds
-  const checker = new KubernetesHealthChecker(args.verbose);
+  const checker = new KubernetesHealthChecker(args.verbose, args.includeFlux);
 
   try {
     if (args.continuous) {

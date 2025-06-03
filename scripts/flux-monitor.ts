@@ -1,12 +1,14 @@
 #!/usr/bin/env -S deno run --allow-run --allow-net --allow-read
 /**
- * Flux Monitor - Track Flux GitOps activity and deployments
+ * Flux Monitor - Track Flux GitOps activity and deployments (Optimized)
  *
  * This script monitors Flux activity including:
  * - Git repository sync status
  * - Kustomization reconciliation
  * - HelmRelease deployments
  * - Recent events and changes
+ * - Suspended resources
+ * - Error conditions
  */
 
 import { parseArgs } from "@std/cli/parse-args";
@@ -15,11 +17,24 @@ import { delay } from "@std/async/delay";
 interface FluxResource {
   name: string;
   namespace: string;
-  ready: string;
+  kind: string;
+  ready: boolean;
+  suspended: boolean;
   status: string;
   age: string;
   revision?: string;
-  suspended?: string;
+  lastReconcileTime?: string;
+  conditions: Array<{
+    type: string;
+    status: string;
+    reason?: string;
+    message?: string;
+  }>;
+  source?: {
+    kind: string;
+    name: string;
+    namespace?: string;
+  };
 }
 
 interface KubernetesEvent {
@@ -35,14 +50,21 @@ class FluxMonitor {
   private verbose: boolean;
   private watch: boolean;
   private interval: number;
+  private forceReconcile: boolean;
 
-  constructor(options: { verbose: boolean; watch: boolean; interval: number }) {
+  constructor(options: {
+    verbose: boolean;
+    watch: boolean;
+    interval: number;
+    forceReconcile: boolean;
+  }) {
     this.verbose = options.verbose;
     this.watch = options.watch;
     this.interval = options.interval;
+    this.forceReconcile = options.forceReconcile;
   }
 
-  async runCommand(cmd: string[]): Promise<{ success: boolean; output: string }> {
+  async runCommand(cmd: string[]): Promise<{ success: boolean; output: string; error?: string }> {
     try {
       const command = new Deno.Command(cmd[0], {
         args: cmd.slice(1),
@@ -51,18 +73,32 @@ class FluxMonitor {
       });
 
       const result = await command.output();
-      const output = new TextDecoder().decode(result.stdout) +
-                     new TextDecoder().decode(result.stderr);
+      const stdout = new TextDecoder().decode(result.stdout);
+      const stderr = new TextDecoder().decode(result.stderr);
 
       return {
         success: result.success,
-        output: output.trim()
+        output: stdout.trim(),
+        error: stderr.trim() || undefined
       };
     } catch (error) {
       return {
         success: false,
-        output: `Error running command: ${error instanceof Error ? error.message : String(error)}`
+        output: "",
+        error: `Error running command: ${error instanceof Error ? error.message : String(error)}`
       };
+    }
+  }
+
+  private log(message: string, level: "INFO" | "WARN" | "ERROR" = "INFO"): void {
+    const timestamp = new Date().toISOString();
+    const prefix = level === "ERROR" ? "❌" : level === "WARN" ? "⚠️ " : "ℹ️ ";
+    console.log(`[${timestamp}] ${prefix} ${message}`);
+  }
+
+  private verboseLog(message: string): void {
+    if (this.verbose) {
+      this.log(message);
     }
   }
 
@@ -73,67 +109,99 @@ class FluxMonitor {
     if (!result.success) {
       console.log("❌ Flux check failed:");
       console.log(result.output);
+      if (result.error) console.log(result.error);
       return;
     }
 
     console.log("✅ Flux system is healthy\n");
   }
 
-  async getGitRepositories(): Promise<FluxResource[]> {
-    const result = await this.runCommand(["flux", "get", "sources", "git", "-A", "--no-header"]);
-    if (!result.success) return [];
+  async getAllFluxResources(): Promise<FluxResource[]> {
+    this.verboseLog("Fetching all Flux resources using JSON output...");
 
-    return result.output.split('\n')
-      .filter(line => line.trim())
-      .map(line => {
-        const parts = line.split(/\s+/);
-        return {
-          name: parts[1] || '',
-          namespace: parts[0] || '',
-          ready: parts[2] || '',
-          status: parts[3] || '',
-          age: parts[4] || '',
-          revision: parts[5] || ''
-        };
-      });
+    // Use flux get all with JSON output for reliable parsing
+    const result = await this.runCommand(["flux", "get", "all", "-A", "--output", "json"]);
+    if (!result.success) {
+      this.log(`Failed to get Flux resources: ${result.error}`, "ERROR");
+      return [];
+    }
+
+    try {
+      const data = JSON.parse(result.output);
+      const resources: FluxResource[] = [];
+
+      // Process each resource type
+      for (const item of data) {
+        const conditions = item.status?.conditions || [];
+        const readyCondition = conditions.find((c: any) => c.type === "Ready");
+        const suspended = item.spec?.suspend === true;
+
+        // Calculate age
+        const createdTime = new Date(item.metadata?.creationTimestamp || Date.now());
+        const age = this.calculateAge(createdTime);
+
+        // Get last reconcile time
+        const lastReconcileTime = item.status?.lastHandledReconcileAt ||
+                                 item.status?.lastAttemptedRevision ||
+                                 item.status?.lastAppliedRevision;
+
+        resources.push({
+          name: item.metadata?.name || "unknown",
+          namespace: item.metadata?.namespace || "unknown",
+          kind: item.kind || "unknown",
+          ready: readyCondition?.status === "True",
+          suspended,
+          status: this.getResourceStatus(item, readyCondition),
+          age,
+          revision: this.getRevision(item),
+          lastReconcileTime,
+          conditions: conditions.map((c: any) => ({
+            type: c.type,
+            status: c.status,
+            reason: c.reason,
+            message: c.message
+          })),
+          source: item.spec?.sourceRef ? {
+            kind: item.spec.sourceRef.kind,
+            name: item.spec.sourceRef.name,
+            namespace: item.spec.sourceRef.namespace
+          } : undefined
+        });
+      }
+
+      return resources;
+    } catch (error) {
+      this.log(`Failed to parse Flux resources JSON: ${error}`, "ERROR");
+      return [];
+    }
   }
 
-  async getKustomizations(): Promise<FluxResource[]> {
-    const result = await this.runCommand(["flux", "get", "kustomizations", "-A", "--no-header"]);
-    if (!result.success) return [];
-
-    return result.output.split('\n')
-      .filter(line => line.trim())
-      .map(line => {
-        const parts = line.split(/\s+/);
-        return {
-          name: parts[1] || '',
-          namespace: parts[0] || '',
-          ready: parts[2] || '',
-          status: parts[3] || '',
-          age: parts[4] || '',
-          revision: parts[5] || ''
-        };
-      });
+  private getResourceStatus(item: any, readyCondition: any): string {
+    if (item.spec?.suspend === true) return "Suspended";
+    if (readyCondition?.status === "True") return "Ready";
+    if (readyCondition?.status === "False") {
+      return readyCondition.reason || "Not Ready";
+    }
+    return item.status?.phase || "Unknown";
   }
 
-  async getHelmReleases(): Promise<FluxResource[]> {
-    const result = await this.runCommand(["flux", "get", "helmreleases", "-A", "--no-header"]);
-    if (!result.success) return [];
+  private getRevision(item: any): string | undefined {
+    return item.status?.lastAppliedRevision?.substring(0, 8) ||
+           item.status?.artifact?.revision?.substring(0, 8) ||
+           item.status?.lastAttemptedRevision?.substring(0, 8);
+  }
 
-    return result.output.split('\n')
-      .filter(line => line.trim())
-      .map(line => {
-        const parts = line.split(/\s+/);
-        return {
-          name: parts[1] || '',
-          namespace: parts[0] || '',
-          ready: parts[2] || '',
-          status: parts[3] || '',
-          age: parts[4] || '',
-          revision: parts[5] || ''
-        };
-      });
+  private calculateAge(createdTime: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - createdTime.getTime();
+
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days}d${hours}h`;
+    if (hours > 0) return `${hours}h${minutes}m`;
+    return `${minutes}m`;
   }
 
   async getRecentEvents(): Promise<KubernetesEvent[]> {
@@ -205,89 +273,72 @@ class FluxMonitor {
     });
   }
 
-  getStatusIcon(ready: string, status: string): string {
-    if (ready === 'True') return '✅';
-    if (ready === 'False') return '❌';
+  getStatusIcon(ready: boolean, suspended: boolean, status: string): string {
+    if (suspended) return '⏸️';
+    if (ready) return '✅';
     if (status.includes('Progressing') || status.includes('Reconciling')) return '🔄';
-    return '⚠️';
+    return '❌';
   }
 
-  async displayGitRepositories(): Promise<void> {
-    console.log("📦 Git Repositories:");
-    const repos = await this.getGitRepositories();
+  async displayFluxResources(): Promise<void> {
+    console.log("🔄 Flux Resources Overview:");
+    const resources = await this.getAllFluxResources();
 
-    if (repos.length === 0) {
-      console.log("  No Git repositories found\n");
+    if (resources.length === 0) {
+      console.log("  No Flux resources found\n");
       return;
     }
 
-    const rows = repos.map(repo => [
-      this.getStatusIcon(repo.ready, repo.status),
-      repo.name,
-      repo.namespace,
-      repo.ready,
-      repo.status,
-      repo.revision?.substring(0, 8) || '',
-      repo.age
-    ]);
-
-    this.formatTable(
-      ['', 'NAME', 'NAMESPACE', 'READY', 'STATUS', 'REVISION', 'AGE'],
-      rows
-    );
-    console.log();
-  }
-
-  async displayKustomizations(): Promise<void> {
-    console.log("🔧 Kustomizations:");
-    const kustomizations = await this.getKustomizations();
-
-    if (kustomizations.length === 0) {
-      console.log("  No Kustomizations found\n");
-      return;
+    // Group by kind
+    const byKind = new Map<string, FluxResource[]>();
+    for (const resource of resources) {
+      if (!byKind.has(resource.kind)) {
+        byKind.set(resource.kind, []);
+      }
+      byKind.get(resource.kind)!.push(resource);
     }
 
-    const rows = kustomizations.map(ks => [
-      this.getStatusIcon(ks.ready, ks.status),
-      ks.name,
-      ks.namespace,
-      ks.ready,
-      ks.status,
-      ks.revision?.substring(0, 8) || '',
-      ks.age
-    ]);
+    for (const [kind, kindResources] of byKind) {
+      console.log(`\n📦 ${kind}s:`);
 
-    this.formatTable(
-      ['', 'NAME', 'NAMESPACE', 'READY', 'STATUS', 'REVISION', 'AGE'],
-      rows
-    );
-    console.log();
-  }
+      const rows = kindResources.map(resource => [
+        this.getStatusIcon(resource.ready, resource.suspended, resource.status),
+        resource.name,
+        resource.namespace,
+        resource.status,
+        resource.revision || '',
+        resource.age
+      ]);
 
-  async displayHelmReleases(): Promise<void> {
-    console.log("⚓ Helm Releases:");
-    const releases = await this.getHelmReleases();
+      this.formatTable(
+        ['', 'NAME', 'NAMESPACE', 'STATUS', 'REVISION', 'AGE'],
+        rows
+      );
 
-    if (releases.length === 0) {
-      console.log("  No Helm releases found\n");
-      return;
+      // Show error details for failed resources
+      if (this.verbose) {
+        const failedResources = kindResources.filter(r => !r.ready && !r.suspended);
+        for (const resource of failedResources) {
+          const errorConditions = resource.conditions.filter(c =>
+            c.status === "False" && c.message
+          );
+          if (errorConditions.length > 0) {
+            console.log(`\n  ❌ ${resource.name} errors:`);
+            for (const condition of errorConditions) {
+              console.log(`     ${condition.type}: ${condition.reason} - ${condition.message}`);
+            }
+          }
+        }
+      }
     }
 
-    const rows = releases.map(hr => [
-      this.getStatusIcon(hr.ready, hr.status),
-      hr.name,
-      hr.namespace,
-      hr.ready,
-      hr.status,
-      hr.revision || '',
-      hr.age
-    ]);
+    // Summary
+    const totalResources = resources.length;
+    const readyResources = resources.filter(r => r.ready && !r.suspended).length;
+    const suspendedResources = resources.filter(r => r.suspended).length;
+    const failedResources = resources.filter(r => !r.ready && !r.suspended).length;
 
-    this.formatTable(
-      ['', 'NAME', 'NAMESPACE', 'READY', 'STATUS', 'REVISION', 'AGE'],
-      rows
-    );
-    console.log();
+    console.log(`\n📊 Summary: ${readyResources}/${totalResources - suspendedResources} ready, ${suspendedResources} suspended, ${failedResources} failed\n`);
   }
 
   async displayRecentEvents(): Promise<void> {
@@ -340,19 +391,46 @@ class FluxMonitor {
   }
 
   async reconcileFlux(): Promise<void> {
-    console.log("🔄 Triggering Flux reconciliation...");
+    console.log("🔄 Triggering comprehensive Flux reconciliation...");
 
-    const result = await this.runCommand([
-      "flux", "reconcile", "kustomization", "flux-system",
-      "--with-source", "-n", "flux-system"
+    // Reconcile all sources first
+    const sourcesResult = await this.runCommand([
+      "flux", "reconcile", "source", "git", "--all", "--with-source"
     ]);
 
-    if (result.success) {
-      console.log("✅ Flux reconciliation triggered\n");
+    if (sourcesResult.success) {
+      console.log("✅ Git sources reconciled");
     } else {
-      console.log("❌ Failed to trigger reconciliation:");
-      console.log(result.output + "\n");
+      console.log("⚠️  Git source reconciliation had issues:");
+      console.log(sourcesResult.output);
     }
+
+    // Then reconcile all kustomizations
+    const ksResult = await this.runCommand([
+      "flux", "reconcile", "kustomization", "--all", "--with-source"
+    ]);
+
+    if (ksResult.success) {
+      console.log("✅ Kustomizations reconciled");
+    } else {
+      console.log("⚠️  Kustomization reconciliation had issues:");
+      console.log(ksResult.output);
+    }
+
+    // Finally reconcile all helm releases
+    const hrResult = await this.runCommand([
+      "flux", "reconcile", "helmrelease", "--all", "--with-source"
+    ]);
+
+    if (hrResult.success) {
+      console.log("✅ HelmReleases reconciled");
+    } else {
+      console.log("⚠️  HelmRelease reconciliation had issues:");
+      console.log(hrResult.output);
+    }
+
+    console.log("🔄 Reconciliation completed, waiting for changes to take effect...\n");
+    await delay(5000); // Wait for reconciliation to take effect
   }
 
   async displayStatus(): Promise<void> {
@@ -363,9 +441,7 @@ class FluxMonitor {
 
     await this.checkFluxStatus();
     await this.getLatestCommit();
-    await this.displayGitRepositories();
-    await this.displayKustomizations();
-    await this.displayHelmReleases();
+    await this.displayFluxResources();
 
     if (this.verbose) {
       await this.displayFluxEvents();
@@ -374,6 +450,10 @@ class FluxMonitor {
   }
 
   async run(): Promise<void> {
+    if (this.forceReconcile) {
+      await this.reconcileFlux();
+    }
+
     if (this.watch) {
       console.log(`🔍 Monitoring Flux activity (refreshing every ${this.interval}s)...`);
       console.log("Press Ctrl+C to stop\n");
@@ -390,15 +470,15 @@ class FluxMonitor {
 
 function showHelp(): void {
   console.log(`
-🚀 Flux Monitor - Track GitOps activity and deployments
+🚀 Flux Monitor - Track GitOps activity and deployments (Optimized)
 
 Usage: deno run --allow-run --allow-net --allow-read flux-monitor.ts [options]
 
 Options:
   -w, --watch           Watch mode - continuously refresh the display
-  -v, --verbose         Show detailed events and messages
+  -v, --verbose         Show detailed events and error messages
   -i, --interval <sec>  Refresh interval in seconds (default: 30)
-  -r, --reconcile       Trigger Flux reconciliation before monitoring
+  -r, --reconcile       Trigger comprehensive Flux reconciliation before monitoring
   -h, --help            Show this help message
 
 Examples:
@@ -408,11 +488,19 @@ Examples:
   # Watch mode with 15-second refresh
   ./flux-monitor.ts --watch --interval 15
 
-  # Verbose mode with detailed events
+  # Verbose mode with detailed events and error messages
   ./flux-monitor.ts --watch --verbose
 
-  # Trigger reconciliation and then watch
+  # Force reconciliation and then watch
   ./flux-monitor.ts --reconcile --watch
+
+Key Improvements:
+  ✅ Uses JSON parsing instead of fragile text parsing
+  ✅ Shows suspended resources and their status
+  ✅ Displays error conditions and messages
+  ✅ Groups resources by type for better organization
+  ✅ Provides comprehensive reconciliation option
+  ✅ Better error handling and status reporting
   `);
 }
 
@@ -443,14 +531,11 @@ async function main(): Promise<void> {
   const monitor = new FluxMonitor({
     verbose: args.verbose,
     watch: args.watch,
-    interval: parseInt(args.interval)
+    interval: parseInt(args.interval),
+    forceReconcile: args.reconcile
   });
 
   try {
-    if (args.reconcile) {
-      await monitor.reconcileFlux();
-    }
-
     await monitor.run();
   } catch (error) {
     if (error instanceof Deno.errors.Interrupted) {

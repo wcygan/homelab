@@ -10,6 +10,7 @@ interface FluxCheckOptions {
   interval: number;
   help: boolean;
   watch: boolean;
+  forceReconcile: boolean;
 }
 
 interface FluxResource {
@@ -19,6 +20,7 @@ interface FluxResource {
   ready: boolean;
   suspended: boolean;
   lastAppliedRevision?: string;
+  lastReconcileTime?: string;
   conditions: Array<{
     type: string;
     status: string;
@@ -31,6 +33,10 @@ interface FluxResource {
     name: string;
     namespace?: string;
   };
+  dependsOn?: Array<{
+    name: string;
+    namespace?: string;
+  }>;
 }
 
 interface GitRepositoryInfo {
@@ -48,11 +54,26 @@ interface GitRepositoryInfo {
   }>;
 }
 
+interface HealthScore {
+  overall: number;
+  sources: number;
+  kustomizations: number;
+  helmreleases: number;
+  details: {
+    totalResources: number;
+    readyResources: number;
+    suspendedResources: number;
+    failedResources: number;
+  };
+}
+
 class FluxDeploymentChecker {
   private verbose: boolean;
+  private forceReconcile: boolean;
 
-  constructor(verbose = false) {
+  constructor(verbose = false, forceReconcile = false) {
     this.verbose = verbose;
+    this.forceReconcile = forceReconcile;
   }
 
   private async runKubectl(args: string[]): Promise<{success: boolean, output: string, error?: string}> {
@@ -134,112 +155,88 @@ class FluxDeploymentChecker {
     return true;
   }
 
-  async getGitRepositories(): Promise<GitRepositoryInfo[]> {
-    this.verboseLog("Fetching GitRepository resources...");
+  async getAllFluxResources(): Promise<{
+    gitRepositories: GitRepositoryInfo[];
+    kustomizations: FluxResource[];
+    helmReleases: FluxResource[];
+  }> {
+    this.verboseLog("Fetching all Flux resources using batch operations...");
 
-    const result = await this.runKubectl([
-      "get", "gitrepositories.source.toolkit.fluxcd.io",
-      "--all-namespaces", "-o", "json"
-    ]);
-
+    // Use flux get all for efficient batch fetching
+    const result = await this.runFlux(["get", "all", "-A", "--output", "json"]);
     if (!result.success) {
-      throw new Error(`Failed to get GitRepositories: ${result.error}`);
+      throw new Error(`Failed to get Flux resources: ${result.error}`);
     }
 
-    const data = JSON.parse(result.output);
-    const repos: GitRepositoryInfo[] = [];
+    try {
+      const data = JSON.parse(result.output);
+      const gitRepositories: GitRepositoryInfo[] = [];
+      const kustomizations: FluxResource[] = [];
+      const helmReleases: FluxResource[] = [];
 
-    for (const repo of data.items || []) {
-      const conditions = repo.status?.conditions || [];
-      const readyCondition = conditions.find((c: any) => c.type === "Ready");
+      for (const item of data) {
+        const conditions = item.status?.conditions || [];
+        const readyCondition = conditions.find((c: any) => c.type === "Ready");
 
-      repos.push({
-        name: repo.metadata?.name || "unknown",
-        namespace: repo.metadata?.namespace || "unknown",
-        url: repo.spec?.url || "unknown",
-        branch: repo.spec?.ref?.branch || "main",
-        ready: readyCondition?.status === "True",
-        lastFetchedRevision: repo.status?.artifact?.revision,
-        conditions: conditions.map((c: any) => ({
-          type: c.type,
-          status: c.status,
-          reason: c.reason,
-          message: c.message
-        }))
-      });
+        if (item.kind === "GitRepository") {
+          gitRepositories.push({
+            name: item.metadata?.name || "unknown",
+            namespace: item.metadata?.namespace || "unknown",
+            url: item.spec?.url || "unknown",
+            branch: item.spec?.ref?.branch || "main",
+            ready: readyCondition?.status === "True",
+            lastFetchedRevision: item.status?.artifact?.revision,
+            conditions: conditions.map((c: any) => ({
+              type: c.type,
+              status: c.status,
+              reason: c.reason,
+              message: c.message
+            }))
+          });
+        } else if (item.kind === "Kustomization" || item.kind === "HelmRelease") {
+          const resource: FluxResource = {
+            name: item.metadata?.name || "unknown",
+            namespace: item.metadata?.namespace || "unknown",
+            kind: item.kind,
+            ready: readyCondition?.status === "True",
+            suspended: item.spec?.suspend === true,
+            lastAppliedRevision: item.status?.lastAppliedRevision,
+            lastReconcileTime: item.status?.lastHandledReconcileAt || item.status?.lastAttemptedRevision,
+            conditions: conditions.map((c: any) => ({
+              type: c.type,
+              status: c.status,
+              reason: c.reason,
+              message: c.message,
+              lastTransitionTime: c.lastTransitionTime
+            })),
+            source: item.spec?.sourceRef ? {
+              kind: item.spec.sourceRef.kind,
+              name: item.spec.sourceRef.name,
+              namespace: item.spec.sourceRef.namespace
+            } : undefined,
+            dependsOn: item.spec?.dependsOn?.map((dep: any) => ({
+              name: dep.name,
+              namespace: dep.namespace
+            }))
+          };
+
+          if (item.kind === "Kustomization") {
+            kustomizations.push(resource);
+          } else {
+            helmReleases.push(resource);
+          }
+        }
+      }
+
+      return { gitRepositories, kustomizations, helmReleases };
+    } catch (error) {
+      throw new Error(`Failed to parse Flux resources: ${error}`);
     }
-
-    return repos;
   }
 
-  async getKustomizations(): Promise<FluxResource[]> {
-    this.verboseLog("Fetching Kustomization resources...");
-
-    const result = await this.runKubectl([
-      "get", "kustomizations.kustomize.toolkit.fluxcd.io",
-      "--all-namespaces", "-o", "json"
-    ]);
-
-    if (!result.success) {
-      throw new Error(`Failed to get Kustomizations: ${result.error}`);
-    }
-
-    const data = JSON.parse(result.output);
-    return this.parseFluxResources(data.items || [], "Kustomization");
-  }
-
-  async getHelmReleases(): Promise<FluxResource[]> {
-    this.verboseLog("Fetching HelmRelease resources...");
-
-    const result = await this.runKubectl([
-      "get", "helmreleases.helm.toolkit.fluxcd.io",
-      "--all-namespaces", "-o", "json"
-    ]);
-
-    if (!result.success) {
-      throw new Error(`Failed to get HelmReleases: ${result.error}`);
-    }
-
-    const data = JSON.parse(result.output);
-    return this.parseFluxResources(data.items || [], "HelmRelease");
-  }
-
-  private parseFluxResources(items: any[], kind: string): FluxResource[] {
-    const resources: FluxResource[] = [];
-
-    for (const item of items) {
-      const conditions = item.status?.conditions || [];
-      const readyCondition = conditions.find((c: any) => c.type === "Ready");
-
-      resources.push({
-        name: item.metadata?.name || "unknown",
-        namespace: item.metadata?.namespace || "unknown",
-        kind,
-        ready: readyCondition?.status === "True",
-        suspended: item.spec?.suspend === true,
-        lastAppliedRevision: item.status?.lastAppliedRevision,
-        conditions: conditions.map((c: any) => ({
-          type: c.type,
-          status: c.status,
-          reason: c.reason,
-          message: c.message,
-          lastTransitionTime: c.lastTransitionTime
-        })),
-        source: item.spec?.sourceRef ? {
-          kind: item.spec.sourceRef.kind,
-          name: item.spec.sourceRef.name,
-          namespace: item.spec.sourceRef.namespace
-        } : undefined
-      });
-    }
-
-    return resources;
-  }
-
-  async checkGitRepositories(): Promise<boolean> {
+  async checkGitRepositories(repos: GitRepositoryInfo[]): Promise<boolean> {
     this.log("🔍 Checking GitRepository sources...");
 
-    const repos = await this.getGitRepositories();
     let allHealthy = true;
 
     for (const repo of repos) {
@@ -272,10 +269,9 @@ class FluxDeploymentChecker {
     return allHealthy;
   }
 
-  async checkKustomizations(): Promise<boolean> {
+  async checkKustomizations(kustomizations: FluxResource[]): Promise<boolean> {
     this.log("🔍 Checking Kustomization deployments...");
 
-    const kustomizations = await this.getKustomizations();
     let allHealthy = true;
 
     // Group by namespace for better organization
@@ -307,8 +303,13 @@ class FluxDeploymentChecker {
         if (!resource.ready && !resource.suspended) {
           this.log(`   ${resource.name}: Not Ready`, "WARN");
 
-          if (this.verbose && resource.source) {
-            this.verboseLog(`     Source: ${resource.source.kind}/${resource.source.name}`);
+          if (this.verbose) {
+            if (resource.source) {
+              this.verboseLog(`     Source: ${resource.source.kind}/${resource.source.name}`);
+            }
+            if (resource.dependsOn && resource.dependsOn.length > 0) {
+              this.verboseLog(`     Depends on: ${resource.dependsOn.map(d => d.name).join(", ")}`);
+            }
           }
 
           const errorConditions = resource.conditions.filter(c =>
@@ -337,10 +338,9 @@ class FluxDeploymentChecker {
     return allHealthy;
   }
 
-  async checkHelmReleases(): Promise<boolean> {
+  async checkHelmReleases(helmReleases: FluxResource[]): Promise<boolean> {
     this.log("🔍 Checking HelmRelease deployments...");
 
-    const helmReleases = await this.getHelmReleases();
     let allHealthy = true;
 
     // Group by namespace
@@ -372,8 +372,13 @@ class FluxDeploymentChecker {
         if (!resource.ready && !resource.suspended) {
           this.log(`   ${resource.name}: Not Ready`, "WARN");
 
-          if (this.verbose && resource.source) {
-            this.verboseLog(`     Chart source: ${resource.source.kind}/${resource.source.name}`);
+          if (this.verbose) {
+            if (resource.source) {
+              this.verboseLog(`     Chart source: ${resource.source.kind}/${resource.source.name}`);
+            }
+            if (resource.dependsOn && resource.dependsOn.length > 0) {
+              this.verboseLog(`     Depends on: ${resource.dependsOn.map(d => d.name).join(", ")}`);
+            }
           }
 
           const errorConditions = resource.conditions.filter(c =>
@@ -399,45 +404,95 @@ class FluxDeploymentChecker {
     return allHealthy;
   }
 
+  calculateHealthScore(
+    gitRepos: GitRepositoryInfo[],
+    kustomizations: FluxResource[],
+    helmReleases: FluxResource[]
+  ): HealthScore {
+    const allResources = [...kustomizations, ...helmReleases];
+    const totalResources = allResources.length;
+    const readyResources = allResources.filter(r => r.ready && !r.suspended).length;
+    const suspendedResources = allResources.filter(r => r.suspended).length;
+    const failedResources = allResources.filter(r => !r.ready && !r.suspended).length;
+
+    const sourcesScore = gitRepos.length > 0 ?
+      (gitRepos.filter(r => r.ready).length / gitRepos.length) * 100 : 100;
+
+    const activeResources = totalResources - suspendedResources;
+    const kustomizationsScore = kustomizations.length > 0 ?
+      (kustomizations.filter(k => k.ready && !k.suspended).length /
+       Math.max(1, kustomizations.length - kustomizations.filter(k => k.suspended).length)) * 100 : 100;
+
+    const helmReleasesScore = helmReleases.length > 0 ?
+      (helmReleases.filter(hr => hr.ready && !hr.suspended).length /
+       Math.max(1, helmReleases.length - helmReleases.filter(hr => hr.suspended).length)) * 100 : 100;
+
+    const overallScore = activeResources > 0 ? (readyResources / activeResources) * 100 : 100;
+
+    return {
+      overall: Math.round(overallScore),
+      sources: Math.round(sourcesScore),
+      kustomizations: Math.round(kustomizationsScore),
+      helmreleases: Math.round(helmReleasesScore),
+      details: {
+        totalResources,
+        readyResources,
+        suspendedResources,
+        failedResources
+      }
+    };
+  }
+
   async reconcileAll(): Promise<void> {
-    this.log("🔄 Triggering Flux reconciliation...");
+    this.log("🔄 Triggering comprehensive Flux reconciliation...");
 
     try {
-      // Reconcile GitRepository sources first
-      const gitRepos = await this.getGitRepositories();
-      for (const repo of gitRepos) {
-        this.verboseLog(`Reconciling GitRepository ${repo.namespace}/${repo.name}...`);
-        await this.runFlux([
-          "reconcile", "source", "git", repo.name,
-          "-n", repo.namespace, "--with-source"
-        ]);
+      // Reconcile all GitRepository sources first
+      this.verboseLog("Reconciling all Git sources...");
+      const gitResult = await this.runFlux([
+        "reconcile", "source", "git", "--all", "--with-source"
+      ]);
+
+      if (gitResult.success) {
+        this.log("✅ Git sources reconciled");
+      } else {
+        this.log(`⚠️  Git source reconciliation issues: ${gitResult.error}`, "WARN");
       }
 
-      // Then reconcile Kustomizations
-      const kustomizations = await this.getKustomizations();
-      for (const ks of kustomizations) {
-        if (!ks.suspended) {
-          this.verboseLog(`Reconciling Kustomization ${ks.namespace}/${ks.name}...`);
-          await this.runFlux([
-            "reconcile", "kustomization", ks.name,
-            "-n", ks.namespace, "--with-source"
-          ]);
-        }
+      // Wait a bit for sources to be ready
+      await delay(2000);
+
+      // Then reconcile all Kustomizations
+      this.verboseLog("Reconciling all Kustomizations...");
+      const ksResult = await this.runFlux([
+        "reconcile", "kustomization", "--all", "--with-source"
+      ]);
+
+      if (ksResult.success) {
+        this.log("✅ Kustomizations reconciled");
+      } else {
+        this.log(`⚠️  Kustomization reconciliation issues: ${ksResult.error}`, "WARN");
       }
 
-      // Finally reconcile HelmReleases
-      const helmReleases = await this.getHelmReleases();
-      for (const hr of helmReleases) {
-        if (!hr.suspended) {
-          this.verboseLog(`Reconciling HelmRelease ${hr.namespace}/${hr.name}...`);
-          await this.runFlux([
-            "reconcile", "helmrelease", hr.name,
-            "-n", hr.namespace, "--with-source"
-          ]);
-        }
+      // Wait a bit for kustomizations to be ready
+      await delay(2000);
+
+      // Finally reconcile all HelmReleases
+      this.verboseLog("Reconciling all HelmReleases...");
+      const hrResult = await this.runFlux([
+        "reconcile", "helmrelease", "--all", "--with-source"
+      ]);
+
+      if (hrResult.success) {
+        this.log("✅ HelmReleases reconciled");
+      } else {
+        this.log(`⚠️  HelmRelease reconciliation issues: ${hrResult.error}`, "WARN");
       }
 
-      this.log("✅ Flux reconciliation completed");
+      this.log("✅ Comprehensive reconciliation completed");
+      this.log("⏳ Waiting for reconciliation to take effect...");
+      await delay(5000); // Wait for reconciliation to take effect
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log(`❌ Reconciliation failed: ${errorMessage}`, "ERROR");
@@ -452,21 +507,40 @@ class FluxDeploymentChecker {
       return false;
     }
 
+    // Force reconciliation if requested
+    if (this.forceReconcile) {
+      await this.reconcileAll();
+    }
+
+    // Get all resources in one batch operation
+    const { gitRepositories, kustomizations, helmReleases } = await this.getAllFluxResources();
+
     let allHealthy = true;
 
     // Check GitRepository sources
-    if (!(await this.checkGitRepositories())) {
+    if (!(await this.checkGitRepositories(gitRepositories))) {
       allHealthy = false;
     }
 
     // Check Kustomizations
-    if (!(await this.checkKustomizations())) {
+    if (!(await this.checkKustomizations(kustomizations))) {
       allHealthy = false;
     }
 
     // Check HelmReleases
-    if (!(await this.checkHelmReleases())) {
+    if (!(await this.checkHelmReleases(helmReleases))) {
       allHealthy = false;
+    }
+
+    // Calculate and display health score
+    const healthScore = this.calculateHealthScore(gitRepositories, kustomizations, helmReleases);
+    this.log(`🏥 Health Score: ${healthScore.overall}% overall`);
+
+    if (this.verbose) {
+      this.verboseLog(`   Sources: ${healthScore.sources}%`);
+      this.verboseLog(`   Kustomizations: ${healthScore.kustomizations}%`);
+      this.verboseLog(`   HelmReleases: ${healthScore.helmreleases}%`);
+      this.verboseLog(`   Details: ${healthScore.details.readyResources}/${healthScore.details.totalResources - healthScore.details.suspendedResources} ready, ${healthScore.details.suspendedResources} suspended, ${healthScore.details.failedResources} failed`);
     }
 
     // Final summary
@@ -474,6 +548,10 @@ class FluxDeploymentChecker {
       this.log("🎉 GitOps deployment verification PASSED - All deployments healthy!");
     } else {
       this.log("⚠️  GitOps deployment verification FAILED - Issues detected", "ERROR");
+
+      if (healthScore.overall < 80) {
+        this.log("💡 Consider running with --force-reconcile to refresh all resources", "WARN");
+      }
     }
 
     return allHealthy;
@@ -482,7 +560,7 @@ class FluxDeploymentChecker {
 
 function showHelp(): void {
   console.log(`
-🔄 Flux GitOps Deployment Checker
+🔄 Flux GitOps Deployment Checker (Optimized)
 
 Usage: deno run --allow-all flux-deployment-check.ts [options]
 
@@ -491,26 +569,37 @@ Options:
   -n, --namespace <ns>  Check resources in specific namespace only
   -c, --continuous      Run continuously (use with --interval)
   -w, --watch           Watch mode - reconcile and check repeatedly
+  -r, --force-reconcile Force reconciliation before checking for fresh data
   -i, --interval <sec>  Interval between checks in seconds (default: 60)
   -h, --help           Show this help message
 
 Examples:
   deno run --allow-all flux-deployment-check.ts                    # Basic deployment check
   deno run --allow-all flux-deployment-check.ts --verbose          # Detailed output
-  deno run --allow-all flux-deployment-check.ts -n flux-system     # Check only flux-system
+  deno run --allow-all flux-deployment-check.ts --force-reconcile  # Force fresh data
   deno run --allow-all flux-deployment-check.ts -w -i 120          # Watch mode every 2 minutes
+  deno run --allow-all flux-deployment-check.ts -r -w              # Force reconcile + watch
+
+Key Improvements:
+  ✅ Uses efficient batch operations with 'flux get all'
+  ✅ Adds comprehensive forced reconciliation option
+  ✅ Shows dependency relationships between resources
+  ✅ Calculates and displays health scores
+  ✅ Better error aggregation and reporting
+  ✅ Improved reconciliation timing and sequencing
   `);
 }
 
 async function main(): Promise<void> {
   const parsedArgs = parseArgs(Deno.args, {
     string: ["namespace", "interval"],
-    boolean: ["verbose", "continuous", "help", "watch"],
+    boolean: ["verbose", "continuous", "help", "watch", "force-reconcile"],
     alias: {
       v: "verbose",
       n: "namespace",
       c: "continuous",
       w: "watch",
+      r: "force-reconcile",
       i: "interval",
       h: "help"
     },
@@ -518,6 +607,7 @@ async function main(): Promise<void> {
       verbose: false,
       continuous: false,
       watch: false,
+      "force-reconcile": false,
       interval: "60"
     }
   });
@@ -527,6 +617,7 @@ async function main(): Promise<void> {
     namespace: parsedArgs.namespace as string | undefined,
     continuous: Boolean(parsedArgs.continuous),
     watch: Boolean(parsedArgs.watch),
+    forceReconcile: Boolean(parsedArgs["force-reconcile"]),
     help: Boolean(parsedArgs.help),
     interval: String(parsedArgs.interval || "60")
   };
@@ -537,7 +628,7 @@ async function main(): Promise<void> {
   }
 
   const interval = parseInt(args.interval) * 1000; // Convert to milliseconds
-  const checker = new FluxDeploymentChecker(args.verbose);
+  const checker = new FluxDeploymentChecker(args.verbose, args.forceReconcile);
 
   try {
     if (args.continuous || args.watch) {
