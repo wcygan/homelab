@@ -1,7 +1,7 @@
 ---
 description:
-globs: *.ts
-alwaysApply: false
+globs:
+alwaysApply: true
 ---
 # Dax Shell Scripting Guide
 
@@ -391,15 +391,6 @@ if (import.meta.main) {
 - Stream large files instead of loading into memory
 - Cache expensive operations when possible
 - Use `.stdout("piped")` only when you need to capture output
-
-## Integration with Existing Scripts
-
-For this development workspace, Dax can enhance existing scripts in:
-- [development-workspace/scripts/](mdc:development-workspace/development-workspace/development-workspace/development-workspace/scripts) - Workspace management automation
-- [anton/scripts/](mdc:anton/scripts) - Kubernetes cluster management
-- [notes/scripts/](mdc:notes/scripts) - Note management automation
-- [simple-web-stack/scripts/](mdc:simple-web-stack/scripts) - Build and deployment scripts
-- [wcygan.github.io/scripts/](mdc:wcygan.github.io/scripts) - Blog and content management
 
 ## Common Use Cases
 
