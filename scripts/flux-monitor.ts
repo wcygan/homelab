@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run --allow-run --allow-net --allow-read
 /**
- * Flux Monitor - Track Flux GitOps activity and deployments (Optimized)
+ * Flux Monitor - Track Flux GitOps activity and deployments (Compatible with Flux v2.5.1)
  *
  * This script monitors Flux activity including:
  * - Git repository sync status
@@ -117,91 +117,99 @@ class FluxMonitor {
   }
 
   async getAllFluxResources(): Promise<FluxResource[]> {
-    this.verboseLog("Fetching all Flux resources using JSON output...");
+    this.verboseLog("Fetching all Flux resources using compatible commands...");
 
-    // Use flux get all with JSON output for reliable parsing
-    const result = await this.runCommand(["flux", "get", "all", "-A", "--output", "json"]);
-    if (!result.success) {
-      this.log(`Failed to get Flux resources: ${result.error}`, "ERROR");
-      return [];
-    }
+    const resources: FluxResource[] = [];
 
     try {
-      const data = JSON.parse(result.output);
-      const resources: FluxResource[] = [];
+      // Get GitRepositories
+      const gitRepos = await this.getGitRepositories();
+      resources.push(...gitRepos);
 
-      // Process each resource type
-      for (const item of data) {
-        const conditions = item.status?.conditions || [];
-        const readyCondition = conditions.find((c: any) => c.type === "Ready");
-        const suspended = item.spec?.suspend === true;
+      // Get Kustomizations
+      const kustomizations = await this.getKustomizations();
+      resources.push(...kustomizations);
 
-        // Calculate age
-        const createdTime = new Date(item.metadata?.creationTimestamp || Date.now());
-        const age = this.calculateAge(createdTime);
-
-        // Get last reconcile time
-        const lastReconcileTime = item.status?.lastHandledReconcileAt ||
-                                 item.status?.lastAttemptedRevision ||
-                                 item.status?.lastAppliedRevision;
-
-        resources.push({
-          name: item.metadata?.name || "unknown",
-          namespace: item.metadata?.namespace || "unknown",
-          kind: item.kind || "unknown",
-          ready: readyCondition?.status === "True",
-          suspended,
-          status: this.getResourceStatus(item, readyCondition),
-          age,
-          revision: this.getRevision(item),
-          lastReconcileTime,
-          conditions: conditions.map((c: any) => ({
-            type: c.type,
-            status: c.status,
-            reason: c.reason,
-            message: c.message
-          })),
-          source: item.spec?.sourceRef ? {
-            kind: item.spec.sourceRef.kind,
-            name: item.spec.sourceRef.name,
-            namespace: item.spec.sourceRef.namespace
-          } : undefined
-        });
-      }
+      // Get HelmReleases
+      const helmReleases = await this.getHelmReleases();
+      resources.push(...helmReleases);
 
       return resources;
     } catch (error) {
-      this.log(`Failed to parse Flux resources JSON: ${error}`, "ERROR");
+      this.log(`Failed to get Flux resources: ${error}`, "ERROR");
       return [];
     }
   }
 
-  private getResourceStatus(item: any, readyCondition: any): string {
-    if (item.spec?.suspend === true) return "Suspended";
-    if (readyCondition?.status === "True") return "Ready";
-    if (readyCondition?.status === "False") {
-      return readyCondition.reason || "Not Ready";
+  async getGitRepositories(): Promise<FluxResource[]> {
+    const result = await this.runCommand(["flux", "get", "sources", "git", "-A", "--no-header"]);
+    if (!result.success) {
+      this.verboseLog(`Failed to get GitRepositories: ${result.error}`);
+      return [];
     }
-    return item.status?.phase || "Unknown";
+
+    return this.parseFluxOutput(result.output, "GitRepository");
   }
 
-  private getRevision(item: any): string | undefined {
-    return item.status?.lastAppliedRevision?.substring(0, 8) ||
-           item.status?.artifact?.revision?.substring(0, 8) ||
-           item.status?.lastAttemptedRevision?.substring(0, 8);
+  async getKustomizations(): Promise<FluxResource[]> {
+    const result = await this.runCommand(["flux", "get", "kustomizations", "-A", "--no-header"]);
+    if (!result.success) {
+      this.verboseLog(`Failed to get Kustomizations: ${result.error}`);
+      return [];
+    }
+
+    return this.parseFluxOutput(result.output, "Kustomization");
   }
 
-  private calculateAge(createdTime: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - createdTime.getTime();
+  async getHelmReleases(): Promise<FluxResource[]> {
+    const result = await this.runCommand(["flux", "get", "helmreleases", "-A", "--no-header"]);
+    if (!result.success) {
+      this.verboseLog(`Failed to get HelmReleases: ${result.error}`);
+      return [];
+    }
 
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return this.parseFluxOutput(result.output, "HelmRelease");
+  }
 
-    if (days > 0) return `${days}d${hours}h`;
-    if (hours > 0) return `${hours}h${minutes}m`;
-    return `${minutes}m`;
+  private parseFluxOutput(output: string, kind: string): FluxResource[] {
+    if (!output.trim()) return [];
+
+    const lines = output.trim().split('\n');
+    const resources: FluxResource[] = [];
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      // Parse flux output format: NAMESPACE NAME REVISION SUSPENDED READY MESSAGE
+      const parts = line.trim().split(/\s+/);
+
+      if (parts.length < 5) continue; // Skip malformed lines
+
+      const namespace = parts[0];
+      const name = parts[1];
+      const revision = parts[2];
+      const suspended = parts[3] === "True";
+      const ready = parts[4] === "True";
+      const message = parts.slice(5).join(' ') || (ready ? "Ready" : "Not Ready");
+
+      // Calculate a simple age (we don't have this info from flux CLI)
+      const age = "unknown";
+
+      resources.push({
+        name,
+        namespace,
+        kind,
+        ready,
+        suspended,
+        status: message,
+        age,
+        revision: revision?.substring(0, 8),
+        conditions: [], // We'll get detailed conditions if needed
+        source: undefined // We'll get source info if needed
+      });
+    }
+
+    return resources;
   }
 
   async getRecentEvents(): Promise<KubernetesEvent[]> {
@@ -315,19 +323,12 @@ class FluxMonitor {
         rows
       );
 
-      // Show error details for failed resources
+      // Show error details for failed resources in verbose mode
       if (this.verbose) {
         const failedResources = kindResources.filter(r => !r.ready && !r.suspended);
         for (const resource of failedResources) {
-          const errorConditions = resource.conditions.filter(c =>
-            c.status === "False" && c.message
-          );
-          if (errorConditions.length > 0) {
-            console.log(`\n  ❌ ${resource.name} errors:`);
-            for (const condition of errorConditions) {
-              console.log(`     ${condition.type}: ${condition.reason} - ${condition.message}`);
-            }
-          }
+          console.log(`\n  ❌ ${resource.name} details:`);
+          await this.showResourceDetails(resource);
         }
       }
     }
@@ -339,6 +340,50 @@ class FluxMonitor {
     const failedResources = resources.filter(r => !r.ready && !r.suspended).length;
 
     console.log(`\n📊 Summary: ${readyResources}/${totalResources - suspendedResources} ready, ${suspendedResources} suspended, ${failedResources} failed\n`);
+  }
+
+  async showResourceDetails(resource: FluxResource): Promise<void> {
+    try {
+      let cmd: string[];
+
+      if (resource.kind === "GitRepository") {
+        cmd = ["kubectl", "get", "gitrepository", resource.name, "-n", resource.namespace, "-o", "yaml"];
+      } else if (resource.kind === "Kustomization") {
+        cmd = ["kubectl", "get", "kustomization", resource.name, "-n", resource.namespace, "-o", "yaml"];
+      } else if (resource.kind === "HelmRelease") {
+        cmd = ["kubectl", "get", "helmrelease", resource.name, "-n", resource.namespace, "-o", "yaml"];
+      } else {
+        return;
+      }
+
+      const result = await this.runCommand(cmd);
+      if (result.success) {
+        // Parse YAML to extract conditions (simplified)
+        const lines = result.output.split('\n');
+        let inConditions = false;
+
+        for (const line of lines) {
+          if (line.includes('conditions:')) {
+            inConditions = true;
+            continue;
+          }
+
+          if (inConditions && line.includes('- lastTransitionTime:')) {
+            inConditions = false;
+            continue;
+          }
+
+          if (inConditions && line.includes('message:')) {
+            const message = line.split('message:')[1]?.trim().replace(/^["']|["']$/g, '');
+            if (message && message !== 'null') {
+              console.log(`     ${message}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.verboseLog(`Failed to get details for ${resource.name}: ${error}`);
+    }
   }
 
   async displayRecentEvents(): Promise<void> {
@@ -391,46 +436,63 @@ class FluxMonitor {
   }
 
   async reconcileFlux(): Promise<void> {
-    console.log("🔄 Triggering comprehensive Flux reconciliation...");
+    console.log("🔄 Triggering Flux reconciliation (compatible mode)...");
 
-    // Reconcile all sources first
-    const sourcesResult = await this.runCommand([
-      "flux", "reconcile", "source", "git", "--all", "--with-source"
-    ]);
+    try {
+      // Get all GitRepositories and reconcile them
+      this.verboseLog("Reconciling Git sources...");
+      const gitRepos = await this.getGitRepositories();
+      for (const repo of gitRepos) {
+        const result = await this.runCommand([
+          "flux", "reconcile", "source", "git", repo.name, "-n", repo.namespace, "--with-source"
+        ]);
+        if (!result.success) {
+          this.verboseLog(`Failed to reconcile GitRepository ${repo.name}: ${result.error}`);
+        }
+      }
 
-    if (sourcesResult.success) {
-      console.log("✅ Git sources reconciled");
-    } else {
-      console.log("⚠️  Git source reconciliation had issues:");
-      console.log(sourcesResult.output);
+      // Wait a bit for sources to be ready
+      await delay(2000);
+
+      // Get all Kustomizations and reconcile them
+      this.verboseLog("Reconciling Kustomizations...");
+      const kustomizations = await this.getKustomizations();
+      for (const ks of kustomizations) {
+        if (!ks.suspended) {
+          const result = await this.runCommand([
+            "flux", "reconcile", "kustomization", ks.name, "-n", ks.namespace, "--with-source"
+          ]);
+          if (!result.success) {
+            this.verboseLog(`Failed to reconcile Kustomization ${ks.name}: ${result.error}`);
+          }
+        }
+      }
+
+      // Wait a bit for kustomizations to be ready
+      await delay(2000);
+
+      // Get all HelmReleases and reconcile them
+      this.verboseLog("Reconciling HelmReleases...");
+      const helmReleases = await this.getHelmReleases();
+      for (const hr of helmReleases) {
+        if (!hr.suspended) {
+          const result = await this.runCommand([
+            "flux", "reconcile", "helmrelease", hr.name, "-n", hr.namespace, "--with-source"
+          ]);
+          if (!result.success) {
+            this.verboseLog(`Failed to reconcile HelmRelease ${hr.name}: ${result.error}`);
+          }
+        }
+      }
+
+      console.log("✅ Flux reconciliation completed");
+      console.log("⏳ Waiting for reconciliation to take effect...\n");
+      await delay(5000); // Wait for reconciliation to take effect
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log(`❌ Reconciliation failed: ${errorMessage}`, "ERROR");
     }
-
-    // Then reconcile all kustomizations
-    const ksResult = await this.runCommand([
-      "flux", "reconcile", "kustomization", "--all", "--with-source"
-    ]);
-
-    if (ksResult.success) {
-      console.log("✅ Kustomizations reconciled");
-    } else {
-      console.log("⚠️  Kustomization reconciliation had issues:");
-      console.log(ksResult.output);
-    }
-
-    // Finally reconcile all helm releases
-    const hrResult = await this.runCommand([
-      "flux", "reconcile", "helmrelease", "--all", "--with-source"
-    ]);
-
-    if (hrResult.success) {
-      console.log("✅ HelmReleases reconciled");
-    } else {
-      console.log("⚠️  HelmRelease reconciliation had issues:");
-      console.log(hrResult.output);
-    }
-
-    console.log("🔄 Reconciliation completed, waiting for changes to take effect...\n");
-    await delay(5000); // Wait for reconciliation to take effect
   }
 
   async displayStatus(): Promise<void> {
@@ -470,7 +532,7 @@ class FluxMonitor {
 
 function showHelp(): void {
   console.log(`
-🚀 Flux Monitor - Track GitOps activity and deployments (Optimized)
+🚀 Flux Monitor - Track GitOps activity and deployments (Compatible with Flux v2.5.1)
 
 Usage: deno run --allow-run --allow-net --allow-read flux-monitor.ts [options]
 
@@ -478,7 +540,7 @@ Options:
   -w, --watch           Watch mode - continuously refresh the display
   -v, --verbose         Show detailed events and error messages
   -i, --interval <sec>  Refresh interval in seconds (default: 30)
-  -r, --reconcile       Trigger comprehensive Flux reconciliation before monitoring
+  -r, --reconcile       Trigger Flux reconciliation before monitoring
   -h, --help            Show this help message
 
 Examples:
@@ -494,12 +556,12 @@ Examples:
   # Force reconciliation and then watch
   ./flux-monitor.ts --reconcile --watch
 
-Key Improvements:
-  ✅ Uses JSON parsing instead of fragile text parsing
+Key Features:
+  ✅ Compatible with Flux v2.5.1
   ✅ Shows suspended resources and their status
-  ✅ Displays error conditions and messages
+  ✅ Displays error conditions and messages in verbose mode
   ✅ Groups resources by type for better organization
-  ✅ Provides comprehensive reconciliation option
+  ✅ Provides reconciliation option
   ✅ Better error handling and status reporting
   `);
 }
