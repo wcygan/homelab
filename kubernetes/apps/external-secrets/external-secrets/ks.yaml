@@ -13,3 +13,18 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: external-secrets
+  wait: true
+  timeout: 10m
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: external-secrets
+      namespace: external-secrets
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: external-secrets-webhook
+      namespace: external-secrets
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: external-secrets-cert-controller
+      namespace: external-secrets

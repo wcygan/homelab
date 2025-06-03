@@ -1,0 +1,89 @@
+# Flux Kustomization Template
+# Use this template as a starting point for new Flux Kustomizations
+# Replace placeholders marked with < > with actual values
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: <app-name>
+  namespace: flux-system  # Flux Kustomizations should always be in flux-system
+spec:
+  # Reconciliation interval
+  interval: 10m
+
+  # Path to the manifests in the Git repository
+  path: ./kubernetes/apps/<namespace>/<app-name>/app
+
+  # Enable pruning to remove resources when they're deleted from Git
+  prune: true
+
+  # Source reference
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system  # ALWAYS include namespace to avoid lookup errors
+
+  # Target namespace for the resources
+  targetNamespace: <namespace>
+
+  # Wait for resources to be ready before marking as successful
+  # Use 'true' for:
+  # - Infrastructure components
+  # - Dependencies of other resources
+  # - Critical path deployments
+  wait: true
+
+  # Timeout for resource operations
+  # Adjust based on deployment complexity:
+  # - Simple configs: 5m
+  # - Standard apps: 5m-10m
+  # - Large apps (Airflow, monitoring): 15m
+  timeout: 5m
+
+  # Retry interval on failure
+  retryInterval: 2m
+
+  # Optional: Dependencies on other Kustomizations
+  # dependsOn:
+  #   - name: <dependency-name>
+  #     namespace: flux-system  # Usually flux-system
+
+  # Health checks ensure resources are actually running
+  # Add for critical services and deployments
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: <deployment-name>
+      namespace: <namespace>
+    # Add more health checks as needed:
+    # - apiVersion: apps/v1
+    #   kind: StatefulSet
+    #   name: <statefulset-name>
+    #   namespace: <namespace>
+    # - apiVersion: batch/v1
+    #   kind: Job
+    #   name: <job-name>
+    #   namespace: <namespace>
+
+  # Optional: Patches to apply to all resources
+  # patches:
+  #   - patch: |-
+  #       apiVersion: v1
+  #       kind: Namespace
+  #       metadata:
+  #         name: not-used
+  #         labels:
+  #           environment: production
+  #     target:
+  #       kind: Namespace
+
+  # Optional: Post-build variable substitution
+  # postBuild:
+  #   substitute:
+  #     cluster_name: "my-cluster"
+  #     region: "us-east-1"
+  #   substituteFrom:
+  #     - kind: ConfigMap
+  #       name: cluster-config
+  #     - kind: Secret
+  #       name: cluster-secrets

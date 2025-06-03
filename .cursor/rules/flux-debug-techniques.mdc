@@ -1,0 +1,100 @@
+---
+description: Memorizes the techniques for investigating, debugging, and fixing Flux resources and GitOps reconciliations.
+globs:
+alwaysApply: false
+---
+Rule Name: flux-debug-techniques
+Description: Memorizes the techniques for investigating, debugging, and fixing Flux resources and GitOps reconciliations.
+# Flux Debugging & Fix Techniques
+
+This rule captures the step-by-step methods used to diagnose and resolve Flux reconciliation issues, including HelmRelease and Kustomization troubleshooting.
+
+## 1. Inspect Flux Resources
+- List all Flux resources and their statuses:
+  ```bash
+  flux get all -A
+  ```
+- Check specific HelmRelease:
+  ```bash
+  flux get helmrelease <name> -n <namespace>
+  kubectl describe helmrelease <name> -n <namespace>
+  ```
+- Check specific Kustomization:
+  ```bash
+  flux get kustomization <name> -n <namespace>
+  kubectl describe kustomization <name> -n <namespace>
+  ```
+
+## 2. Verify Flux Controllers & CRDs
+- Ensure controllers are ready:
+  ```bash
+  flux check
+  ```
+- Verify CRDs exist (`helmreleases.helm.toolkit.fluxcd.io`, `kustomizations.kustomize.toolkit.fluxcd.io`, etc.)
+
+## 3. Analyze Events & Logs
+- Inspect Kubernetes events for Flux failures:
+  ```bash
+  kubectl get events -n <namespace> --sort-by='.metadata.creationTimestamp'
+  ```
+- Examine HelmRelease events for schema or upgrade errors.
+- View controller logs:
+  ```bash
+  kubectl logs -n <namespace> deploy/kustomize-controller
+  kubectl logs -n <namespace> deploy/helm-controller
+  ```
+
+## 4. Identify Schema Validation Errors
+- Look for messages like:
+  ```text
+  Additional property <field> is not allowed
+  ```
+- Confirm invalid fields via:
+  ```bash
+  kubectl get helmrelease <name> -n <namespace> -o json | jq '.spec.values'
+  ```
+
+## 5. Direct Patching of HelmRelease
+- Apply a JSON patch to remove unsupported fields:
+  ```bash
+  kubectl patch helmrelease <name> -n <namespace> --type=json \
+    -p='[{"op":"remove","path":"/spec/values/<path_to_field>"}]'
+  ```
+
+## 6. Force Reconciliation
+- Trigger HelmRelease reconciliation:
+  ```bash
+  flux reconcile helmrelease <name> -n <namespace> --with-source
+  ```
+- Trigger Kustomization reconciliation:
+  ```bash
+  flux reconcile kustomization <name> -n <namespace> --with-source
+  flux reconcile kustomization cluster-apps -n flux-system --with-source
+  ```
+
+## 7. Suspend & Resume Kustomizations
+- Temporarily suspend stuck Kustomization:
+  ```bash
+  flux suspend kustomization <name> -n <namespace>
+  ```
+- Resume to force a fresh start:
+  ```bash
+  flux resume kustomization <name> -n <namespace>
+  ```
+
+## 8. Verify Git-Sync Sidecars (for Airflow DAGs)
+- Check pods for `git-sync` container:
+  ```bash
+  kubectl get pods -n airflow -l component=scheduler -o json | jq '.items[0].spec.containers[].name'
+  ```
+- Inspect git-sync logs:
+  ```bash
+  kubectl logs -n airflow -l component=scheduler -c git-sync --tail=10
+  ```
+
+## 9. Validate Application-Level Fixes
+- Inspect specific app HelmRelease states and history (`helmrelease/history`).
+- Pin chart versions or delete immutable resources to handle breaking changes.
+- Use Flux `dependsOn` and healthChecks where dependencies exist.
+
+By following these steps, you can systematically diagnose and correct Flux reconciliation failures, ensuring a stable GitOps pipeline.

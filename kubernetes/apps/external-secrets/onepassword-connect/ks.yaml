@@ -13,3 +13,6 @@ spec:
     namespace: flux-system
   targetNamespace: external-secrets
   wait: true
+  dependsOn:
+    - name: external-secrets
+      namespace: flux-system
