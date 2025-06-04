@@ -2,7 +2,6 @@
 
 ## Stuff to install
 
-- Cache: [DragonflyDB](https://www.dragonflydb.io/docs/managing-dragonfly/operator/installation)
 - 6 x 1TB WD_BLACK 1TB SN7100 NVMe (2 per node)
 - Object Storage: [Rook Ceph](https://rook.io/docs/rook/latest-release/Getting-Started/intro/)
 - Log Aggregation: [Loki](https://github.com/grafana/loki)
