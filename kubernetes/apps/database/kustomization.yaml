@@ -7,3 +7,5 @@ components:
   - ../../components/common # Include common components like namespace creation helper
 resources:
   - ./test-db/ks.yaml # Reference the Kustomization for the test database
+  - ./dragonfly-operator/ks.yaml # Reference the Kustomization for the Dragonfly operator
+  - ./test-cache/ks.yaml # Reference the Kustomization for the test cache

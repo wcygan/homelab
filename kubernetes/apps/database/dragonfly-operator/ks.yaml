@@ -1,0 +1,26 @@
+# kubernetes/apps/database/dragonfly-operator/ks.yaml
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app dragonfly-operator
+  namespace: flux-system # Flux Kustomizations are in flux-system
+spec:
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  interval: 15m # Operator, fairly important
+  path: ./kubernetes/apps/database/dragonfly-operator/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system # Explicitly set sourceRef namespace
+  targetNamespace: database # Deploy operator to database namespace
+  timeout: 5m
+  wait: true
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: dragonfly-operator
+      namespace: database

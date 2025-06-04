@@ -1,0 +1,33 @@
+# kubernetes/apps/database/test-cache/app/dragonfly.yaml
+---
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: test-cache
+  namespace: database
+spec:
+  # Set replicas to 1 for testing (1 primary instance only)
+  replicas: 1
+
+  # Resource configuration for testing
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  # Storage configuration - uses default StorageClass (local-path)
+  storage:
+    requests:
+      storage: "1Gi" # Small storage for testing
+
+  # Redis-compatible port configuration
+  redis:
+    port: 6379
+
+  # Optional: Configure for testing environment
+  env:
+    - name: DRAGONFLY_MEMORY_STATS
+      value: "true"

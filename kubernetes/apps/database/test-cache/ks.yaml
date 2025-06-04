@@ -1,0 +1,29 @@
+# kubernetes/apps/database/test-cache/ks.yaml
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app test-cache
+  namespace: flux-system # Flux Kustomizations are in flux-system
+spec:
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  dependsOn:
+    - name: dragonfly-operator # Depends on the Dragonfly operator
+      namespace: flux-system # The Kustomization for dragonfly-operator is in flux-system
+  interval: 30m # Standard interval for applications
+  path: ./kubernetes/apps/database/test-cache/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system # Explicitly set sourceRef namespace
+  targetNamespace: database # Deploy cache to the 'database' namespace
+  timeout: 10m # Allow more time for cache provisioning
+  wait: true
+  healthChecks:
+    - apiVersion: dragonflydb.io/v1alpha1
+      kind: Dragonfly
+      name: test-cache
+      namespace: database
