@@ -13,3 +13,4 @@ resources:
   - ./1password-connect.yaml
   - ./kubeai.yaml
   - ./apache-airflow.yaml
+  - ./cloudnative-pg.yaml

@@ -1,0 +1,9 @@
+# kubernetes/apps/database/kustomization.yaml
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: database # Define the namespace name
+components:
+  - ../../components/common # Include common components like namespace creation helper
+resources:
+  - ./test-db/ks.yaml # Reference the Kustomization for the test database

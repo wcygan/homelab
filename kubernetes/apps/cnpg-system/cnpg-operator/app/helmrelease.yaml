@@ -1,0 +1,40 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cnpg-operator
+  namespace: cnpg-system # Operator's HelmRelease should be in its target namespace
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: cloudnative-pg
+      # renovate: datasource=helm depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
+      version: "0.24.0" # Use a specific version from https://github.com/cloudnative-pg/charts/releases
+      sourceRef:
+        kind: HelmRepository
+        name: cloudnative-pg # Matches the HelmRepository name
+        namespace: flux-system # HelmRepository is in flux-system
+  install:
+    remediation:
+      retries: 3
+    crds: CreateReplace # Manage CRDs
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    crds: CreateReplace # Manage CRDs
+    cleanupOnFail: true
+  # Default values are generally fine for the operator itself.
+  # The operator will be installed in the cnpg-system namespace as defined in ks.yaml
+  # and this HelmRelease metadata.namespace.
+  values:
+    # Per documentation, the default deployment name for Helm installs is cnpg-cloudnative-pg
+    # However, the ks.yaml health check expects cnpg-controller-manager, which is the default for manifest installs.
+    # To align with the health check and common practice for manifest-based operator installs (which Helm often wraps):
+    fullnameOverride: cnpg-controller-manager
+    # For a test setup, we can disable metrics to reduce resource footprint further if not needed.
+    # metrics:
+    #   enabled: false
+    # serviceMonitor:
+    #   enabled: false

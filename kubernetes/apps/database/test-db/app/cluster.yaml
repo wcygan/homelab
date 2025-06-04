@@ -1,0 +1,42 @@
+# kubernetes/apps/database/test-db/app/cluster.yaml
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: test-postgres-cluster # Matches the health check in ks.yaml
+  namespace: database
+spec:
+  instances: 1 # A single instance for experimental purposes
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.3 # Specify a recent PostgreSQL version
+
+  # Minimal resources for an experimental DB
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  # Storage configuration - uses default StorageClass (local-path)
+  storage:
+    size: "5Gi" # Small storage for testing
+    # storageClass: "local-path" # Explicitly can be set, but will use default if omitted
+
+  # Enable monitoring if Prometheus is available and desired
+  # monitoring:
+  #   enablePodMonitor: true
+
+  # Bootstrap a database and a user
+  # The user 'appuser' and database 'appdb' will be created.
+  # CNPG will expect a secret named 'test-postgres-cluster-app' (following <clusterName>-app convention)
+  # with 'username' and 'password' keys for the application user.
+  bootstrap:
+    initdb:
+      database: appdb
+      owner: appuser # This user will be created, credentials from test-postgres-cluster-app secret
+
+  # PostgreSQL configuration (optional, defaults are usually fine for testing)
+  # postgresql:
+  #   parameters:
+  #     max_connections: '10'
