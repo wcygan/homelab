@@ -2,10 +2,16 @@
 
 ## Stuff to install
 
-- Database: [CloudNative Postgres](https://cloudnative-pg.io/documentation/1.26/installation_upgrade/)
 - Cache: [DragonflyDB](https://www.dragonflydb.io/docs/managing-dragonfly/operator/installation)
-- Pi Hole: https://pi-hole.net/
+- 6 x 1TB WD_BLACK 1TB SN7100 NVMe (2 per node)
 - Object Storage: [Rook Ceph](https://rook.io/docs/rook/latest-release/Getting-Started/intro/)
+- Log Aggregation: [Loki](https://github.com/grafana/loki)
+  - Maybe this can be used for Kubernetes Pod logs (especially from Airflow)
+  - Use with https://github.com/grafana/alloy
+  - Docs:
+    - https://grafana.com/docs/loki/latest/setup/install/helm/
+    - https://grafana.com/docs/alloy/latest/set-up/install/kubernetes/
+- Pi Hole: https://pi-hole.net/
 - Message Queue: [RedPanda](https://docs.redpanda.com/current/deploy/deployment-option/self-hosted/kubernetes/get-started-dev/)
 - Todo List: https://github.com/wcygan/simple-web-stack
 - Immich: https://github.com/immich-app/immich
