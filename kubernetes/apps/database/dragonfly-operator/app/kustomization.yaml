@@ -27,12 +27,6 @@ patches:
         path: /metadata/namespace
         value: database
   - target:
-      kind: ClusterRole
-      name: dragonfly-operator
-    patch: |
-      # ClusterRole doesn't have namespace, no change needed
-      $patch: retain
-  - target:
       kind: ClusterRoleBinding
       name: dragonfly-operator
     patch: |
