@@ -18,10 +18,15 @@ spec:
       cpu: "500m"
       memory: "512Mi"
 
-  # Storage configuration - uses default StorageClass (local-path)
-  storage:
-    requests:
-      storage: "1Gi" # Small storage for testing
+  # Optional: Configure snapshots with storage (replaces the invalid storage field)
+  snapshot:
+    persistentVolumeClaimSpec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: "1Gi" # Small storage for testing
+      storageClassName: "local-path" # Use local-path storage class
 
   # Redis-compatible port configuration
   redis:
