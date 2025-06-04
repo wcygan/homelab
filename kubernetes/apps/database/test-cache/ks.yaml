@@ -11,7 +11,7 @@ spec:
       app.kubernetes.io/name: *app
   dependsOn:
     - name: dragonfly-operator # Depends on the Dragonfly operator
-      namespace: flux-system # The Kustomization for dragonfly-operator is in flux-system
+      namespace: database # The Kustomization for dragonfly-operator is in database namespace
   interval: 30m # Standard interval for applications
   path: ./kubernetes/apps/database/test-cache/app
   prune: true
