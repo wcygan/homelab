@@ -11,7 +11,7 @@ spec:
       app.kubernetes.io/name: *app
   dependsOn:
     - name: cnpg-operator # Depends on the CloudNativePG operator in cnpg-system
-      namespace: flux-system # The Kustomization for cnpg-operator is in flux-system
+      namespace: cnpg-system # The Kustomization for cnpg-operator is in cnpg-system
   interval: 30m # Standard interval for applications
   path: ./kubernetes/apps/database/test-db/app
   prune: true
