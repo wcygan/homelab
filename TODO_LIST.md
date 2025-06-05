@@ -1,6 +1,7 @@
 # Todo List
 
 *** https://www.anthropic.com/engineering/claude-code-best-practices
+*** Setup MCP servers with Claude Code
 
 ## Stuff to install
 
