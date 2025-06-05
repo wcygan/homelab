@@ -1,5 +1,7 @@
 # Todo List
 
+*** https://www.anthropic.com/engineering/claude-code-best-practices
+
 ## Stuff to install
 
 - 6 x 1TB WD_BLACK 1TB SN7100 NVMe (2 per node)
