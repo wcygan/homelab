@@ -24,7 +24,24 @@
       "Bash(fd:*)",
       "Bash(kubectl delete helmrelease:*)",
       "Bash(flux reconcile:*)",
-      "Bash(./scripts/flux-deployment-check.ts --short)"
+      "Bash(./scripts/flux-deployment-check.ts --short)",
+      "Bash(flux check:*)",
+      "Bash(flux get all:*)",
+      "Bash(helm show values:*)",
+      "Bash(flux get kustomizations:*)",
+      "Bash(flux suspend:*)",
+      "Bash(flux resume hr:*)",
+      "Bash(flux get hr:*)",
+      "Bash(flux get kustomization:*)",
+      "Bash(flux get source helm:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(helm repo add:*)",
+      "Bash(helm repo:*)",
+      "Bash(helm search:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(kubectl delete:*)"
     ],
     "deny": []
   }
