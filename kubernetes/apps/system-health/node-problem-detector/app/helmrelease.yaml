@@ -1,0 +1,131 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: node-problem-detector
+spec:
+  interval: 30m
+  retryInterval: 2m
+  timeout: 10m
+  chart:
+    spec:
+      chart: node-problem-detector
+      version: 2.3.20
+      sourceRef:
+        kind: HelmRepository
+        name: deliveryhero
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    # Image configuration
+    image:
+      repository: registry.k8s.io/node-problem-detector/node-problem-detector
+      tag: v0.8.20
+      pullPolicy: IfNotPresent
+
+    # Security settings - required for node monitoring
+    securityContext:
+      privileged: true
+
+    # Priority class for system-critical workload
+    priorityClassName: system-node-critical
+
+    # Network configuration
+    hostNetwork: false
+    hostPID: false
+    dnsPolicy: ClusterFirst
+
+    # RBAC
+    rbac:
+      create: true
+
+    # Service account
+    serviceAccount:
+      create: true
+      name: node-problem-detector
+
+    # Node selector and tolerations
+    nodeSelector: {}
+    
+    # Tolerate all node taints to run on every node
+    tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+      - operator: Exists
+        effect: PreferNoSchedule
+
+    # Affinity - ensure one pod per node
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: kubernetes.io/os
+              operator: In
+              values:
+              - linux
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 10m
+        memory: 80Mi
+      limits:
+        cpu: 100m
+        memory: 160Mi
+
+    # Monitoring configuration
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        interval: 30s
+        scrapeTimeout: 10s
+
+    # Problem detectors configuration
+    settings:
+      # System log monitor
+      log_monitors:
+        - /config/kernel-monitor.json
+        - /config/docker-monitor.json
+        - /config/systemd-monitor.json
+
+      # Custom plugin monitor (optional)
+      custom_plugin_monitors: []
+
+    # Volume mounts for log access
+    volumes:
+      - name: kmsg
+        hostPath:
+          path: /dev/kmsg
+      - name: log
+        hostPath:
+          path: /var/log
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+
+    volumeMounts:
+      - name: kmsg
+        mountPath: /dev/kmsg
+        readOnly: true
+      - name: log
+        mountPath: /var/log
+        readOnly: true
+      - name: localtime
+        mountPath: /etc/localtime
+        readOnly: true
+
+    # Additional annotations
+    annotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: "false"

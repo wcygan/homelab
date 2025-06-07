@@ -14,3 +14,5 @@ resources:
   - ./kubeai.yaml
   - ./apache-airflow.yaml
   - ./cloudnative-pg.yaml
+  # renovate: datasource=helm depName=node-problem-detector lookupName=node-problem-detector registryUrl=https://charts.deliveryhero.io/
+  - ./deliveryhero.yaml
