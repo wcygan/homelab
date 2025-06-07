@@ -94,8 +94,6 @@ spec:
         enabled: true
         size: 10Gi
         storageClassName: local-path  # Use your cluster's default storage class
-        accessModes:
-          - ReadWriteOnce
 
     # Configure Airflow to use local file logging
     config:

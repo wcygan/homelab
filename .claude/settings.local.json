@@ -22,7 +22,9 @@
       "Bash(rg:*)",
       "Bash(true)",
       "Bash(fd:*)",
-      "Bash(kubectl delete helmrelease:*)"
+      "Bash(kubectl delete helmrelease:*)",
+      "Bash(flux reconcile:*)",
+      "Bash(./scripts/flux-deployment-check.ts --short)"
     ],
     "deny": []
   }
