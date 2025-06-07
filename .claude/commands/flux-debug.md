@@ -2,8 +2,12 @@ Analyze and debug Flux deployment issues in the cluster using systematic trouble
 
 ## Initial Assessment
 
-First, get a comprehensive view of all Flux resources:
+First, check Flux system health and get a comprehensive view of all resources:
 ```bash
+# Check Flux components and prerequisites
+flux check
+
+# Get all Flux resources status
 flux get all -A
 ```
 
@@ -72,6 +76,29 @@ kubectl logs -n flux-system deployment/source-controller -f
 5. **Schema Validation Failures**
    - Compare values against chart schema: `helm show values <repo>/<chart> --version <version>`
 
+6. **StatefulSet Immutable Field Errors**
+   - Error: "StatefulSet.apps is invalid: spec: Forbidden: updates to statefulset spec"
+   - Solution: Delete and recreate the StatefulSet
+   ```bash
+   flux suspend helmrelease <name> -n <namespace>
+   kubectl delete statefulset <name> -n <namespace> --cascade=orphan
+   kubectl delete pod <pod-name> -n <namespace> --force --grace-period=0
+   kubectl delete helmrelease <name> -n <namespace>
+   flux reconcile kustomization <parent-kustomization> -n flux-system --with-source
+   ```
+
+7. **PVC Access Mode Conflicts (Local-Path Provisioner)**
+   - Error: "NodePath only supports ReadWriteOnce and ReadWriteOncePod access modes"
+   - Solution: Delete pending PVC and ensure chart doesn't request ReadWriteMany
+   ```bash
+   kubectl delete pvc <pvc-name> -n <namespace>
+   ```
+
+8. **Duplicate Volume Mount Paths**
+   - Error: "volumeMounts[].mountPath: Invalid value: must be unique"
+   - Solution: Review HelmRelease values for duplicate mount paths
+   - Common cause: Persistent logging conflicts with other mounts
+
 ## Recovery Actions
 
 ### Soft Reset (Suspend/Resume)
@@ -85,6 +112,22 @@ flux resume kustomization <name> -n flux-system
 ```bash
 kubectl delete helmchart -n flux-system <namespace>-<helmrelease-name>
 flux reconcile helmrelease <name> -n <namespace> --with-source
+```
+
+### Complete Resource Recreation (for immutable resource errors)
+```bash
+# 1. Suspend the HelmRelease
+flux suspend helmrelease <name> -n <namespace>
+
+# 2. Delete all related resources
+kubectl delete all -l release=<name> -n <namespace>
+kubectl delete pvc -l release=<name> -n <namespace>
+
+# 3. Delete the HelmRelease
+kubectl delete helmrelease <name> -n <namespace>
+
+# 4. Force parent Kustomization to recreate everything
+flux reconcile kustomization cluster-apps -n flux-system
 ```
 
 ### Trace Resource Origin
@@ -109,3 +152,14 @@ After investigation, provide:
 3. Recommended fix with exact commands
 4. Any configuration changes needed
 5. Verification steps to confirm resolution
+
+## Key Troubleshooting Pattern
+
+Most Flux issues follow this resolution pattern:
+**Suspend → Delete → Reconcile**
+
+This is especially effective for:
+- StatefulSet immutable field errors
+- PVC access mode conflicts
+- Stuck resources that won't update
+- HelmRelease upgrade failures

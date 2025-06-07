@@ -41,7 +41,10 @@
       "Bash(helm search:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(kubectl delete:*)"
+      "Bash(kubectl delete:*)",
+      "Bash(flux describe:*)",
+      "Bash(flux get sources git:*)",
+      "Bash(flux get helmrelease:*)"
     ],
     "deny": []
   }
