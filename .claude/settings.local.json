@@ -15,7 +15,13 @@
       "Bash(cat:*)",
       "Bash(grep:*)",
       "Bash(git add:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(./scripts/flux-deployment-check.ts)",
+      "Bash(flux reconcile kustomization:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(rg:*)",
+      "Bash(true)",
+      "Bash(fd:*)"
     ],
     "deny": []
   }
