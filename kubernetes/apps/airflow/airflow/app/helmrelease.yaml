@@ -88,14 +88,12 @@ spec:
     # Security
     webserverSecretKey: ""  # Will be auto-generated
 
-    # Persistent logging configuration
-    logs:
-      persistence:
-        enabled: true
-        size: 10Gi
-        storageClassName: local-path  # Use your cluster's default storage class
+    # Persistent logging configuration - DISABLED due to chart volume mount conflicts
+    # logs:
+    #   persistence:
+    #     enabled: false
 
-    # Configure Airflow to use local file logging
+    # Configure Airflow logging
     config:
       logging:
         # Use local file logging instead of trying to fetch from pods
@@ -105,8 +103,6 @@ spec:
         # Configure log retention
         log_retention_days: "30"
       core:
-        # Ensure logs are written to the persistent volume
-        base_log_folder: "/opt/airflow/logs"
         # Enable log fetching from local files
         enable_xcom_pickling: "False"
       webserver:
@@ -115,7 +111,7 @@ spec:
         log_auto_tailing_offset: "30"
         log_animation_speed: "1000"
 
-    # Resource limits and volume mounts
+    # Resource limits
     webserver:
       resources:
         requests:
@@ -124,14 +120,6 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
-      # Mount logs volume
-      extraVolumes:
-        - name: airflow-logs
-          persistentVolumeClaim:
-            claimName: airflow-logs
-      extraVolumeMounts:
-        - name: airflow-logs
-          mountPath: /opt/airflow/logs
 
     scheduler:
       resources:
@@ -141,14 +129,6 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
-      # Mount logs volume
-      extraVolumes:
-        - name: airflow-logs
-          persistentVolumeClaim:
-            claimName: airflow-logs
-      extraVolumeMounts:
-        - name: airflow-logs
-          mountPath: /opt/airflow/logs
 
     # If using KubernetesExecutor, configure worker resources
     workers:
@@ -159,14 +139,6 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
-      # Mount logs volume for workers too
-      extraVolumes:
-        - name: airflow-logs
-          persistentVolumeClaim:
-            claimName: airflow-logs
-      extraVolumeMounts:
-        - name: airflow-logs
-          mountPath: /opt/airflow/logs
 
     # Disable example DAGs in production
     env:
