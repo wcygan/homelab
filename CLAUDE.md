@@ -227,3 +227,141 @@ kubectl -n {namespace} describe {kind} {name}
 - Infinite retries in HelmRelease → Resource exhaustion
 - Missing resource constraints → Pod scheduling issues
 - Wrong ingress class → Service unreachable
+
+## Configuration Analysis & Version Management
+
+### AI Agent Guidelines for Chart Updates
+
+When analyzing Kubernetes configurations and comparing against latest versions:
+
+#### Guiding Principles
+- **Declarative First**: All changes must be made via Git repository modifications, not direct kubectl/helm commands
+- **Version Pinning**: Charts and images are intentionally pinned for predictable deployments
+- **Impact Analysis**: Don't just update versions - analyze breaking changes, value schema changes, and compatibility
+- **Follow Patterns**: Maintain consistency with existing repository structure and conventions
+- **Safety First**: Distinguish between patch/minor/major upgrades with appropriate warnings
+
+#### Analysis Workflow
+
+**Phase 1: Discovery**
+1. Locate HelmRelease at `kubernetes/apps/<namespace>/<app>/app/helmrelease.yaml`
+2. Extract: chart name, pinned version, sourceRef, custom values
+3. Find source repository in `kubernetes/flux/meta/repos/`
+
+**Phase 2: Comparison**
+1. Determine latest stable versions (patch/minor/major)
+2. Compare values.yaml between current and target versions
+3. Identify deprecated/changed configuration keys
+4. Check custom values compatibility with new schema
+5. Review official changelogs for breaking changes
+
+**Phase 3: Remediation**
+1. Provide specific version upgrade recommendation
+2. Explain impact level (patch/minor/major)
+3. Supply exact YAML diffs for HelmRelease updates
+4. Include any required values migration
+5. Note container image updates if applicable
+
+This structured approach ensures safe, informed upgrades that align with GitOps principles.
+
+## Advanced Troubleshooting & Debugging
+
+### Systematic Troubleshooting Methodology
+
+When Flux deployments fail, follow this top-down investigation approach starting with high-level abstractions and drilling down only when necessary.
+
+#### Step 1: Initial Triage - The Big Picture
+
+**Always start here** to get system-wide health status:
+
+```bash
+# Critical first command - shows health of all Flux resources
+flux get all -A
+
+# Identify failing resources with Ready: False status
+# Note the KIND, NAME, and NAMESPACE of any failures
+```
+
+#### Step 2: Isolate the Failure
+
+Once you've identified a failing resource, investigate specifically:
+
+```bash
+# Most valuable debugging command - shows Conditions and Events
+flux describe helmrelease <name> -n <namespace>
+flux describe kustomization <name> -n flux-system
+
+# Check responsible controller logs
+kubectl logs -n flux-system deployment/helm-controller -f      # HelmRelease issues
+kubectl logs -n flux-system deployment/kustomize-controller -f # Kustomization issues
+kubectl logs -n flux-system deployment/source-controller -f    # Source issues
+
+# Force reconciliation with fresh source fetch
+flux reconcile helmrelease <name> -n <namespace> --with-source
+```
+
+#### Step 3: Common Failure Patterns
+
+**A. Source Errors (GitRepository/HelmRepository Not Ready)**
+- **Symptoms**: Sources not ready, "GitRepository not found" errors
+- **Fix**: Check authentication, verify `namespace: flux-system` in sourceRef
+- **Debug**: `flux describe gitrepository flux-system -n flux-system`
+
+**B. Helm Chart Failures (HelmRelease Not Ready)**
+- **Schema Validation**: Values don't match chart schema
+  - Use: `helm show values <repo>/<chart> --version <version>`
+- **Immutable Fields**: Resource cannot be updated
+  - Solution: `flux suspend` → `kubectl delete` → `flux resume`
+- **Hook Failures**: Check Job/Pod logs for failing post-install hooks
+
+**C. Kustomize Build Failures (Kustomization Not Ready)**
+- **Debug locally**: `flux build kustomization <name> -n flux-system --path ./kubernetes/apps/...`
+- **Common causes**: YAML syntax errors, missing file references, invalid patches
+
+**D. Dependency Errors**
+- **Missing resources**: Application needs CRDs, secrets, or other dependencies
+- **Fix**: Add `dependsOn` to Kustomization or HelmRelease:
+  ```yaml
+  spec:
+    dependsOn:
+      - name: dependency-kustomization-name
+  ```
+
+**E. SOPS Secret Decryption**
+- **Check**: `sops-age` secret exists in `flux-system` namespace
+- **Validate**: `sops -d <file.sops.yaml>` works locally
+- **Verify**: `.sops.yaml` configuration is correct
+
+#### Step 4: Advanced Recovery Techniques
+
+**Suspend and Resume (Soft Reset)**
+```bash
+flux suspend kustomization <name> -n flux-system
+# Manual fixes if needed
+flux resume kustomization <name> -n flux-system
+```
+
+**Trace Resource Origin**
+```bash
+flux trace --api-version apps/v1 --kind Deployment --name <name> -n <namespace>
+```
+
+**Force Chart Re-fetch**
+```bash
+# Delete cached HelmChart to force complete re-fetch
+kubectl delete helmchart -n flux-system <namespace>-<helmrelease-name>
+flux reconcile helmrelease <name> -n <namespace> --with-source
+```
+
+**Emergency Debugging Commands**
+```bash
+# Check all events across cluster
+kubectl get events -A --sort-by='.lastTimestamp'
+
+# Monitor real-time Flux activity
+flux logs --follow --tail=50
+
+# Validate configuration before applying
+./scripts/validate-manifests.sh
+./scripts/check-flux-config.ts
+```
