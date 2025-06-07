@@ -29,3 +29,8 @@ tailscale-oauth-client-secret.txt
 kubeai.mp4
 test.mp4
 testing.mp4
+
+# local files
+inventory.json
+progress/
+snapshots/

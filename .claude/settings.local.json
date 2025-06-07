@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.talos.dev)",
+      "Bash(talosctl get:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl describe:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(chmod:*)",
+      "Bash(deno task:*)",
+      "Bash(mise install:*)",
+      "Bash(git add:*)",
+      "Bash(mkdir:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)"
+    ],
+    "deny": []
+  }
+}

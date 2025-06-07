@@ -3,12 +3,23 @@
     "@std/async": "jsr:@std/async@^1.0.11",
     "@std/cli": "jsr:@std/cli@^1.0.18",
     "@std/fs": "jsr:@std/fs@^1.0.17",
-    "@std/path": "jsr:@std/path@^1.1.0"
+    "@std/path": "jsr:@std/path@^1.1.0",
+    "@std/yaml": "jsr:@std/yaml@^1.0.5",
+    "@cliffy/ansi": "jsr:@cliffy/ansi@^1.0.0-rc.7",
+    "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",
+    "@cliffy/prompt": "jsr:@cliffy/prompt@^1.0.0-rc.7",
+    "@cliffy/table": "jsr:@cliffy/table@^1.0.0-rc.7",
+    "@david/dax": "jsr:@david/dax@^0.42.0"
   },
   "tasks": {
     "check-flux-config": "deno run --allow-read scripts/check-flux-config.ts",
     "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts",
     "check-flux-deployment": "deno run --allow-read --allow-net --allow-run scripts/flux-deployment-check.ts",
-    "monitor-flux": "deno run --allow-read --allow-net --allow-run scripts/flux-monitor.ts"
+    "monitor-flux": "deno run --allow-read --allow-net --allow-run scripts/flux-monitor.ts",
+    "hw:inventory": "deno run --allow-all scripts/hardware-inventory.ts",
+    "hw:validate": "deno run --allow-all scripts/validate-talos-config.ts",
+    "node:maintain": "deno run --allow-all scripts/node-maintenance.ts",
+    "hw:detect": "deno run --allow-all scripts/detect-hardware-changes.ts",
+    "health:monitor": "deno run --allow-all scripts/cluster-health-monitor.ts"
   }
 }
