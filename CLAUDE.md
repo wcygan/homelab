@@ -66,6 +66,25 @@ task talos:reset
 
 ## Adding New Applications
 
+### Pre-Deployment Verification
+
+1. **Verify Helm chart exists and version is available**:
+   ```bash
+   helm search repo <repo>/<chart> --versions
+   ```
+
+2. **Check current Flux schema** (no `retryInterval` in v2):
+   ```bash
+   flux install --export | grep -A20 HelmRelease
+   ```
+
+3. **Validate dependencies exist**:
+   ```bash
+   flux get kustomization -A | grep <dependency-name>
+   ```
+
+### App Deployment Steps
+
 1. Create namespace directory: `kubernetes/apps/{namespace}/`
 2. Create app structure:
    ```
@@ -90,7 +109,7 @@ task talos:reset
        labels:
          app.kubernetes.io/name: *app
      interval: 1h
-     retryInterval: 2m
+     # NO retryInterval field in Flux v2!
      timeout: 10m
      prune: true
      wait: true
@@ -99,9 +118,14 @@ task talos:reset
        kind: GitRepository
        name: flux-system
        namespace: flux-system
+     dependsOn:  # Use actual namespace, not flux-system
+       - name: <dependency-kustomization-name>
+         namespace: <dependency-actual-namespace>
    ```
 
-4. For HelmReleases, reference OCIRepository from `kubernetes/flux/meta/repos/`
+4. For HelmReleases, reference HelmRepository from `kubernetes/flux/meta/repos/`:
+   - Add new repos to `kubernetes/flux/meta/repos/` if needed
+   - Update `kubernetes/flux/meta/repos/kustomization.yaml` to include new repo file
 
 ## Key Patterns & Conventions
 
@@ -178,6 +202,16 @@ kubectl -n {namespace} describe {kind} {name}
 - Always check Flux dependencies first: `kubectl get kustomization -A`
 - For app issues, trace: Kustomization → HelmRelease → Pods
 - Check git sync: `flux get sources git -A`
+- **Force resource recreation when cached**:
+  ```bash
+  kubectl delete helmchart -n flux-system <namespace>-<name>
+  flux reconcile hr <name> -n <namespace> --with-source
+  ```
+- **Check correct dependency naming**:
+  ```bash
+  flux get kustomization -A | grep <pattern>
+  # Dependencies use: name: <kustomization-name>, namespace: <actual-namespace>
+  ```
 
 ## CI/CD Integration
 
@@ -227,6 +261,10 @@ kubectl -n {namespace} describe {kind} {name}
 - Infinite retries in HelmRelease → Resource exhaustion
 - Missing resource constraints → Pod scheduling issues
 - Wrong ingress class → Service unreachable
+- **Invalid `retryInterval` field** → Schema validation errors (removed in Flux v2)
+- **Wrong dependency namespace** → Use actual namespace, not flux-system
+- **Git commits required** → Flux only deploys committed changes
+- **Chart version mismatch** → Always verify with `helm search repo`
 
 ## Configuration Analysis & Version Management
 
@@ -320,12 +358,17 @@ flux reconcile helmrelease <name> -n <namespace> --with-source
 
 **D. Dependency Errors**
 - **Missing resources**: Application needs CRDs, secrets, or other dependencies
-- **Fix**: Add `dependsOn` to Kustomization or HelmRelease:
+- **Fix**: Add `dependsOn` to Kustomization with correct namespace:
   ```yaml
   spec:
     dependsOn:
       - name: dependency-kustomization-name
+        namespace: dependency-actual-namespace  # NOT flux-system unless it really is
   ```
+- **Common dependencies**:
+  - `external-secrets` in namespace `external-secrets`
+  - `cert-manager` in namespace `cert-manager`
+  - `local-path-provisioner` in namespace `storage`
 
 **E. SOPS Secret Decryption**
 - **Check**: `sops-age` secret exists in `flux-system` namespace
@@ -365,3 +408,56 @@ flux logs --follow --tail=50
 ./scripts/validate-manifests.sh
 ./scripts/check-flux-config.ts
 ```
+
+## App Deployment Debugging Workflow
+
+When deploying a new app via GitOps, follow this systematic approach:
+
+### 1. Initial Deployment
+```bash
+# Commit and push changes first - Flux only deploys from Git
+git add kubernetes/apps/<namespace>/
+git commit -m "feat: add <app-name> deployment"
+git push
+
+# Force immediate reconciliation
+flux reconcile source git flux-system
+flux reconcile kustomization cluster-apps
+```
+
+### 2. Check Deployment Status
+```bash
+# Check if namespace and kustomization created
+kubectl get namespace <namespace>
+flux get kustomization -A | grep <app-name>
+
+# Check HelmRelease status
+flux get hr -A | grep <app-name>
+
+# Check if pods are running
+kubectl get pods -n <namespace>
+```
+
+### 3. Common Fixes
+
+**HelmChart not found or wrong version**:
+```bash
+# Verify chart exists
+helm repo add <repo> <url>
+helm search repo <repo>/<chart> --versions
+
+# Delete cached HelmChart to force refresh
+kubectl delete helmchart -n flux-system <namespace>-<app-name>
+```
+
+**Stale resource after changes**:
+```bash
+# Delete the resource to force recreation
+kubectl delete helmrelease <app-name> -n <namespace>
+flux reconcile kustomization cluster-apps
+```
+
+**Schema validation errors**:
+- Remove `retryInterval` from Kustomization/HelmRelease (not valid in Flux v2)
+- Check HelmRelease values against chart schema
+- Verify all required fields are present
