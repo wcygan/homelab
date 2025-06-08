@@ -2,12 +2,18 @@
 
 ## Overview
 
-This document covers how to enhance your Airflow deployment to use Elasticsearch for centralized logging. Elasticsearch integration provides several advantages over local file logging:
+This document covers how to enhance your Airflow deployment to use Elasticsearch
+for centralized logging. Elasticsearch integration provides several advantages
+over local file logging:
 
-- **Centralized Log Management**: All logs are stored in a searchable, centralized location
-- **Log Retention**: Configurable retention policies and index lifecycle management
-- **Advanced Search**: Powerful query capabilities through Kibana or Elasticsearch APIs
-- **Scalability**: Handle large volumes of logs across multiple Airflow components
+- **Centralized Log Management**: All logs are stored in a searchable,
+  centralized location
+- **Log Retention**: Configurable retention policies and index lifecycle
+  management
+- **Advanced Search**: Powerful query capabilities through Kibana or
+  Elasticsearch APIs
+- **Scalability**: Handle large volumes of logs across multiple Airflow
+  components
 - **Integration**: Works well with existing log aggregation pipelines
 
 ## Logging Strategies
@@ -15,41 +21,52 @@ This document covers how to enhance your Airflow deployment to use Elasticsearch
 Airflow supports multiple approaches for Elasticsearch logging:
 
 ### 1. Direct Write to Elasticsearch
+
 Airflow writes logs directly to Elasticsearch without intermediate log shippers.
 
 **Pros:**
+
 - Simple configuration
 - Real-time log availability
 - No additional infrastructure needed
 
 **Cons:**
+
 - Direct coupling between Airflow and Elasticsearch
 - Potential performance impact on tasks
 - No log buffering or retry mechanisms
 
 ### 2. Log Shipping Approach
-Logs are written to stdout/files and shipped to Elasticsearch by external agents (Fluentd, Filebeat, etc.).
+
+Logs are written to stdout/files and shipped to Elasticsearch by external agents
+(Fluentd, Filebeat, etc.).
 
 **Pros:**
+
 - Decoupled architecture
 - Better error handling and buffering
 - Can process/transform logs before indexing
 - Works with existing log aggregation pipelines
 
 **Cons:**
+
 - More complex setup
 - Additional infrastructure components
 - Potential log delivery delays
 
 ### 3. Hybrid Approach
-Combination of persistent volume logging (as fallback) and Elasticsearch integration.
+
+Combination of persistent volume logging (as fallback) and Elasticsearch
+integration.
 
 **Pros:**
+
 - Best of both worlds
 - Fallback mechanism if Elasticsearch is unavailable
 - Gradual migration path
 
 **Cons:**
+
 - Higher storage requirements
 - More complex configuration
 
@@ -57,7 +74,8 @@ Combination of persistent volume logging (as fallback) and Elasticsearch integra
 
 ### Helm Chart Configuration
 
-The Airflow Helm chart provides built-in support for Elasticsearch logging through the `elasticsearch` values section.
+The Airflow Helm chart provides built-in support for Elasticsearch logging
+through the `elasticsearch` values section.
 
 #### Basic Elasticsearch Setup
 
@@ -70,7 +88,7 @@ elasticsearch:
 
   # Option 2: Direct connection configuration
   connection:
-    scheme: http  # or https for TLS
+    scheme: http # or https for TLS
     host: "elasticsearch-master.elastic-system.svc.cluster.local"
     port: 9200
     # user: "elastic"  # if authentication is enabled
@@ -82,15 +100,15 @@ elasticsearch:
 ```yaml
 config:
   logging:
-    remote_logging: "True"  # Enable remote logging
-    # delete_local_logs: "True"  # Optional: delete local logs after ES write
+    remote_logging: "True" # Enable remote logging
+  # delete_local_logs: "True"  # Optional: delete local logs after ES write
 
   elasticsearch:
     host: "elasticsearch-master.elastic-system.svc.cluster.local:9200"
-    write_stdout: "False"  # Set to True for log shipping approach
-    json_format: "True"    # Enable structured JSON logging
-    write_to_es: "True"    # Enable direct write to Elasticsearch
-    target_index: "airflow-task-logs"  # Elasticsearch index name
+    write_stdout: "False" # Set to True for log shipping approach
+    json_format: "True" # Enable structured JSON logging
+    write_to_es: "True" # Enable direct write to Elasticsearch
+    target_index: "airflow-task-logs" # Elasticsearch index name
     log_id_template: "{dag_id}-{task_id}-{execution_date}-{try_number}"
 
   # Optional: Elasticsearch client configuration
@@ -147,7 +165,7 @@ spec:
     # Elasticsearch Configuration
     elasticsearch:
       enabled: true
-      secretName: "airflow-elasticsearch-secret"  # Create this secret separately
+      secretName: "airflow-elasticsearch-secret" # Create this secret separately
 
     # Airflow Configuration Overrides
     config:
@@ -174,7 +192,7 @@ spec:
     logs:
       persistence:
         enabled: true
-        size: 5Gi  # Reduced size since ES is primary
+        size: 5Gi # Reduced size since ES is primary
         storageClassName: local-path
         accessMode: ReadWriteOnce
 ```
@@ -203,7 +221,8 @@ stringData:
 
 ## Log Shipping Alternative
 
-If you prefer the log shipping approach, configure Airflow to output structured logs to stdout:
+If you prefer the log shipping approach, configure Airflow to output structured
+logs to stdout:
 
 ```yaml
 config:
@@ -212,13 +231,14 @@ config:
 
   elasticsearch:
     host: "elasticsearch-master.elastic-system.svc.cluster.local:9200"
-    write_stdout: "True"   # Output to stdout for log shippers
-    json_format: "True"    # Structured JSON for easier parsing
-    write_to_es: "False"   # Disable direct write
+    write_stdout: "True" # Output to stdout for log shippers
+    json_format: "True" # Structured JSON for easier parsing
+    write_to_es: "False" # Disable direct write
     json_fields: "asctime,filename,lineno,levelname,message"
 ```
 
-Then deploy a log shipper like Filebeat or Fluentd to forward container logs to Elasticsearch.
+Then deploy a log shipper like Filebeat or Fluentd to forward container logs to
+Elasticsearch.
 
 ## Index Lifecycle Management
 
@@ -294,7 +314,9 @@ async function checkElasticsearchLogs() {
   console.log("🔍 Checking Elasticsearch integration...");
 
   try {
-    const webserverPod = await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`.text();
+    const webserverPod =
+      await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`
+        .text();
 
     if (webserverPod) {
       // Check ES connectivity
@@ -303,9 +325,11 @@ async function checkElasticsearchLogs() {
       // Check for recent log entries
       await $`kubectl exec -n airflow ${webserverPod} -- curl -X GET "elasticsearch-master.elastic-system.svc.cluster.local:9200/airflow-task-logs/_search?size=5&sort=@timestamp:desc"`;
     }
-
   } catch (error) {
-    console.error("❌ Elasticsearch check failed:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "❌ Elasticsearch check failed:",
+      error instanceof Error ? error.message : String(error),
+    );
     throw error;
   }
 }
@@ -342,7 +366,8 @@ If migrating from the existing persistent volume logging:
 3. **Phase 3**: Set `delete_local_logs: True` or disable PVC persistence
 4. **Phase 4**: Optimize Elasticsearch cluster and index settings
 
-This approach ensures a smooth transition with fallback capabilities during the migration period.
+This approach ensures a smooth transition with fallback capabilities during the
+migration period.
 
 ## References
 

@@ -13,10 +13,10 @@ spec:
     namespace: flux-system
   targetNamespace: monitoring
   wait: true
-  timeout: 15m  # Large deployment, needs more time
+  timeout: 15m # Large deployment, needs more time
   dependsOn:
     - name: local-path-provisioner
-      namespace: storage  # Storage dependency for Prometheus/Grafana data
+      namespace: storage # Storage dependency for Prometheus/Grafana data
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment

@@ -15,7 +15,7 @@ import { parseArgs } from "@std/cli";
 
 const CREDENTIAL_FILES = {
   clientId: "tailscale-oauth-client-id.txt",
-  clientSecret: "tailscale-oauth-client-secret.txt"
+  clientSecret: "tailscale-oauth-client-secret.txt",
 } as const;
 
 async function promptUser(question: string): Promise<string> {
@@ -35,7 +35,9 @@ async function promptHiddenInput(prompt: string): Promise<string> {
   if (!Deno.stdin.isTerminal()) {
     // Fallback to regular input if not in terminal (e.g., piped input)
     console.log(prompt);
-    console.log("(Input will be visible - not running in interactive terminal)");
+    console.log(
+      "(Input will be visible - not running in interactive terminal)",
+    );
     const buf = new Uint8Array(1024);
     const n = await Deno.stdin.read(buf) ?? 0;
     return decoder.decode(buf.subarray(0, n)).trim();
@@ -110,8 +112,10 @@ async function setupCredentials(): Promise<void> {
       console.log(`  - ${file}`);
     }
 
-    const overwrite = await promptUser("\nDo you want to overwrite them? (y/N):");
-    if (!overwrite.toLowerCase().startsWith('y')) {
+    const overwrite = await promptUser(
+      "\nDo you want to overwrite them? (y/N):",
+    );
+    if (!overwrite.toLowerCase().startsWith("y")) {
       console.log("Cancelled.");
       return;
     }
@@ -126,18 +130,20 @@ async function setupCredentials(): Promise<void> {
   }
 
   // Get Client Secret (using hidden input)
-  const clientSecret = await promptHiddenInput("Paste your OAuth Client Secret: ");
+  const clientSecret = await promptHiddenInput(
+    "Paste your OAuth Client Secret: ",
+  );
   if (!clientSecret) {
     console.error("❌ Client Secret is required");
     Deno.exit(1);
   }
 
   // Validate format (basic check)
-  if (!clientId.startsWith('ts-client-')) {
+  if (!clientId.startsWith("ts-client-")) {
     console.warn("⚠️  Warning: Client ID doesn't start with 'ts-client-'");
   }
 
-  if (!clientSecret.startsWith('ts-secret-')) {
+  if (!clientSecret.startsWith("ts-secret-")) {
     console.warn("⚠️  Warning: Client Secret doesn't start with 'ts-secret-'");
   }
 
@@ -151,12 +157,20 @@ async function setupCredentials(): Promise<void> {
     console.log(`  📄 ${CREDENTIAL_FILES.clientSecret}`);
 
     console.log("\nNext steps:");
-    console.log("1. Run the main installer: ./scripts/tailscale/tailscale-operator");
-    console.log("2. Or run the installation helper: deno run --allow-all scripts/install-tailscale-operator.ts");
-    console.log("3. Credential files will be automatically cleaned up after successful installation");
-
+    console.log(
+      "1. Run the main installer: ./scripts/tailscale/tailscale-operator",
+    );
+    console.log(
+      "2. Or run the installation helper: deno run --allow-all scripts/install-tailscale-operator.ts",
+    );
+    console.log(
+      "3. Credential files will be automatically cleaned up after successful installation",
+    );
   } catch (error) {
-    console.error("❌ Failed to write credential files:", (error as Error).message);
+    console.error(
+      "❌ Failed to write credential files:",
+      (error as Error).message,
+    );
     Deno.exit(1);
   }
 }
@@ -164,7 +178,7 @@ async function setupCredentials(): Promise<void> {
 async function main(): Promise<void> {
   const args = parseArgs(Deno.args, {
     boolean: ["help"],
-    alias: { h: "help" }
+    alias: { h: "help" },
   });
 
   if (args.help) {

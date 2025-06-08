@@ -31,7 +31,10 @@ class KubeAIModelLister {
     this.verbose = verbose;
   }
 
-  private log(message: string, level: "INFO" | "WARN" | "ERROR" = "INFO"): void {
+  private log(
+    message: string,
+    level: "INFO" | "WARN" | "ERROR" = "INFO",
+  ): void {
     const timestamp = new Date().toISOString();
     const prefix = level === "ERROR" ? "❌" : level === "WARN" ? "⚠️ " : "ℹ️ ";
     console.log(`[${timestamp}] ${prefix} ${message}`);
@@ -43,7 +46,9 @@ class KubeAIModelLister {
     }
   }
 
-  private async runKubectl(args: string[]): Promise<{success: boolean, output: string, error?: string}> {
+  private async runKubectl(
+    args: string[],
+  ): Promise<{ success: boolean; output: string; error?: string }> {
     try {
       const command = new Deno.Command("kubectl", {
         args,
@@ -58,14 +63,16 @@ class KubeAIModelLister {
       return {
         success: result.success,
         output: stdout.trim(),
-        error: stderr.trim() || undefined
+        error: stderr.trim() || undefined,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       return {
         success: false,
         output: "",
-        error: `Failed to run kubectl: ${errorMessage}`
+        error: `Failed to run kubectl: ${errorMessage}`,
       };
     }
   }
@@ -73,10 +80,21 @@ class KubeAIModelLister {
   private async checkKubeAIService(): Promise<boolean> {
     this.verboseLog("Checking if kubeai service exists...");
 
-    const result = await this.runKubectl(["get", "svc", "kubeai", "-n", "kubeai", "-o", "json"]);
+    const result = await this.runKubectl([
+      "get",
+      "svc",
+      "kubeai",
+      "-n",
+      "kubeai",
+      "-o",
+      "json",
+    ]);
     if (!result.success) {
       this.log(`KubeAI service not found: ${result.error}`, "ERROR");
-      this.log("Make sure KubeAI is deployed and the service is running", "ERROR");
+      this.log(
+        "Make sure KubeAI is deployed and the service is running",
+        "ERROR",
+      );
       return false;
     }
 
@@ -85,7 +103,9 @@ class KubeAIModelLister {
   }
 
   private async startPortForward(localPort: number): Promise<boolean> {
-    this.verboseLog(`Starting port-forward to kubeai service on port ${localPort}...`);
+    this.verboseLog(
+      `Starting port-forward to kubeai service on port ${localPort}...`,
+    );
 
     try {
       const command = new Deno.Command("kubectl", {
@@ -102,7 +122,7 @@ class KubeAIModelLister {
       // Check if the process is still running
       const status = await Promise.race([
         this.portForwardProcess.status,
-        delay(100).then(() => null)
+        delay(100).then(() => null),
       ]);
 
       if (status !== null) {
@@ -113,7 +133,9 @@ class KubeAIModelLister {
       this.verboseLog(`✅ Port-forward established on localhost:${localPort}`);
       return true;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       this.log(`Failed to start port-forward: ${errorMessage}`, "ERROR");
       return false;
     }
@@ -132,19 +154,25 @@ class KubeAIModelLister {
     }
   }
 
-  private async fetchModels(port: number, timeoutSeconds: number): Promise<ModelsResponse> {
+  private async fetchModels(
+    port: number,
+    timeoutSeconds: number,
+  ): Promise<ModelsResponse> {
     const url = `http://localhost:${port}/openai/v1/models`;
     this.verboseLog(`Fetching models from ${url}...`);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      timeoutSeconds * 1000,
+    );
 
     try {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json'
-        }
+          "Accept": "application/json",
+        },
       });
 
       clearTimeout(timeoutId);
@@ -158,7 +186,7 @@ class KubeAIModelLister {
       return data;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         throw new Error(`Request timed out after ${timeoutSeconds} seconds`);
       }
       throw error;
@@ -180,15 +208,24 @@ class KubeAIModelLister {
 
     // Calculate column widths
     const models = modelsResponse.data;
-    const idWidth = Math.max(8, ...models.map(m => m.id.length));
-    const ownerWidth = Math.max(10, ...models.map(m => m.owned_by.length));
-    const featuresWidth = Math.max(12, ...models.map(m => m.features.join(", ").length));
+    const idWidth = Math.max(8, ...models.map((m) => m.id.length));
+    const ownerWidth = Math.max(10, ...models.map((m) => m.owned_by.length));
+    const featuresWidth = Math.max(
+      12,
+      ...models.map((m) => m.features.join(", ").length),
+    );
     const createdWidth = 20; // Fixed width for date
 
     // Print header
-    const separator = "─".repeat(idWidth + ownerWidth + featuresWidth + createdWidth + 13);
+    const separator = "─".repeat(
+      idWidth + ownerWidth + featuresWidth + createdWidth + 13,
+    );
     console.log(`┌${separator}┐`);
-    console.log(`│ ${"Model ID".padEnd(idWidth)} │ ${"Owner".padEnd(ownerWidth)} │ ${"Features".padEnd(featuresWidth)} │ ${"Created".padEnd(createdWidth)} │`);
+    console.log(
+      `│ ${"Model ID".padEnd(idWidth)} │ ${"Owner".padEnd(ownerWidth)} │ ${
+        "Features".padEnd(featuresWidth)
+      } │ ${"Created".padEnd(createdWidth)} │`,
+    );
     console.log(`├${separator}┤`);
 
     // Print data rows
@@ -196,7 +233,9 @@ class KubeAIModelLister {
       const id = model.id.padEnd(idWidth);
       const owner = (model.owned_by || "N/A").padEnd(ownerWidth);
       const features = model.features.join(", ").padEnd(featuresWidth);
-      const created = this.formatCreatedTime(model.created).padEnd(createdWidth);
+      const created = this.formatCreatedTime(model.created).padEnd(
+        createdWidth,
+      );
 
       console.log(`│ ${id} │ ${owner} │ ${features} │ ${created} │`);
     }
@@ -223,13 +262,17 @@ class KubeAIModelLister {
       }
 
       // Fetch models
-      const modelsResponse = await this.fetchModels(options.port, options.timeout);
+      const modelsResponse = await this.fetchModels(
+        options.port,
+        options.timeout,
+      );
 
       // Display results
       this.displayModelsTable(modelsResponse);
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       this.log(`Failed to list models: ${errorMessage}`, "ERROR");
       throw error;
     } finally {
@@ -274,20 +317,20 @@ async function main(): Promise<void> {
       p: "port",
       t: "timeout",
       v: "verbose",
-      h: "help"
+      h: "help",
     },
     default: {
       port: "8000",
       timeout: "10",
-      verbose: false
-    }
+      verbose: false,
+    },
   });
 
   const options: ListModelsOptions = {
     port: parseInt(parsedArgs.port as string),
     timeout: parseInt(parsedArgs.timeout as string),
     verbose: Boolean(parsedArgs.verbose),
-    help: Boolean(parsedArgs.help)
+    help: Boolean(parsedArgs.help),
   };
 
   if (options.help) {

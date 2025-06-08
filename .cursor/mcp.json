@@ -1,10 +1,10 @@
 {
-    "mcpServers": {
-        "kubernetes": {
-            "command": "npx",
-            "args": [
-                "mcp-server-kubernetes"
-            ]
-        }
+  "mcpServers": {
+    "kubernetes": {
+      "command": "npx",
+      "args": [
+        "mcp-server-kubernetes"
+      ]
     }
+  }
 }

@@ -1,6 +1,8 @@
 # NVMe Slot Migration in Talos Linux
 
-This document provides detailed procedures for moving NVMe drives between physical slots in Talos Linux nodes, including proper cluster rejoin procedures and data integrity verification.
+This document provides detailed procedures for moving NVMe drives between
+physical slots in Talos Linux nodes, including proper cluster rejoin procedures
+and data integrity verification.
 
 ## Table of Contents
 
@@ -20,12 +22,15 @@ This document provides detailed procedures for moving NVMe drives between physic
 ## Overview
 
 Moving NVMe drives between slots may be necessary for:
+
 - Installing faster NVMe drives in preferred slots (closer to CPU/cooling)
 - Reorganizing storage for optimal PCIe lane distribution
 - Troubleshooting hardware issues
 - Upgrading to larger capacity drives
 
-**Key Principle**: Talos Linux uses disk selectors (primarily serial numbers) rather than device paths, making it resilient to physical slot changes. However, proper procedures must be followed to maintain cluster integrity.
+**Key Principle**: Talos Linux uses disk selectors (primarily serial numbers)
+rather than device paths, making it resilient to physical slot changes. However,
+proper procedures must be followed to maintain cluster integrity.
 
 ## Prerequisites
 
@@ -36,7 +41,7 @@ Before starting any NVMe slot migration:
    # Verify all nodes are healthy
    kubectl get nodes
    ./scripts/k8s-health-check.ts --verbose
-   
+
    # Check etcd cluster status (critical for control planes)
    kubectl -n kube-system get pods -l component=etcd
    ```
@@ -46,7 +51,7 @@ Before starting any NVMe slot migration:
    # Document current disk configuration
    NODE_IP="192.168.1.98"
    talosctl get disks -n ${NODE_IP} -o yaml > disk-inventory-before.yaml
-   
+
    # Save current mount points
    talosctl get mountstatus -n ${NODE_IP} > mount-status-before.txt
    ```
@@ -55,7 +60,7 @@ Before starting any NVMe slot migration:
    ```bash
    # Backup Talos configuration
    cp -r talos/clusterconfig talos/clusterconfig.backup-$(date +%Y%m%d)
-   
+
    # Export node configuration
    talosctl get machineconfig -n ${NODE_IP} -o yaml > node-config-backup.yaml
    ```
@@ -88,12 +93,13 @@ Talos uses selectors in order of specificity:
 4. **Bus Path** (Slot-Specific - Avoid):
    ```yaml
    diskSelector:
-     busPath: "0000:03:00.0"  # Changes with slot!
+     busPath: "0000:03:00.0" # Changes with slot!
    ```
 
 ### Device Path Changes
 
 When moving NVMe between slots, device paths will change:
+
 - Slot 1: `/dev/nvme0n1`
 - Slot 2: `/dev/nvme1n1`
 - Slot 3: `/dev/nvme2n1`
@@ -118,6 +124,7 @@ kubectl get pv -o wide | grep ${NODE_NAME}
 ### 2. Plan Slot Assignment
 
 Create a migration plan:
+
 ```yaml
 # migration-plan.yaml
 node: k8s-1
@@ -135,6 +142,7 @@ target_layout:
 ### 3. Update Configuration Files
 
 Prepare configuration changes before hardware work:
+
 ```yaml
 # patches/k8s-1/storage.yaml
 machine:
@@ -143,8 +151,8 @@ machine:
     - name: data-storage
       mountpoint: /var/mnt/data
       diskSelector:
-        serial: "WD_BLACK_SERIAL_YYY"  # Slot-independent
-    
+        serial: "WD_BLACK_SERIAL_YYY" # Slot-independent
+
     # New fast cache in slot 1
     - name: fast-cache
       mountpoint: /var/mnt/cache
@@ -159,6 +167,7 @@ machine:
 For non-system disks (additional storage):
 
 #### Step 1: Drain and Prepare Node
+
 ```bash
 NODE_NAME="k8s-1"
 NODE_IP="192.168.1.98"
@@ -171,6 +180,7 @@ kubectl get pods --all-namespaces --field-selector spec.nodeName=${NODE_NAME}
 ```
 
 #### Step 2: Unmount User Volumes
+
 ```bash
 # Check current mounts
 talosctl -n ${NODE_IP} mounts | grep /var/mnt
@@ -180,6 +190,7 @@ talosctl -n ${NODE_IP} mounts | grep /var/mnt
 ```
 
 #### Step 3: Shutdown Node
+
 ```bash
 # Graceful shutdown
 talosctl shutdown --nodes ${NODE_IP}
@@ -188,6 +199,7 @@ talosctl shutdown --nodes ${NODE_IP}
 ```
 
 #### Step 4: Perform Hardware Changes
+
 1. Power off completely
 2. Disconnect power cable
 3. Open chassis following anti-static procedures
@@ -198,6 +210,7 @@ talosctl shutdown --nodes ${NODE_IP}
 8. Close chassis and reconnect power
 
 #### Step 5: Power On and Verify
+
 ```bash
 # Power on node and wait for Talos to boot
 # Monitor via console if available
@@ -210,6 +223,7 @@ talosctl get disks -n ${NODE_IP} -o yaml | yq '.spec.serial'
 ```
 
 #### Step 6: Apply Configuration Updates
+
 ```bash
 # Regenerate config if needed
 task talos:generate-config
@@ -223,9 +237,11 @@ talosctl -n ${NODE_IP} mounts | grep /var/mnt
 
 ### Scenario B: Moving System Disks
 
-Moving system disks requires more care as Talos installation is tied to the disk.
+Moving system disks requires more care as Talos installation is tied to the
+disk.
 
 #### Step 1: Full Preparation
+
 ```bash
 # In addition to standard prep, ensure you have:
 # 1. Talos installation media ready
@@ -242,13 +258,14 @@ kubectl exec -n kube-system etcd-${NODE_NAME} -- \
 ```
 
 #### Step 2: Update Configuration for New System Disk
+
 ```yaml
 # talconfig.yaml
 nodes:
   - hostname: "k8s-1"
     ipAddress: "192.168.1.98"
     installDiskSelector:
-      serial: "NEW_SYSTEM_DISK_SERIAL"  # Update this
+      serial: "NEW_SYSTEM_DISK_SERIAL" # Update this
     patches:
       - "@./patches/k8s-1/storage.yaml"
       - "@./patches/k8s-1/old-system-as-data.yaml"
@@ -263,6 +280,7 @@ machine:
 ```
 
 #### Step 3: Wipe and Reinstall
+
 ```bash
 # After hardware changes and boot
 # Wipe the node (this will destroy all data!)
@@ -281,7 +299,7 @@ talosctl reset --nodes ${NODE_IP} --graceful=false
    ```bash
    # Watch node rejoin
    kubectl get nodes -w
-   
+
    # Check node conditions
    kubectl describe node ${NODE_NAME}
    ```
@@ -290,7 +308,7 @@ talosctl reset --nodes ${NODE_IP} --graceful=false
    ```bash
    # Uncordon the node
    ./scripts/node-maintenance.ts -n ${NODE_NAME} -a restore
-   
+
    # Or manually
    kubectl uncordon ${NODE_NAME}
    ```
@@ -299,7 +317,7 @@ talosctl reset --nodes ${NODE_IP} --graceful=false
    ```bash
    # Check pods returning to node
    kubectl get pods --all-namespaces --field-selector spec.nodeName=${NODE_NAME}
-   
+
    # Monitor pod status
    watch kubectl get pods -A -o wide | grep ${NODE_NAME}
    ```
@@ -323,7 +341,7 @@ talosctl reset --nodes ${NODE_IP} --graceful=false
    # Check etcd membership
    kubectl -n kube-system exec -it etcd-${NODE_NAME} -- \
      etcdctl member list
-   
+
    # Verify API server
    talosctl -n ${NODE_IP} services | grep kube-apiserver
    ```
@@ -333,10 +351,10 @@ talosctl reset --nodes ${NODE_IP} --graceful=false
    # Remove old member
    MEMBER_ID=$(kubectl -n kube-system exec -it etcd-${NODE_NAME} -- \
      etcdctl member list | grep ${NODE_NAME} | cut -d',' -f1)
-   
+
    kubectl -n kube-system exec -it etcd-<healthy-node> -- \
      etcdctl member remove ${MEMBER_ID}
-   
+
    # Add new member
    kubectl -n kube-system exec -it etcd-<healthy-node> -- \
      etcdctl member add ${NODE_NAME} \
@@ -517,6 +535,7 @@ diskSelector:
 ### 1. Documentation
 
 Maintain a hardware inventory:
+
 ```yaml
 # hardware-inventory.yaml
 cluster: anton
@@ -547,6 +566,7 @@ nodes:
 ### 2. Testing Procedures
 
 Always test in this order:
+
 1. Dry-run maintenance mode first
 2. Test on non-critical node
 3. Validate all functionality
@@ -563,6 +583,7 @@ Always test in this order:
 ### 4. Recovery Planning
 
 Before any migration:
+
 1. Have rollback plan ready
 2. Keep original disk configuration documented
 3. Ensure you can reinstall if needed

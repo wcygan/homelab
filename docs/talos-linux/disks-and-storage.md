@@ -1,6 +1,8 @@
 # Talos Linux Storage and Disk Management Guide
 
-This guide provides a comprehensive overview of storage and disk management in Talos Linux, including system partitions, user volumes, Kubernetes storage integration, and practical examples from our homelab cluster.
+This guide provides a comprehensive overview of storage and disk management in
+Talos Linux, including system partitions, user volumes, Kubernetes storage
+integration, and practical examples from our homelab cluster.
 
 ## Table of Contents
 
@@ -14,7 +16,8 @@ This guide provides a comprehensive overview of storage and disk management in T
 
 ## System Disk Layout
 
-Talos Linux uses a specific partition layout for system disks that ensures immutability and separation of concerns:
+Talos Linux uses a specific partition layout for system disks that ensures
+immutability and separation of concerns:
 
 ### Default Partitions
 
@@ -109,7 +112,8 @@ talosctl get systemdisk -n <node-ip>
 
 ## User Volumes Configuration
 
-Starting with Talos v1.10, user volumes provide flexible disk management through the `UserVolumeConfig` API.
+Starting with Talos v1.10, user volumes provide flexible disk management through
+the `UserVolumeConfig` API.
 
 ### Basic User Volume Configuration
 
@@ -125,7 +129,8 @@ machine:
 
 ### Advanced Disk Selection with CEL
 
-User volumes support CEL (Common Expression Language) for flexible disk selection:
+User volumes support CEL (Common Expression Language) for flexible disk
+selection:
 
 ```yaml
 machine:
@@ -147,13 +152,13 @@ machine:
       diskSelector:
         size: ">= 500GB"
       provisioning:
-        minSize: 100GB      # Minimum volume size
-        maxSize: 1TB        # Maximum volume size
-        grow: true          # Allow automatic growth
+        minSize: 100GB # Minimum volume size
+        maxSize: 1TB # Maximum volume size
+        grow: true # Allow automatic growth
       filesystem:
-        type: xfs           # Filesystem type
+        type: xfs # Filesystem type
       encryption:
-        enabled: true       # Enable disk encryption
+        enabled: true # Enable disk encryption
 ```
 
 ### Volume Naming Rules
@@ -235,7 +240,7 @@ machine:
       diskSelector:
         type: nvme
         size: ">= 200GB"
-    
+
     - name: logs-volume
       mountpoint: /var/mnt/logs
       diskSelector:
@@ -294,6 +299,7 @@ When adding new NVMe drives to MS-01 nodes:
 ### Storage for Specific Applications
 
 #### Database Storage
+
 ```yaml
 # PostgreSQL with dedicated volume
 machine:
@@ -310,6 +316,7 @@ machine:
 ```
 
 #### Container Image Cache
+
 ```yaml
 # Spegel image cache volume
 machine:
@@ -328,7 +335,7 @@ machine:
    ```bash
    # Check if disk is visible
    talosctl get disks -n <node-ip>
-   
+
    # Look for hardware issues in dmesg
    talosctl dmesg -n <node-ip> | grep -i nvme
    ```
@@ -337,7 +344,7 @@ machine:
    ```bash
    # Check mount status
    talosctl get mountstatus -n <node-ip>
-   
+
    # View Talos logs
    talosctl logs -n <node-ip> | grep -i mount
    ```
@@ -346,7 +353,7 @@ machine:
    ```bash
    # Verify storage class
    kubectl describe storageclass local-path
-   
+
    # Check provisioner pods
    kubectl get pods -n kube-system | grep local-path
    ```

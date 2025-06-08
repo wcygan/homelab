@@ -18,7 +18,7 @@ import { ensureFile } from "@std/fs";
 // Configuration
 const CREDENTIAL_FILES = {
   clientId: "tailscale-oauth-client-id.txt",
-  clientSecret: "tailscale-oauth-client-secret.txt"
+  clientSecret: "tailscale-oauth-client-secret.txt",
 } as const;
 
 const GITIGNORE_FILE = ".gitignore";
@@ -71,9 +71,15 @@ class TailscaleOperatorInstaller {
       // Step 5.5: Wait for operator readiness
       const operatorReady = await this.waitForOperatorReady();
       if (!operatorReady) {
-        console.warn("\n⚠️  Tailscale operator deployment is not ready after waiting. Skipping kubeconfig setup and credential cleanup.");
-        console.warn("   You can check the status with: kubectl get deployment operator -n tailscale");
-        console.warn("   And view logs with: kubectl logs -n tailscale -l app=operator");
+        console.warn(
+          "\n⚠️  Tailscale operator deployment is not ready after waiting. Skipping kubeconfig setup and credential cleanup.",
+        );
+        console.warn(
+          "   You can check the status with: kubectl get deployment operator -n tailscale",
+        );
+        console.warn(
+          "   And view logs with: kubectl logs -n tailscale -l app=operator",
+        );
         return;
       }
 
@@ -85,12 +91,17 @@ class TailscaleOperatorInstaller {
         await this.cleanupCredentials();
       }
 
-      console.log("\n✅ Tailscale Kubernetes Operator installation completed successfully!");
+      console.log(
+        "\n✅ Tailscale Kubernetes Operator installation completed successfully!",
+      );
       console.log("\nNext steps:");
       console.log("1. Configure your Tailscale access controls");
-      console.log("2. Create Tailscale resources (Services, ProxyClasses, etc.)");
-      console.log("3. Check the operator logs: kubectl logs -n tailscale -l app=tailscale-operator");
-
+      console.log(
+        "2. Create Tailscale resources (Services, ProxyClasses, etc.)",
+      );
+      console.log(
+        "3. Check the operator logs: kubectl logs -n tailscale -l app=tailscale-operator",
+      );
     } catch (error) {
       console.error("\n❌ Installation failed:", (error as Error).message);
       if (this.options.verbose) {
@@ -215,10 +226,15 @@ class TailscaleOperatorInstaller {
         console.error(`  - ${file}`);
       }
       console.error("\nTo create OAuth credentials:");
-      console.error("1. Visit: https://login.tailscale.com/admin/settings/oauth");
+      console.error(
+        "1. Visit: https://login.tailscale.com/admin/settings/oauth",
+      );
       console.error("2. Create a new OAuth client");
       console.error("3. Save the client ID to:", CREDENTIAL_FILES.clientId);
-      console.error("4. Save the client secret to:", CREDENTIAL_FILES.clientSecret);
+      console.error(
+        "4. Save the client secret to:",
+        CREDENTIAL_FILES.clientSecret,
+      );
       console.error("5. Run this script again");
       throw new Error("Missing required credential files");
     }
@@ -238,11 +254,15 @@ class TailscaleOperatorInstaller {
       await this.runCommand(["kubectl", "cluster-info"], { silent: true });
       console.log("  ✅ Kubernetes cluster is accessible");
     } catch {
-      throw new Error("Cannot access Kubernetes cluster. Check your kubeconfig and cluster connection.");
+      throw new Error(
+        "Cannot access Kubernetes cluster. Check your kubeconfig and cluster connection.",
+      );
     }
   }
 
-  private async installOperator(credentials: TailscaleCredentials): Promise<void> {
+  private async installOperator(
+    credentials: TailscaleCredentials,
+  ): Promise<void> {
     console.log("\n📦 Installing Tailscale Kubernetes Operator...");
 
     if (this.options.dryRun) {
@@ -254,7 +274,11 @@ class TailscaleOperatorInstaller {
     // Add Helm repository
     console.log("  📝 Adding Tailscale Helm repository...");
     await this.runCommand([
-      "helm", "repo", "add", HELM_REPO_NAME, HELM_REPO_URL
+      "helm",
+      "repo",
+      "add",
+      HELM_REPO_NAME,
+      HELM_REPO_URL,
     ]);
 
     // Update Helm repositories
@@ -264,13 +288,16 @@ class TailscaleOperatorInstaller {
     // Install the operator
     console.log("  🚀 Installing Tailscale operator...");
     const helmArgs = [
-      "helm", "upgrade", "--install",
-      "tailscale-operator", HELM_CHART,
+      "helm",
+      "upgrade",
+      "--install",
+      "tailscale-operator",
+      HELM_CHART,
       `--namespace=${this.options.namespace}`,
       "--create-namespace",
       `--set-string=oauth.clientId=${credentials.clientId}`,
       `--set-string=oauth.clientSecret=${credentials.clientSecret}`,
-      "--wait"
+      "--wait",
     ];
 
     if (this.options.apiServerProxy) {
@@ -291,12 +318,20 @@ class TailscaleOperatorInstaller {
 
     try {
       await this.runCommand([
-        "tailscale", "configure", "kubeconfig", "tailscale-operator"
+        "tailscale",
+        "configure",
+        "kubeconfig",
+        "tailscale-operator",
       ]);
       console.log("  ✅ Kubeconfig configured for Tailscale access");
     } catch (error) {
-      console.warn("  ⚠️  Warning: Could not configure kubeconfig:", (error as Error).message);
-      console.warn("     You may need to run manually: tailscale configure kubeconfig tailscale-operator");
+      console.warn(
+        "  ⚠️  Warning: Could not configure kubeconfig:",
+        (error as Error).message,
+      );
+      console.warn(
+        "     You may need to run manually: tailscale configure kubeconfig tailscale-operator",
+      );
     }
   }
 
@@ -316,7 +351,9 @@ class TailscaleOperatorInstaller {
   private logHelmCommands(credentials: TailscaleCredentials): void {
     console.log(`    helm repo add ${HELM_REPO_NAME} ${HELM_REPO_URL}`);
     console.log(`    helm repo update`);
-    console.log(`    helm upgrade --install tailscale-operator ${HELM_CHART} \\`);
+    console.log(
+      `    helm upgrade --install tailscale-operator ${HELM_CHART} \\`,
+    );
     console.log(`      --namespace=${this.options.namespace} \\`);
     console.log(`      --create-namespace \\`);
     console.log(`      --set-string=oauth.clientId=${credentials.clientId} \\`);
@@ -330,7 +367,7 @@ class TailscaleOperatorInstaller {
 
   private async runCommand(
     args: string[],
-    options: { silent?: boolean } = {}
+    options: { silent?: boolean } = {},
   ): Promise<string> {
     if (this.options.verbose && !options.silent) {
       console.log(`    Running: ${args.join(" ")}`);
@@ -339,7 +376,7 @@ class TailscaleOperatorInstaller {
     const process = new Deno.Command(args[0], {
       args: args.slice(1),
       stdout: "inherit",
-      stderr: "inherit"
+      stderr: "inherit",
     });
 
     const { code } = await process.output();
@@ -356,26 +393,37 @@ class TailscaleOperatorInstaller {
    * Waits for the Tailscale operator deployment to become ready.
    * Returns true if ready, false if not ready after timeout.
    */
-  private async waitForOperatorReady(timeoutMs = 180000, pollIntervalMs = 5000): Promise<boolean> {
-    console.log("\n⏳ Waiting for Tailscale operator deployment to become ready...");
+  private async waitForOperatorReady(
+    timeoutMs = 180000,
+    pollIntervalMs = 5000,
+  ): Promise<boolean> {
+    console.log(
+      "\n⏳ Waiting for Tailscale operator deployment to become ready...",
+    );
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       try {
         const proc = new Deno.Command("kubectl", {
           args: [
-            "get", "deployment", "operator",
-            "-n", this.options.namespace,
-            "-o", "json"
+            "get",
+            "deployment",
+            "operator",
+            "-n",
+            this.options.namespace,
+            "-o",
+            "json",
           ],
           stdout: "piped",
-          stderr: "null"
+          stderr: "null",
         });
         const { code, stdout } = await proc.output();
         if (code === 0) {
           const json = JSON.parse(new TextDecoder().decode(stdout));
           // Check .status.conditions[] for Available=True
           const conditions = json.status?.conditions || [];
-          const available = conditions.find((c: any) => c.type === "Available" && c.status === "True");
+          const available = conditions.find((c: any) =>
+            c.type === "Available" && c.status === "True"
+          );
           const availableReplicas = json.status?.availableReplicas || 0;
           if (available && availableReplicas >= 1) {
             console.log("  ✅ Operator deployment is ready.");
@@ -388,7 +436,9 @@ class TailscaleOperatorInstaller {
       await new Promise((r) => setTimeout(r, pollIntervalMs));
       await Deno.stdout.write(new TextEncoder().encode("."));
     }
-    console.warn("\n❌ Operator deployment did not become ready within timeout.");
+    console.warn(
+      "\n❌ Operator deployment did not become ready within timeout.",
+    );
     return false;
   }
 }
@@ -397,22 +447,28 @@ class TailscaleOperatorInstaller {
 async function main(): Promise<void> {
   const args = parseArgs(Deno.args, {
     string: ["namespace"],
-    boolean: ["api-server-proxy", "cleanup-credentials", "dry-run", "verbose", "help"],
+    boolean: [
+      "api-server-proxy",
+      "cleanup-credentials",
+      "dry-run",
+      "verbose",
+      "help",
+    ],
     alias: {
       n: "namespace",
       a: "api-server-proxy",
       c: "cleanup-credentials",
       d: "dry-run",
       v: "verbose",
-      h: "help"
+      h: "help",
     },
     default: {
       namespace: TAILSCALE_NAMESPACE,
       "api-server-proxy": true,
       "cleanup-credentials": true,
       "dry-run": false,
-      verbose: false
-    }
+      verbose: false,
+    },
   });
 
   if (args.help) {
@@ -479,7 +535,7 @@ MAIN INSTALLER:
     apiServerProxy: args["api-server-proxy"],
     cleanupCredentials: args["cleanup-credentials"],
     dryRun: args["dry-run"],
-    verbose: args.verbose
+    verbose: args.verbose,
   };
 
   const installer = new TailscaleOperatorInstaller(options);

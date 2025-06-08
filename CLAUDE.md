@@ -1,22 +1,29 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## Repository Overview
 
-This is "Anton" - a production-grade Kubernetes homelab running on 3 MS-01 mini PCs using Talos Linux and Flux GitOps. The cluster implements patterns for automated deployment, monitoring, and security.
+This is "Anton" - a production-grade Kubernetes homelab running on 3 MS-01 mini
+PCs using Talos Linux and Flux GitOps. The cluster implements patterns for
+automated deployment, monitoring, and security.
 
 ## Quick Reference
 
-- **Initial Setup**: `task init` → `task configure` → `task bootstrap:talos` → `task bootstrap:apps`
+- **Initial Setup**: `task init` → `task configure` → `task bootstrap:talos` →
+  `task bootstrap:apps`
 - **Deploy App**: Add to `kubernetes/apps/{namespace}/` → `task reconcile`
-- **Debug Issues**: `flux get hr -A` → `kubectl describe hr {name} -n {namespace}`
-- **Upgrade Cluster**: `task talos:upgrade-node IP={ip}` → `task talos:upgrade-k8s`
+- **Debug Issues**: `flux get hr -A` →
+  `kubectl describe hr {name} -n {namespace}`
+- **Upgrade Cluster**: `task talos:upgrade-node IP={ip}` →
+  `task talos:upgrade-k8s`
 - **Monitor Health**: `./scripts/k8s-health-check.ts --verbose`
 
 ## Core Architecture
 
 ### Infrastructure Stack
+
 - **OS**: Talos Linux (immutable, API-driven)
 - **GitOps**: Flux v2.5.1 with hierarchical Kustomizations
 - **CNI**: Cilium in kube-proxy replacement mode
@@ -26,7 +33,9 @@ This is "Anton" - a production-grade Kubernetes homelab running on 3 MS-01 mini 
 - **Secrets**: 1Password + External Secrets Operator (preferred)
 
 ### GitOps Structure
-- Two root Kustomizations: `cluster-meta` (repos) → `cluster-apps` (applications)
+
+- Two root Kustomizations: `cluster-meta` (repos) → `cluster-apps`
+  (applications)
 - Apps organized by namespace: `kubernetes/apps/{namespace}/{app-name}/`
 - Each app has: `ks.yaml` (Kustomization) + `app/` directory
 - HelmReleases use OCIRepository sources from `kubernetes/flux/meta/repos/`
@@ -34,6 +43,7 @@ This is "Anton" - a production-grade Kubernetes homelab running on 3 MS-01 mini 
 ## Common Development Commands
 
 ### Initial Cluster Setup (One-Time)
+
 ```bash
 # Generate config from templates
 task init
@@ -49,6 +59,7 @@ task bootstrap:apps
 ```
 
 ### Talos Management
+
 ```bash
 # Apply config to node
 task talos:apply-node IP=192.168.1.98 MODE=auto
@@ -62,7 +73,6 @@ task talos:upgrade-k8s
 # Reset cluster (destructive!)
 task talos:reset
 ```
-
 
 ## Adding New Applications
 
@@ -101,10 +111,10 @@ task talos:reset
    apiVersion: kustomize.toolkit.fluxcd.io/v1
    kind: Kustomization
    metadata:
-     name: &app {app-name}
+     name: &app { app-name }
      namespace: flux-system
    spec:
-     targetNamespace: {namespace}
+     targetNamespace: { namespace }
      commonMetadata:
        labels:
          app.kubernetes.io/name: *app
@@ -118,31 +128,37 @@ task talos:reset
        kind: GitRepository
        name: flux-system
        namespace: flux-system
-     dependsOn:  # Use actual namespace, not flux-system
+     dependsOn: # Use actual namespace, not flux-system
        - name: <dependency-kustomization-name>
          namespace: <dependency-actual-namespace>
    ```
 
-4. For HelmReleases, reference HelmRepository from `kubernetes/flux/meta/repos/`:
+4. For HelmReleases, reference HelmRepository from
+   `kubernetes/flux/meta/repos/`:
    - Add new repos to `kubernetes/flux/meta/repos/` if needed
-   - Update `kubernetes/flux/meta/repos/kustomization.yaml` to include new repo file
+   - Update `kubernetes/flux/meta/repos/kustomization.yaml` to include new repo
+     file
 
 ## Key Patterns & Conventions
 
 ### Flux Intervals
+
 - Critical infrastructure: `5m`
 - Core services: `15m`
 - Standard applications: `30m` to `1h`
 
 ### Resource Management
+
 - Always specify resource requests/limits in HelmReleases
 - Use finite retries (e.g., `retries: 3`) not infinite (`retries: -1`)
 - Add health checks for critical services
 - Include `wait: true` for dependencies
 
 ### Networking
-- Internal services: use `internal` ingress class 
-- External services: use `external` ingress class + external-dns annotation (only used when EXPLICITLY STATED; default to `internal`)
+
+- Internal services: use `internal` ingress class
+- External services: use `external` ingress class + external-dns annotation
+  (only used when EXPLICITLY STATED; default to `internal`)
 - Split DNS via k8s-gateway for internal resolution
 
 ## Secrets Management
@@ -167,6 +183,7 @@ For all new applications, use 1Password with External Secrets Operator:
 ### Legacy: SOPS (Deprecated)
 
 SOPS encryption is only for existing/legacy secrets:
+
 - Files matching `*.sops.yaml` are auto-encrypted
 - Uses `age.key` in repo root
 - **Do not use for new applications**
@@ -174,15 +191,18 @@ SOPS encryption is only for existing/legacy secrets:
 ## Monitoring & Debugging
 
 ### Monitoring Tools
+
 All scripts use Deno and require `--allow-all`:
 
 - **k8s-health-check.ts**: Comprehensive cluster health monitoring
-- **flux-deployment-check.ts**: GitOps deployment verification with `--watch` for real-time
+- **flux-deployment-check.ts**: GitOps deployment verification with `--watch`
+  for real-time
 - **flux-monitor.ts**: Real-time Flux resource monitoring
 - **check-flux-config.ts**: Configuration best practices analyzer
 - **validate-manifests.sh**: Pre-commit manifest validation
 
 ### Common Debugging Commands
+
 ```bash
 # Check Flux status
 flux check
@@ -199,6 +219,7 @@ kubectl -n {namespace} describe {kind} {name}
 ```
 
 ### Debugging Patterns
+
 - Always check Flux dependencies first: `kubectl get kustomization -A`
 - For app issues, trace: Kustomization → HelmRelease → Pods
 - Check git sync: `flux get sources git -A`
@@ -222,12 +243,14 @@ kubectl -n {namespace} describe {kind} {name}
 ## Common Operations
 
 ### Rolling Cluster Upgrades
+
 1. Always upgrade Talos first: `task talos:upgrade-node IP=192.168.1.98`
 2. Wait for node Ready before proceeding to next
 3. Then upgrade Kubernetes: `task talos:upgrade-k8s`
 4. Monitor with: `./scripts/cluster-health-monitor.ts`
 
 ### Emergency Recovery
+
 - If Flux stuck: `flux suspend/resume kustomization <name> -n flux-system`
 - If node NotReady: Check `talosctl -n <IP> dmesg` for boot issues
 - If PVC unbound: Verify `local-path-provisioner` in storage namespace
@@ -235,11 +258,14 @@ kubectl -n {namespace} describe {kind} {name}
 ## Anton Cluster Specifics
 
 ### Hardware Details
+
 - Nodes: k8s-1 (192.168.1.98), k8s-2 (.99), k8s-3 (.100)
 - All nodes are control-plane (no dedicated workers)
-- Storage: Local-path provisioner on each node (Note: Additional storage options coming soon - evaluating Rook Ceph, Longhorn, MinIO, Garage, etc.)
+- Storage: Local-path provisioner on each node (Note: Additional storage options
+  coming soon - evaluating Rook Ceph, Longhorn, MinIO, Garage, etc.)
 
 ### Namespace Organization
+
 - `external-secrets`: All secret management (1Password, ESO)
 - `network`: All ingress/DNS (internal/external nginx, cloudflared)
 - `monitoring`: Prometheus stack, Grafana
@@ -248,20 +274,24 @@ kubectl -n {namespace} describe {kind} {name}
 ## Development Workflow Integration
 
 ### Before Committing
+
 1. Validate manifests: `./scripts/validate-manifests.sh`
 2. Check Flux config: `./scripts/check-flux-config.ts`
 3. For secrets: Use 1Password OnePasswordItem CRs
 
 ### After Changes
+
 1. Force reconciliation: `task reconcile`
 2. Monitor deployment: `./scripts/flux-monitor.ts`
 
 ### Common Pitfalls
+
 - Missing `namespace: flux-system` in sourceRef → "GitRepository not found"
 - Infinite retries in HelmRelease → Resource exhaustion
 - Missing resource constraints → Pod scheduling issues
 - Wrong ingress class → Service unreachable
-- **Invalid `retryInterval` field** → Schema validation errors (removed in Flux v2)
+- **Invalid `retryInterval` field** → Schema validation errors (removed in Flux
+  v2)
 - **Wrong dependency namespace** → Use actual namespace, not flux-system
 - **Git commits required** → Flux only deploys committed changes
 - **Chart version mismatch** → Always verify with `helm search repo`
@@ -273,20 +303,29 @@ kubectl -n {namespace} describe {kind} {name}
 When analyzing Kubernetes configurations and comparing against latest versions:
 
 #### Guiding Principles
-- **Declarative First**: All changes must be made via Git repository modifications, not direct kubectl/helm commands
-- **Version Pinning**: Charts and images are intentionally pinned for predictable deployments
-- **Impact Analysis**: Don't just update versions - analyze breaking changes, value schema changes, and compatibility
-- **Follow Patterns**: Maintain consistency with existing repository structure and conventions
-- **Safety First**: Distinguish between patch/minor/major upgrades with appropriate warnings
+
+- **Declarative First**: All changes must be made via Git repository
+  modifications, not direct kubectl/helm commands
+- **Version Pinning**: Charts and images are intentionally pinned for
+  predictable deployments
+- **Impact Analysis**: Don't just update versions - analyze breaking changes,
+  value schema changes, and compatibility
+- **Follow Patterns**: Maintain consistency with existing repository structure
+  and conventions
+- **Safety First**: Distinguish between patch/minor/major upgrades with
+  appropriate warnings
 
 #### Analysis Workflow
 
 **Phase 1: Discovery**
-1. Locate HelmRelease at `kubernetes/apps/<namespace>/<app>/app/helmrelease.yaml`
+
+1. Locate HelmRelease at
+   `kubernetes/apps/<namespace>/<app>/app/helmrelease.yaml`
 2. Extract: chart name, pinned version, sourceRef, custom values
 3. Find source repository in `kubernetes/flux/meta/repos/`
 
 **Phase 2: Comparison**
+
 1. Determine latest stable versions (patch/minor/major)
 2. Compare values.yaml between current and target versions
 3. Identify deprecated/changed configuration keys
@@ -294,19 +333,22 @@ When analyzing Kubernetes configurations and comparing against latest versions:
 5. Review official changelogs for breaking changes
 
 **Phase 3: Remediation**
+
 1. Provide specific version upgrade recommendation
 2. Explain impact level (patch/minor/major)
 3. Supply exact YAML diffs for HelmRelease updates
 4. Include any required values migration
 5. Note container image updates if applicable
 
-This structured approach ensures safe, informed upgrades that align with GitOps principles.
+This structured approach ensures safe, informed upgrades that align with GitOps
+principles.
 
 ## Advanced Troubleshooting & Debugging
 
 ### Systematic Troubleshooting Methodology
 
-When Flux deployments fail, follow this top-down investigation approach starting with high-level abstractions and drilling down only when necessary.
+When Flux deployments fail, follow this top-down investigation approach starting
+with high-level abstractions and drilling down only when necessary.
 
 #### Step 1: Initial Triage - The Big Picture
 
@@ -341,11 +383,13 @@ flux reconcile helmrelease <name> -n <namespace> --with-source
 #### Step 3: Common Failure Patterns
 
 **A. Source Errors (GitRepository/HelmRepository Not Ready)**
+
 - **Symptoms**: Sources not ready, "GitRepository not found" errors
 - **Fix**: Check authentication, verify `namespace: flux-system` in sourceRef
 - **Debug**: `flux describe gitrepository flux-system -n flux-system`
 
 **B. Helm Chart Failures (HelmRelease Not Ready)**
+
 - **Schema Validation**: Values don't match chart schema
   - Use: `helm show values <repo>/<chart> --version <version>`
 - **Immutable Fields**: Resource cannot be updated
@@ -353,17 +397,21 @@ flux reconcile helmrelease <name> -n <namespace> --with-source
 - **Hook Failures**: Check Job/Pod logs for failing post-install hooks
 
 **C. Kustomize Build Failures (Kustomization Not Ready)**
-- **Debug locally**: `flux build kustomization <name> -n flux-system --path ./kubernetes/apps/...`
-- **Common causes**: YAML syntax errors, missing file references, invalid patches
+
+- **Debug locally**:
+  `flux build kustomization <name> -n flux-system --path ./kubernetes/apps/...`
+- **Common causes**: YAML syntax errors, missing file references, invalid
+  patches
 
 **D. Dependency Errors**
+
 - **Missing resources**: Application needs CRDs, secrets, or other dependencies
 - **Fix**: Add `dependsOn` to Kustomization with correct namespace:
   ```yaml
   spec:
     dependsOn:
       - name: dependency-kustomization-name
-        namespace: dependency-actual-namespace  # NOT flux-system unless it really is
+        namespace: dependency-actual-namespace # NOT flux-system unless it really is
   ```
 - **Common dependencies**:
   - `external-secrets` in namespace `external-secrets`
@@ -371,6 +419,7 @@ flux reconcile helmrelease <name> -n <namespace> --with-source
   - `local-path-provisioner` in namespace `storage`
 
 **E. SOPS Secret Decryption**
+
 - **Check**: `sops-age` secret exists in `flux-system` namespace
 - **Validate**: `sops -d <file.sops.yaml>` works locally
 - **Verify**: `.sops.yaml` configuration is correct
@@ -378,6 +427,7 @@ flux reconcile helmrelease <name> -n <namespace> --with-source
 #### Step 4: Advanced Recovery Techniques
 
 **Suspend and Resume (Soft Reset)**
+
 ```bash
 flux suspend kustomization <name> -n flux-system
 # Manual fixes if needed
@@ -385,11 +435,13 @@ flux resume kustomization <name> -n flux-system
 ```
 
 **Trace Resource Origin**
+
 ```bash
 flux trace --api-version apps/v1 --kind Deployment --name <name> -n <namespace>
 ```
 
 **Force Chart Re-fetch**
+
 ```bash
 # Delete cached HelmChart to force complete re-fetch
 kubectl delete helmchart -n flux-system <namespace>-<helmrelease-name>
@@ -397,6 +449,7 @@ flux reconcile helmrelease <name> -n <namespace> --with-source
 ```
 
 **Emergency Debugging Commands**
+
 ```bash
 # Check all events across cluster
 kubectl get events -A --sort-by='.lastTimestamp'
@@ -414,6 +467,7 @@ flux logs --follow --tail=50
 When deploying a new app via GitOps, follow this systematic approach:
 
 ### 1. Initial Deployment
+
 ```bash
 # Commit and push changes first - Flux only deploys from Git
 git add kubernetes/apps/<namespace>/
@@ -426,6 +480,7 @@ flux reconcile kustomization cluster-apps
 ```
 
 ### 2. Check Deployment Status
+
 ```bash
 # Check if namespace and kustomization created
 kubectl get namespace <namespace>
@@ -441,6 +496,7 @@ kubectl get pods -n <namespace>
 ### 3. Common Fixes
 
 **HelmChart not found or wrong version**:
+
 ```bash
 # Verify chart exists
 helm repo add <repo> <url>
@@ -451,6 +507,7 @@ kubectl delete helmchart -n flux-system <namespace>-<app-name>
 ```
 
 **Stale resource after changes**:
+
 ```bash
 # Delete the resource to force recreation
 kubectl delete helmrelease <app-name> -n <namespace>
@@ -458,6 +515,7 @@ flux reconcile kustomization cluster-apps
 ```
 
 **Schema validation errors**:
+
 - Remove `retryInterval` from Kustomization/HelmRelease (not valid in Flux v2)
 - Check HelmRelease values against chart schema
 - Verify all required fields are present

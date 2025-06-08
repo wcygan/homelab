@@ -76,7 +76,9 @@ class FluxDeploymentChecker {
     this.forceReconcile = forceReconcile;
   }
 
-  private async runKubectl(args: string[]): Promise<{success: boolean, output: string, error?: string}> {
+  private async runKubectl(
+    args: string[],
+  ): Promise<{ success: boolean; output: string; error?: string }> {
     try {
       const command = new Deno.Command("kubectl", {
         args,
@@ -91,19 +93,23 @@ class FluxDeploymentChecker {
       return {
         success: result.success,
         output: stdout.trim(),
-        error: stderr.trim() || undefined
+        error: stderr.trim() || undefined,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       return {
         success: false,
         output: "",
-        error: `Failed to run kubectl: ${errorMessage}`
+        error: `Failed to run kubectl: ${errorMessage}`,
       };
     }
   }
 
-  private async runFlux(args: string[]): Promise<{success: boolean, output: string, error?: string}> {
+  private async runFlux(
+    args: string[],
+  ): Promise<{ success: boolean; output: string; error?: string }> {
     try {
       const command = new Deno.Command("flux", {
         args,
@@ -118,19 +124,24 @@ class FluxDeploymentChecker {
       return {
         success: result.success,
         output: stdout.trim(),
-        error: stderr.trim() || undefined
+        error: stderr.trim() || undefined,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       return {
         success: false,
         output: "",
-        error: `Failed to run flux: ${errorMessage}`
+        error: `Failed to run flux: ${errorMessage}`,
       };
     }
   }
 
-  private log(message: string, level: "INFO" | "WARN" | "ERROR" = "INFO"): void {
+  private log(
+    message: string,
+    level: "INFO" | "WARN" | "ERROR" = "INFO",
+  ): void {
     const timestamp = new Date().toISOString();
     const prefix = level === "ERROR" ? "❌" : level === "WARN" ? "⚠️ " : "ℹ️ ";
     console.log(`[${timestamp}] ${prefix} ${message}`);
@@ -179,13 +190,19 @@ class FluxDeploymentChecker {
   }
 
   async getGitRepositories(): Promise<GitRepositoryInfo[]> {
-    const result = await this.runFlux(["get", "sources", "git", "-A", "--no-header"]);
+    const result = await this.runFlux([
+      "get",
+      "sources",
+      "git",
+      "-A",
+      "--no-header",
+    ]);
     if (!result.success) {
       throw new Error(`Failed to get GitRepositories: ${result.error}`);
     }
 
     const repos: GitRepositoryInfo[] = [];
-    const lines = result.output.trim().split('\n');
+    const lines = result.output.trim().split("\n");
 
     for (const line of lines) {
       if (!line.trim()) continue;
@@ -198,16 +215,18 @@ class FluxDeploymentChecker {
       const revision = parts[2];
       const suspended = parts[3] === "True";
       const ready = parts[4] === "True";
-      const message = parts.slice(5).join(' ');
+      const message = parts.slice(5).join(" ");
 
       repos.push({
         name,
         namespace,
         url: "unknown", // We'd need kubectl to get the URL
-        branch: revision.includes("refs/heads/") ? revision.split("refs/heads/")[1].split("@")[0] : "main",
+        branch: revision.includes("refs/heads/")
+          ? revision.split("refs/heads/")[1].split("@")[0]
+          : "main",
         ready,
         lastFetchedRevision: revision,
-        conditions: [] // We'd need kubectl to get detailed conditions
+        conditions: [], // We'd need kubectl to get detailed conditions
       });
     }
 
@@ -215,7 +234,12 @@ class FluxDeploymentChecker {
   }
 
   async getKustomizations(): Promise<FluxResource[]> {
-    const result = await this.runFlux(["get", "kustomizations", "-A", "--no-header"]);
+    const result = await this.runFlux([
+      "get",
+      "kustomizations",
+      "-A",
+      "--no-header",
+    ]);
     if (!result.success) {
       throw new Error(`Failed to get Kustomizations: ${result.error}`);
     }
@@ -224,7 +248,12 @@ class FluxDeploymentChecker {
   }
 
   async getHelmReleases(): Promise<FluxResource[]> {
-    const result = await this.runFlux(["get", "helmreleases", "-A", "--no-header"]);
+    const result = await this.runFlux([
+      "get",
+      "helmreleases",
+      "-A",
+      "--no-header",
+    ]);
     if (!result.success) {
       throw new Error(`Failed to get HelmReleases: ${result.error}`);
     }
@@ -234,7 +263,7 @@ class FluxDeploymentChecker {
 
   private parseFluxResources(output: string, kind: string): FluxResource[] {
     const resources: FluxResource[] = [];
-    const lines = output.trim().split('\n');
+    const lines = output.trim().split("\n");
 
     for (const line of lines) {
       if (!line.trim()) continue;
@@ -247,7 +276,8 @@ class FluxDeploymentChecker {
       const revision = parts[2];
       const suspended = parts[3] === "True";
       const ready = parts[4] === "True";
-      const message = parts.slice(5).join(' ') || (ready ? "Ready" : "Not Ready");
+      const message = parts.slice(5).join(" ") ||
+        (ready ? "Ready" : "Not Ready");
 
       resources.push({
         name,
@@ -258,7 +288,7 @@ class FluxDeploymentChecker {
         lastAppliedRevision: revision,
         conditions: [], // We'd need kubectl to get detailed conditions
         source: undefined, // We'd need kubectl to get source info
-        dependsOn: undefined // We'd need kubectl to get dependencies
+        dependsOn: undefined, // We'd need kubectl to get dependencies
       });
     }
 
@@ -276,21 +306,34 @@ class FluxDeploymentChecker {
 
         if (this.verbose) {
           if (repo.lastFetchedRevision) {
-            this.verboseLog(`   Last fetched: ${repo.lastFetchedRevision.substring(0, 8)}`);
+            this.verboseLog(
+              `   Last fetched: ${repo.lastFetchedRevision.substring(0, 8)}`,
+            );
           }
         }
       } else {
-        this.log(`❌ GitRepository ${repo.namespace}/${repo.name}: Not Ready`, "ERROR");
+        this.log(
+          `❌ GitRepository ${repo.namespace}/${repo.name}: Not Ready`,
+          "ERROR",
+        );
         allHealthy = false;
 
         // Get detailed info if verbose
         if (this.verbose) {
-          await this.showResourceDetails("GitRepository", repo.name, repo.namespace);
+          await this.showResourceDetails(
+            "GitRepository",
+            repo.name,
+            repo.namespace,
+          );
         }
       }
     }
 
-    this.log(`📊 GitRepository Summary: ${repos.filter(r => r.ready).length}/${repos.length} ready`);
+    this.log(
+      `📊 GitRepository Summary: ${
+        repos.filter((r) => r.ready).length
+      }/${repos.length} ready`,
+    );
     return allHealthy;
   }
 
@@ -309,17 +352,24 @@ class FluxDeploymentChecker {
     }
 
     for (const [namespace, resources] of byNamespace) {
-      const readyCount = resources.filter(r => r.ready && !r.suspended).length;
-      const suspendedCount = resources.filter(r => r.suspended).length;
+      const readyCount = resources.filter((r) =>
+        r.ready && !r.suspended
+      ).length;
+      const suspendedCount = resources.filter((r) => r.suspended).length;
       const totalActive = resources.length - suspendedCount;
 
       if (readyCount === totalActive && totalActive > 0) {
-        this.log(`✅ Namespace ${namespace}: All ${totalActive} Kustomizations ready`);
+        this.log(
+          `✅ Namespace ${namespace}: All ${totalActive} Kustomizations ready`,
+        );
         if (suspendedCount > 0) {
           this.verboseLog(`   (${suspendedCount} suspended)`);
         }
       } else {
-        this.log(`❌ Namespace ${namespace}: ${readyCount}/${totalActive} Kustomizations ready`, "ERROR");
+        this.log(
+          `❌ Namespace ${namespace}: ${readyCount}/${totalActive} Kustomizations ready`,
+          "ERROR",
+        );
         allHealthy = false;
       }
 
@@ -329,24 +379,35 @@ class FluxDeploymentChecker {
           this.log(`   ${resource.name}: Not Ready`, "WARN");
 
           if (this.verbose) {
-            await this.showResourceDetails("Kustomization", resource.name, resource.namespace);
+            await this.showResourceDetails(
+              "Kustomization",
+              resource.name,
+              resource.namespace,
+            );
           }
         } else if (resource.suspended) {
           this.verboseLog(`   ${resource.name}: Suspended`);
         } else if (this.verbose) {
           this.verboseLog(`   ${resource.name}: Ready`);
           if (resource.lastAppliedRevision) {
-            this.verboseLog(`     Last applied: ${resource.lastAppliedRevision.substring(0, 8)}`);
+            this.verboseLog(
+              `     Last applied: ${
+                resource.lastAppliedRevision.substring(0, 8)
+              }`,
+            );
           }
         }
       }
     }
 
-    const totalReady = kustomizations.filter(k => k.ready && !k.suspended).length;
-    const totalSuspended = kustomizations.filter(k => k.suspended).length;
+    const totalReady =
+      kustomizations.filter((k) => k.ready && !k.suspended).length;
+    const totalSuspended = kustomizations.filter((k) => k.suspended).length;
     const totalActive = kustomizations.length - totalSuspended;
 
-    this.log(`📊 Kustomization Summary: ${totalReady}/${totalActive} ready, ${totalSuspended} suspended`);
+    this.log(
+      `📊 Kustomization Summary: ${totalReady}/${totalActive} ready, ${totalSuspended} suspended`,
+    );
     return allHealthy;
   }
 
@@ -365,17 +426,24 @@ class FluxDeploymentChecker {
     }
 
     for (const [namespace, resources] of byNamespace) {
-      const readyCount = resources.filter(r => r.ready && !r.suspended).length;
-      const suspendedCount = resources.filter(r => r.suspended).length;
+      const readyCount = resources.filter((r) =>
+        r.ready && !r.suspended
+      ).length;
+      const suspendedCount = resources.filter((r) => r.suspended).length;
       const totalActive = resources.length - suspendedCount;
 
       if (readyCount === totalActive && totalActive > 0) {
-        this.log(`✅ Namespace ${namespace}: All ${totalActive} HelmReleases ready`);
+        this.log(
+          `✅ Namespace ${namespace}: All ${totalActive} HelmReleases ready`,
+        );
         if (suspendedCount > 0) {
           this.verboseLog(`   (${suspendedCount} suspended)`);
         }
       } else if (totalActive > 0) {
-        this.log(`❌ Namespace ${namespace}: ${readyCount}/${totalActive} HelmReleases ready`, "ERROR");
+        this.log(
+          `❌ Namespace ${namespace}: ${readyCount}/${totalActive} HelmReleases ready`,
+          "ERROR",
+        );
         allHealthy = false;
       }
 
@@ -385,7 +453,11 @@ class FluxDeploymentChecker {
           this.log(`   ${resource.name}: Not Ready`, "WARN");
 
           if (this.verbose) {
-            await this.showResourceDetails("HelmRelease", resource.name, resource.namespace);
+            await this.showResourceDetails(
+              "HelmRelease",
+              resource.name,
+              resource.namespace,
+            );
           }
         } else if (resource.suspended) {
           this.verboseLog(`   ${resource.name}: Suspended`);
@@ -395,15 +467,22 @@ class FluxDeploymentChecker {
       }
     }
 
-    const totalReady = helmReleases.filter(hr => hr.ready && !hr.suspended).length;
-    const totalSuspended = helmReleases.filter(hr => hr.suspended).length;
+    const totalReady =
+      helmReleases.filter((hr) => hr.ready && !hr.suspended).length;
+    const totalSuspended = helmReleases.filter((hr) => hr.suspended).length;
     const totalActive = helmReleases.length - totalSuspended;
 
-    this.log(`📊 HelmRelease Summary: ${totalReady}/${totalActive} ready, ${totalSuspended} suspended`);
+    this.log(
+      `📊 HelmRelease Summary: ${totalReady}/${totalActive} ready, ${totalSuspended} suspended`,
+    );
     return allHealthy;
   }
 
-  async showResourceDetails(kind: string, name: string, namespace: string): Promise<void> {
+  async showResourceDetails(
+    kind: string,
+    name: string,
+    namespace: string,
+  ): Promise<void> {
     try {
       let resourceType: string;
 
@@ -418,28 +497,37 @@ class FluxDeploymentChecker {
       }
 
       const result = await this.runKubectl([
-        "get", resourceType, name, "-n", namespace, "-o", "yaml"
+        "get",
+        resourceType,
+        name,
+        "-n",
+        namespace,
+        "-o",
+        "yaml",
       ]);
 
       if (result.success) {
         // Parse YAML to extract conditions (simplified)
-        const lines = result.output.split('\n');
+        const lines = result.output.split("\n");
         let inConditions = false;
 
         for (const line of lines) {
-          if (line.includes('conditions:')) {
+          if (line.includes("conditions:")) {
             inConditions = true;
             continue;
           }
 
-          if (inConditions && line.includes('- lastTransitionTime:')) {
+          if (inConditions && line.includes("- lastTransitionTime:")) {
             inConditions = false;
             continue;
           }
 
-          if (inConditions && line.includes('message:')) {
-            const message = line.split('message:')[1]?.trim().replace(/^["']|["']$/g, '');
-            if (message && message !== 'null') {
+          if (inConditions && line.includes("message:")) {
+            const message = line.split("message:")[1]?.trim().replace(
+              /^["']|["']$/g,
+              "",
+            );
+            if (message && message !== "null") {
               this.log(`     ${message}`, "WARN");
             }
           }
@@ -453,27 +541,42 @@ class FluxDeploymentChecker {
   calculateHealthScore(
     gitRepos: GitRepositoryInfo[],
     kustomizations: FluxResource[],
-    helmReleases: FluxResource[]
+    helmReleases: FluxResource[],
   ): HealthScore {
     const allResources = [...kustomizations, ...helmReleases];
     const totalResources = allResources.length;
-    const readyResources = allResources.filter(r => r.ready && !r.suspended).length;
-    const suspendedResources = allResources.filter(r => r.suspended).length;
-    const failedResources = allResources.filter(r => !r.ready && !r.suspended).length;
+    const readyResources =
+      allResources.filter((r) => r.ready && !r.suspended).length;
+    const suspendedResources = allResources.filter((r) => r.suspended).length;
+    const failedResources =
+      allResources.filter((r) => !r.ready && !r.suspended).length;
 
-    const sourcesScore = gitRepos.length > 0 ?
-      (gitRepos.filter(r => r.ready).length / gitRepos.length) * 100 : 100;
+    const sourcesScore = gitRepos.length > 0
+      ? (gitRepos.filter((r) => r.ready).length / gitRepos.length) * 100
+      : 100;
 
     const activeResources = totalResources - suspendedResources;
-    const kustomizationsScore = kustomizations.length > 0 ?
-      (kustomizations.filter(k => k.ready && !k.suspended).length /
-       Math.max(1, kustomizations.length - kustomizations.filter(k => k.suspended).length)) * 100 : 100;
+    const kustomizationsScore = kustomizations.length > 0
+      ? (kustomizations.filter((k) => k.ready && !k.suspended).length /
+        Math.max(
+          1,
+          kustomizations.length -
+            kustomizations.filter((k) => k.suspended).length,
+        )) * 100
+      : 100;
 
-    const helmReleasesScore = helmReleases.length > 0 ?
-      (helmReleases.filter(hr => hr.ready && !hr.suspended).length /
-       Math.max(1, helmReleases.length - helmReleases.filter(hr => hr.suspended).length)) * 100 : 100;
+    const helmReleasesScore = helmReleases.length > 0
+      ? (helmReleases.filter((hr) => hr.ready && !hr.suspended).length /
+        Math.max(
+          1,
+          helmReleases.length -
+            helmReleases.filter((hr) => hr.suspended).length,
+        )) * 100
+      : 100;
 
-    const overallScore = activeResources > 0 ? (readyResources / activeResources) * 100 : 100;
+    const overallScore = activeResources > 0
+      ? (readyResources / activeResources) * 100
+      : 100;
 
     return {
       overall: Math.round(overallScore),
@@ -484,8 +587,8 @@ class FluxDeploymentChecker {
         totalResources,
         readyResources,
         suspendedResources,
-        failedResources
-      }
+        failedResources,
+      },
     };
   }
 
@@ -498,10 +601,18 @@ class FluxDeploymentChecker {
       const gitRepos = await this.getGitRepositories();
       for (const repo of gitRepos) {
         const result = await this.runFlux([
-          "reconcile", "source", "git", repo.name, "-n", repo.namespace, "--with-source"
+          "reconcile",
+          "source",
+          "git",
+          repo.name,
+          "-n",
+          repo.namespace,
+          "--with-source",
         ]);
         if (!result.success) {
-          this.verboseLog(`Failed to reconcile GitRepository ${repo.name}: ${result.error}`);
+          this.verboseLog(
+            `Failed to reconcile GitRepository ${repo.name}: ${result.error}`,
+          );
         }
       }
 
@@ -518,10 +629,17 @@ class FluxDeploymentChecker {
       for (const ks of kustomizations) {
         if (!ks.suspended) {
           const result = await this.runFlux([
-            "reconcile", "kustomization", ks.name, "-n", ks.namespace, "--with-source"
+            "reconcile",
+            "kustomization",
+            ks.name,
+            "-n",
+            ks.namespace,
+            "--with-source",
           ]);
           if (!result.success) {
-            this.verboseLog(`Failed to reconcile Kustomization ${ks.name}: ${result.error}`);
+            this.verboseLog(
+              `Failed to reconcile Kustomization ${ks.name}: ${result.error}`,
+            );
           } else {
             reconciledKs++;
           }
@@ -541,10 +659,17 @@ class FluxDeploymentChecker {
       for (const hr of helmReleases) {
         if (!hr.suspended) {
           const result = await this.runFlux([
-            "reconcile", "helmrelease", hr.name, "-n", hr.namespace, "--with-source"
+            "reconcile",
+            "helmrelease",
+            hr.name,
+            "-n",
+            hr.namespace,
+            "--with-source",
           ]);
           if (!result.success) {
-            this.verboseLog(`Failed to reconcile HelmRelease ${hr.name}: ${result.error}`);
+            this.verboseLog(
+              `Failed to reconcile HelmRelease ${hr.name}: ${result.error}`,
+            );
           } else {
             reconciledHr++;
           }
@@ -558,9 +683,10 @@ class FluxDeploymentChecker {
       this.log("✅ Comprehensive reconciliation completed");
       this.log("⏳ Waiting for reconciliation to take effect...");
       await delay(5000); // Wait for reconciliation to take effect
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       this.log(`❌ Reconciliation failed: ${errorMessage}`, "ERROR");
     }
   }
@@ -579,7 +705,8 @@ class FluxDeploymentChecker {
     }
 
     // Get all resources using compatible commands
-    const { gitRepositories, kustomizations, helmReleases } = await this.getAllFluxResources();
+    const { gitRepositories, kustomizations, helmReleases } = await this
+      .getAllFluxResources();
 
     let allHealthy = true;
 
@@ -599,24 +726,41 @@ class FluxDeploymentChecker {
     }
 
     // Calculate and display health score
-    const healthScore = this.calculateHealthScore(gitRepositories, kustomizations, helmReleases);
+    const healthScore = this.calculateHealthScore(
+      gitRepositories,
+      kustomizations,
+      helmReleases,
+    );
     this.log(`🏥 Health Score: ${healthScore.overall}% overall`);
 
     if (this.verbose) {
       this.verboseLog(`   Sources: ${healthScore.sources}%`);
       this.verboseLog(`   Kustomizations: ${healthScore.kustomizations}%`);
       this.verboseLog(`   HelmReleases: ${healthScore.helmreleases}%`);
-      this.verboseLog(`   Details: ${healthScore.details.readyResources}/${healthScore.details.totalResources - healthScore.details.suspendedResources} ready, ${healthScore.details.suspendedResources} suspended, ${healthScore.details.failedResources} failed`);
+      this.verboseLog(
+        `   Details: ${healthScore.details.readyResources}/${
+          healthScore.details.totalResources -
+          healthScore.details.suspendedResources
+        } ready, ${healthScore.details.suspendedResources} suspended, ${healthScore.details.failedResources} failed`,
+      );
     }
 
     // Final summary
     if (allHealthy) {
-      this.log("🎉 GitOps deployment verification PASSED - All deployments healthy!");
+      this.log(
+        "🎉 GitOps deployment verification PASSED - All deployments healthy!",
+      );
     } else {
-      this.log("⚠️  GitOps deployment verification FAILED - Issues detected", "ERROR");
+      this.log(
+        "⚠️  GitOps deployment verification FAILED - Issues detected",
+        "ERROR",
+      );
 
       if (healthScore.overall < 80) {
-        this.log("💡 Consider running with --force-reconcile to refresh all resources", "WARN");
+        this.log(
+          "💡 Consider running with --force-reconcile to refresh all resources",
+          "WARN",
+        );
       }
     }
 
@@ -667,15 +811,15 @@ async function main(): Promise<void> {
       w: "watch",
       r: "force-reconcile",
       i: "interval",
-      h: "help"
+      h: "help",
     },
     default: {
       verbose: false,
       continuous: false,
       watch: false,
       "force-reconcile": false,
-      interval: "60"
-    }
+      interval: "60",
+    },
   });
 
   const args = {
@@ -685,7 +829,7 @@ async function main(): Promise<void> {
     watch: Boolean(parsedArgs.watch),
     forceReconcile: Boolean(parsedArgs["force-reconcile"]),
     help: Boolean(parsedArgs.help),
-    interval: String(parsedArgs.interval || "60")
+    interval: String(parsedArgs.interval || "60"),
   };
 
   if (args.help) {
@@ -699,7 +843,9 @@ async function main(): Promise<void> {
   try {
     if (args.continuous || args.watch) {
       const mode = args.watch ? "watch" : "continuous";
-      console.log(`🔄 Starting ${mode} monitoring (interval: ${args.interval}s, Ctrl+C to stop)...`);
+      console.log(
+        `🔄 Starting ${mode} monitoring (interval: ${args.interval}s, Ctrl+C to stop)...`,
+      );
 
       while (true) {
         if (args.watch) {

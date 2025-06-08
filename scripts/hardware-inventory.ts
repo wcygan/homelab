@@ -49,20 +49,26 @@ class HardwareInventory {
 
     try {
       // Get hostname
-      const hostnameOutput = await $`talosctl get hostname -n ${nodeIp} -o json`.text();
+      const hostnameOutput = await $`talosctl get hostname -n ${nodeIp} -o json`
+        .text();
       const hostnameResult = JSON.parse(hostnameOutput);
       const hostname = hostnameResult.spec.hostname;
 
       // Get Talos version
-      const versionOutput = await $`talosctl version --nodes ${nodeIp} --short`.text();
-      const talosVersion = versionOutput.trim().split("\n")[1].replace("Server:", "").trim().split(" ")[0];
+      const versionOutput = await $`talosctl version --nodes ${nodeIp} --short`
+        .text();
+      const talosVersion =
+        versionOutput.trim().split("\n")[1].replace("Server:", "").trim().split(
+          " ",
+        )[0];
 
       // Get Kubernetes version from node
       const k8sNode = await $`kubectl get node ${hostname} -o json`.json();
       const kubernetesVersion = k8sNode.status.nodeInfo.kubeletVersion;
 
       // Get system disk
-      const systemDiskOutput = await $`talosctl get systemdisk -n ${nodeIp} -o json`.text();
+      const systemDiskOutput =
+        await $`talosctl get systemdisk -n ${nodeIp} -o json`.text();
       const systemDiskResult = JSON.parse(systemDiskOutput);
       const systemDisk = systemDiskResult.spec.diskID;
 
@@ -76,9 +82,9 @@ class HardwareInventory {
       const disksResult = [];
       let currentObj = "";
       let braceCount = 0;
-      for (const line of disksText.split('\n')) {
+      for (const line of disksText.split("\n")) {
         if (line.trim() === "") continue;
-        currentObj += line + '\n';
+        currentObj += line + "\n";
         braceCount += (line.match(/{/g) || []).length;
         braceCount -= (line.match(/}/g) || []).length;
         if (braceCount === 0 && currentObj.trim()) {
@@ -106,9 +112,9 @@ class HardwareInventory {
       const linksResult = [];
       let linkObj = "";
       let linkBraceCount = 0;
-      for (const line of linksText.split('\n')) {
+      for (const line of linksText.split("\n")) {
         if (line.trim() === "") continue;
-        linkObj += line + '\n';
+        linkObj += line + "\n";
         linkBraceCount += (line.match(/{/g) || []).length;
         linkBraceCount -= (line.match(/}/g) || []).length;
         if (linkBraceCount === 0 && linkObj.trim()) {
@@ -117,8 +123,8 @@ class HardwareInventory {
         }
       }
       const interfaces: NetworkInterface[] = linksResult
-        .filter((link: any) => 
-          link.spec.type === "ether" && 
+        .filter((link: any) =>
+          link.spec.type === "ether" &&
           !link.metadata.id.startsWith("veth") &&
           !link.metadata.id.startsWith("cilium")
         )
@@ -142,9 +148,9 @@ class HardwareInventory {
       const mountsResult = [];
       let mountObj = "";
       let mountBraceCount = 0;
-      for (const line of mountsText.split('\n')) {
+      for (const line of mountsText.split("\n")) {
         if (line.trim() === "") continue;
-        mountObj += line + '\n';
+        mountObj += line + "\n";
         mountBraceCount += (line.match(/{/g) || []).length;
         mountBraceCount -= (line.match(/}/g) || []).length;
         if (mountBraceCount === 0 && mountObj.trim()) {
@@ -153,7 +159,9 @@ class HardwareInventory {
         }
       }
       const mounts = mountsResult
-        .filter((mount: any) => mount.spec.source && mount.spec.source.startsWith("/dev"))
+        .filter((mount: any) =>
+          mount.spec.source && mount.spec.source.startsWith("/dev")
+        )
         .map((mount: any) => ({
           source: mount.spec.source,
           target: mount.spec.target,
@@ -171,7 +179,9 @@ class HardwareInventory {
         kubernetesVersion,
       };
     } catch (error) {
-      console.error(colors.red(`Failed to collect inventory for ${nodeIp}: ${error}`));
+      console.error(
+        colors.red(`Failed to collect inventory for ${nodeIp}: ${error}`),
+      );
       throw error;
     }
   }
@@ -225,21 +235,25 @@ class HardwareInventory {
     // Table format (default)
     for (const [ip, inv] of this.inventory) {
       console.log(colors.green(`\n📦 Node: ${inv.hostname} (${ip})`));
-      console.log(colors.gray(`Talos: ${inv.talosVersion} | Kubernetes: ${inv.kubernetesVersion}`));
+      console.log(
+        colors.gray(
+          `Talos: ${inv.talosVersion} | Kubernetes: ${inv.kubernetesVersion}`,
+        ),
+      );
 
       // Disks table
       console.log(colors.blue("\n💾 Disks:"));
       const diskTable = new Table()
         .header(["Device", "Serial", "Size", "Type", "Model", "System"])
         .body(
-          inv.disks.map(disk => [
+          inv.disks.map((disk) => [
             disk.id,
             disk.serial,
             disk.size,
             disk.transport,
             disk.model,
             disk.id === inv.systemDisk ? "✓" : "",
-          ])
+          ]),
         );
       diskTable.render();
 
@@ -248,13 +262,13 @@ class HardwareInventory {
       const netTable = new Table()
         .header(["Interface", "MAC Address", "Driver", "MTU", "PCI Address"])
         .body(
-          inv.interfaces.map(iface => [
+          inv.interfaces.map((iface) => [
             iface.id,
             iface.hardwareAddr,
             iface.driver,
             iface.mtu.toString(),
             iface.pciAddress,
-          ])
+          ]),
         );
       netTable.render();
 
@@ -264,11 +278,11 @@ class HardwareInventory {
         const mountTable = new Table()
           .header(["Source", "Target", "Filesystem"])
           .body(
-            inv.mounts.map(mount => [
+            inv.mounts.map((mount) => [
               mount.source,
               mount.target,
               mount.filesystem,
-            ])
+            ]),
           );
         mountTable.render();
       }
@@ -283,28 +297,40 @@ class HardwareInventory {
       throw new Error("Both nodes must be in inventory for comparison");
     }
 
-    console.log(colors.green(`\n🔍 Comparing ${inv1.hostname} vs ${inv2.hostname}`));
+    console.log(
+      colors.green(`\n🔍 Comparing ${inv1.hostname} vs ${inv2.hostname}`),
+    );
 
     // Compare disks
-    const disks1 = new Set(inv1.disks.map(d => d.serial));
-    const disks2 = new Set(inv2.disks.map(d => d.serial));
-    
-    const uniqueToNode1 = [...disks1].filter(s => !disks2.has(s));
-    const uniqueToNode2 = [...disks2].filter(s => !disks1.has(s));
+    const disks1 = new Set(inv1.disks.map((d) => d.serial));
+    const disks2 = new Set(inv2.disks.map((d) => d.serial));
+
+    const uniqueToNode1 = [...disks1].filter((s) => !disks2.has(s));
+    const uniqueToNode2 = [...disks2].filter((s) => !disks1.has(s));
 
     if (uniqueToNode1.length > 0) {
-      console.log(colors.yellow(`\nDisks only in ${inv1.hostname}:`), uniqueToNode1);
+      console.log(
+        colors.yellow(`\nDisks only in ${inv1.hostname}:`),
+        uniqueToNode1,
+      );
     }
     if (uniqueToNode2.length > 0) {
-      console.log(colors.yellow(`\nDisks only in ${inv2.hostname}:`), uniqueToNode2);
+      console.log(
+        colors.yellow(`\nDisks only in ${inv2.hostname}:`),
+        uniqueToNode2,
+      );
     }
 
     // Compare network interfaces
-    const macs1 = new Set(inv1.interfaces.map(i => i.hardwareAddr));
-    const macs2 = new Set(inv2.interfaces.map(i => i.hardwareAddr));
-    
+    const macs1 = new Set(inv1.interfaces.map((i) => i.hardwareAddr));
+    const macs2 = new Set(inv2.interfaces.map((i) => i.hardwareAddr));
+
     if (macs1.size !== macs2.size) {
-      console.log(colors.yellow(`\nNetwork interface count differs: ${macs1.size} vs ${macs2.size}`));
+      console.log(
+        colors.yellow(
+          `\nNetwork interface count differs: ${macs1.size} vs ${macs2.size}`,
+        ),
+      );
     }
   }
 
@@ -314,20 +340,30 @@ class HardwareInventory {
     console.log(colors.green(`\n✅ Inventory saved to ${filename}`));
   }
 
-  async run(options: { nodes?: string[]; all: boolean; format: string; compare?: string; save?: string }) {
+  async run(
+    options: {
+      nodes?: string[];
+      all: boolean;
+      format: string;
+      compare?: string;
+      save?: string;
+    },
+  ) {
     // Determine which nodes to inventory
     if (options.all) {
       const nodesResult = await $`kubectl get nodes -o json`.json();
-      this.nodes = nodesResult.items.map((node: any) => 
-        node.status.addresses.find((addr: any) => addr.type === "InternalIP").address
+      this.nodes = nodesResult.items.map((node: any) =>
+        node.status.addresses.find((addr: any) => addr.type === "InternalIP")
+          .address
       );
     } else if (options.nodes && options.nodes.length > 0) {
       this.nodes = options.nodes;
     } else {
       // Default to all nodes if none specified
       const nodesResult = await $`kubectl get nodes -o json`.json();
-      this.nodes = nodesResult.items.map((node: any) => 
-        node.status.addresses.find((addr: any) => addr.type === "InternalIP").address
+      this.nodes = nodesResult.items.map((node: any) =>
+        node.status.addresses.find((addr: any) => addr.type === "InternalIP")
+          .address
       );
     }
 
@@ -363,15 +399,31 @@ if (import.meta.main) {
     .name("hardware-inventory")
     .version("0.1.0")
     .description("Collect and display hardware inventory for Talos Linux nodes")
-    .option("-n, --nodes <ips:string[]>", "Node IPs to inventory", { collect: true })
+    .option("-n, --nodes <ips:string[]>", "Node IPs to inventory", {
+      collect: true,
+    })
     .option("-a, --all", "Inventory all nodes in cluster")
-    .option("-f, --format <format:string>", "Output format", { default: "table" })
-    .option("-c, --compare <nodes:string>", "Compare two nodes (comma-separated IPs)")
+    .option("-f, --format <format:string>", "Output format", {
+      default: "table",
+    })
+    .option(
+      "-c, --compare <nodes:string>",
+      "Compare two nodes (comma-separated IPs)",
+    )
     .option("-s, --save <file:string>", "Save inventory to JSON file")
     .example("All nodes", "hardware-inventory.ts --all")
-    .example("Specific nodes", "hardware-inventory.ts -n 192.168.1.98 -n 192.168.1.99")
-    .example("Compare nodes", "hardware-inventory.ts --all --compare 192.168.1.98,192.168.1.99")
-    .example("Save to file", "hardware-inventory.ts --all --save inventory.json")
+    .example(
+      "Specific nodes",
+      "hardware-inventory.ts -n 192.168.1.98 -n 192.168.1.99",
+    )
+    .example(
+      "Compare nodes",
+      "hardware-inventory.ts --all --compare 192.168.1.98,192.168.1.99",
+    )
+    .example(
+      "Save to file",
+      "hardware-inventory.ts --all --save inventory.json",
+    )
     .action(async (options) => {
       const inventory = new HardwareInventory();
       await inventory.run(options);

@@ -18,7 +18,7 @@ spec:
   chart:
     spec:
       chart: <chart-name>
-      version: "<version>"  # ALWAYS pin versions
+      version: "<version>" # ALWAYS pin versions
       sourceRef:
         kind: HelmRepository
         name: <repo-name>
@@ -36,9 +36,9 @@ spec:
   install:
     createNamespace: true
     remediation:
-      retries: 3  # Standard retry count
-      # Optional: Add strategy for critical services
-      # strategy: rollback
+      retries: 3 # Standard retry count
+  # Optional: Add strategy for critical services
+  # strategy: rollback
 
   # Upgrade configuration
   upgrade:

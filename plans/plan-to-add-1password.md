@@ -1,9 +1,12 @@
 # Plan to Add 1Password Connect Server
 
 ## Objective
-Install 1Password Connect server and Kubernetes Operator to sync 1Password items as Kubernetes Secrets.
+
+Install 1Password Connect server and Kubernetes Operator to sync 1Password items
+as Kubernetes Secrets.
 
 ## Prerequisites
+
 - Helm ≥ 3.0 installed and configured
 - `kubectl` configured to target your cluster
 - 1Password CLI (`op`) installed and signed in
@@ -11,16 +14,21 @@ Install 1Password Connect server and Kubernetes Operator to sync 1Password items
 - 1Password Connect token (`wcygan-net Access Token: Kubernetes`)
 
 ## Steps
-Replace the manual Helm commands with a GitOps-driven approach. All resources will be managed in Git under `kubernetes/apps/onepassword-connect/`:
+
+Replace the manual Helm commands with a GitOps-driven approach. All resources
+will be managed in Git under `kubernetes/apps/onepassword-connect/`:
 
 1. Create a directory `kubernetes/apps/onepassword-connect/` and add:
    - `namespace.yaml` (a Namespace CR)
    - `helmrepo.yaml` (a Flux HelmRepository CR for the 1Password chart)
-   - `externalsecret-credentials.yaml` (an ExternalSecret CR to sync Connect credentials and token)
-   - `helmrelease.yaml` (a Flux HelmRelease CR to install the Connect server + Operator using the synced Secret)
+   - `externalsecret-credentials.yaml` (an ExternalSecret CR to sync Connect
+     credentials and token)
+   - `helmrelease.yaml` (a Flux HelmRelease CR to install the Connect server +
+     Operator using the synced Secret)
    - `kustomization.yaml` (a Flux Kustomization CR to deploy all of the above)
 
-2. Commit and push these files. Flux will automatically install or update the Connect server and Operator.
+2. Commit and push these files. Flux will automatically install or update the
+   Connect server and Operator.
 
 Example snippets:
 
@@ -81,7 +89,7 @@ spec:
   chart:
     spec:
       chart: connect
-      version: 1.8.0         # pin a chart version
+      version: 1.8.0 # pin a chart version
       sourceRef:
         kind: HelmRepository
         name: onepassword-charts
@@ -132,11 +140,17 @@ spec:
 ```
 
 ## Verification
-- Run `flux get kustomizations -n flux-system` to confirm `onepassword-connect` is reconciling.
-- Use `kubectl get pods -n onepassword-system` and `kubectl get crds | grep onepassword` to verify the Connect server, operator, and CRDs are present.
+
+- Run `flux get kustomizations -n flux-system` to confirm `onepassword-connect`
+  is reconciling.
+- Use `kubectl get pods -n onepassword-system` and
+  `kubectl get crds | grep onepassword` to verify the Connect server, operator,
+  and CRDs are present.
 
 ## Next Steps
+
 - Define `OnePasswordItem` CRs to sync required secrets into Kubernetes.
-- Reference the synced Secrets in your application manifests via `valuesFrom` or `env.valueFrom.secretKeyRef`.
+- Reference the synced Secrets in your application manifests via `valuesFrom` or
+  `env.valueFrom.secretKeyRef`.
 
 Refer to: https://developer.1password.com/docs/k8s/operator/

@@ -13,19 +13,19 @@ import { parseArgs } from "@std/cli";
 
 const CREDENTIAL_FILES = [
   "tailscale-oauth-client-id.txt",
-  "tailscale-oauth-client-secret.txt"
+  "tailscale-oauth-client-secret.txt",
 ];
 const TAILSCALE_NAMESPACE = "tailscale";
 const HELM_RELEASE = "tailscale-operator";
 
-async function runCommand(args: string[], options: {silent?: boolean} = {}) {
+async function runCommand(args: string[], options: { silent?: boolean } = {}) {
   if (!options.silent) {
     console.log(`    Running: ${args.join(" ")}`);
   }
   const process = new Deno.Command(args[0], {
     args: args.slice(1),
     stdout: "inherit",
-    stderr: "inherit"
+    stderr: "inherit",
   });
   const { code } = await process.output();
   if (code !== 0) {
@@ -37,7 +37,8 @@ async function promptUser(question: string): Promise<boolean> {
   const buf = new Uint8Array(1024);
   await Deno.stdout.write(new TextEncoder().encode(question + " [y/N]: "));
   const n = await Deno.stdin.read(buf) ?? 0;
-  const answer = new TextDecoder().decode(buf.subarray(0, n)).trim().toLowerCase();
+  const answer = new TextDecoder().decode(buf.subarray(0, n)).trim()
+    .toLowerCase();
   return answer === "y" || answer === "yes";
 }
 
@@ -46,26 +47,45 @@ async function uninstall({ force }: { force: boolean }) {
   // Step 1: Uninstall Helm release
   try {
     await runCommand([
-      "helm", "uninstall", HELM_RELEASE, "-n", TAILSCALE_NAMESPACE
+      "helm",
+      "uninstall",
+      HELM_RELEASE,
+      "-n",
+      TAILSCALE_NAMESPACE,
     ]);
-    console.log(`\n✅ Helm release '${HELM_RELEASE}' uninstalled from namespace '${TAILSCALE_NAMESPACE}'.`);
+    console.log(
+      `\n✅ Helm release '${HELM_RELEASE}' uninstalled from namespace '${TAILSCALE_NAMESPACE}'.`,
+    );
   } catch (e) {
-    console.warn(`\n⚠️  Helm release '${HELM_RELEASE}' may not exist or failed to uninstall: ${(e as Error).message}`);
+    console.warn(
+      `\n⚠️  Helm release '${HELM_RELEASE}' may not exist or failed to uninstall: ${
+        (e as Error).message
+      }`,
+    );
   }
 
   // Step 2: Optionally delete namespace
   let deleteNamespace = force;
   if (!force) {
-    deleteNamespace = await promptUser(`\nDo you want to delete the namespace '${TAILSCALE_NAMESPACE}'?`);
+    deleteNamespace = await promptUser(
+      `\nDo you want to delete the namespace '${TAILSCALE_NAMESPACE}'?`,
+    );
   }
   if (deleteNamespace) {
     try {
       await runCommand([
-        "kubectl", "delete", "namespace", TAILSCALE_NAMESPACE
+        "kubectl",
+        "delete",
+        "namespace",
+        TAILSCALE_NAMESPACE,
       ]);
       console.log(`\n✅ Namespace '${TAILSCALE_NAMESPACE}' deleted.`);
     } catch (e) {
-      console.warn(`\n⚠️  Namespace '${TAILSCALE_NAMESPACE}' may not exist or failed to delete: ${(e as Error).message}`);
+      console.warn(
+        `\n⚠️  Namespace '${TAILSCALE_NAMESPACE}' may not exist or failed to delete: ${
+          (e as Error).message
+        }`,
+      );
     }
   } else {
     console.log(`\nℹ️  Skipped deleting namespace '${TAILSCALE_NAMESPACE}'.`);
@@ -74,7 +94,9 @@ async function uninstall({ force }: { force: boolean }) {
   // Step 3: Remove credential files
   let cleanupCreds = force;
   if (!force) {
-    cleanupCreds = await promptUser("\nDo you want to remove Tailscale credential files?");
+    cleanupCreds = await promptUser(
+      "\nDo you want to remove Tailscale credential files?",
+    );
   }
   if (cleanupCreds) {
     for (const file of CREDENTIAL_FILES) {
@@ -121,7 +143,7 @@ async function main() {
   const args = parseArgs(Deno.args, {
     boolean: ["force", "help"],
     alias: { f: "force", h: "help" },
-    default: { force: false }
+    default: { force: false },
   });
 
   if (args.help) {

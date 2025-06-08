@@ -1,6 +1,7 @@
 # Adding NVMe Storage to MS-01 Nodes
 
-This document outlines the procedure for safely adding NVMe storage to MS-01 nodes in a running Talos Linux cluster.
+This document outlines the procedure for safely adding NVMe storage to MS-01
+nodes in a running Talos Linux cluster.
 
 ## Prerequisites
 
@@ -10,7 +11,8 @@ This document outlines the procedure for safely adding NVMe storage to MS-01 nod
 
 ## Safety Considerations
 
-**Critical**: Only upgrade one node at a time to maintain cluster availability and etcd quorum (2/3 nodes).
+**Critical**: Only upgrade one node at a time to maintain cluster availability
+and etcd quorum (2/3 nodes).
 
 ## Procedure
 
@@ -32,17 +34,20 @@ kubectl -n kube-system get pods -l component=etcd
 Repeat this process for each MS-01 node:
 
 #### Step 1: Drain the Node
+
 ```bash
 # Replace <node-name> with actual node name
 kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data --force
 ```
 
 #### Step 2: Verify Node is Drained
+
 ```bash
 kubectl get pods --all-namespaces --field-selector spec.nodeName=<node-name>
 ```
 
 #### Step 3: Power Down and Hardware Upgrade
+
 1. Gracefully shutdown the node:
    ```bash
    talosctl shutdown --nodes <node-ip>
@@ -53,6 +58,7 @@ kubectl get pods --all-namespaces --field-selector spec.nodeName=<node-name>
 5. Reassemble and power on
 
 #### Step 4: Verify Node Rejoins Cluster
+
 ```bash
 # Wait for node to appear
 kubectl get nodes -w
@@ -65,11 +71,13 @@ kubectl -n kube-system get pods -l component=etcd --field-selector spec.nodeName
 ```
 
 #### Step 5: Uncordon the Node
+
 ```bash
 kubectl uncordon <node-name>
 ```
 
 #### Step 6: Validate Pod Scheduling
+
 ```bash
 # Wait for pods to be scheduled back
 kubectl get pods --all-namespaces --field-selector spec.nodeName=<node-name>
@@ -109,6 +117,7 @@ flux get ks -A
 ## Troubleshooting
 
 ### Node Fails to Rejoin
+
 ```bash
 # Check Talos logs
 talosctl logs --nodes <node-ip>
@@ -119,6 +128,7 @@ talosctl reset --nodes <node-ip>
 ```
 
 ### etcd Issues
+
 ```bash
 # Check etcd member status
 kubectl -n kube-system exec -it etcd-<node-name> -- etcdctl member list

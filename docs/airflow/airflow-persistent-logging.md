@@ -2,7 +2,9 @@
 
 ## Problem
 
-The original Airflow deployment was experiencing log persistence issues where logs were lost when pods were terminated or restarted. This resulted in errors like:
+The original Airflow deployment was experiencing log persistence issues where
+logs were lost when pods were terminated or restarted. This resulted in errors
+like:
 
 ```
 Could not read served logs: HTTPConnectionPool(host='hello-world-say-hello-0t7l11l5', port=8793):
@@ -10,11 +12,14 @@ Max retries exceeded with url: /log/dag_id=hello_world/run_id=manual__2025-06-03
 (Caused by NameResolutionError: Failed to resolve 'hello-world-say-hello-0t7l11l5')
 ```
 
-This happens because Airflow was trying to fetch logs from pods that no longer exist.
+This happens because Airflow was trying to fetch logs from pods that no longer
+exist.
 
 ## Solution
 
-We implemented persistent logging using a Persistent Volume Claim (PVC) that stores all Airflow logs on persistent storage, ensuring logs remain available even after pod termination.
+We implemented persistent logging using a Persistent Volume Claim (PVC) that
+stores all Airflow logs on persistent storage, ensuring logs remain available
+even after pod termination.
 
 ### Key Changes Made
 
@@ -30,18 +35,18 @@ logs:
   persistence:
     enabled: true
     size: 10Gi
-    storageClassName: local-path  # Uses cluster's default storage class
+    storageClassName: local-path # Uses cluster's default storage class
     accessMode: ReadWriteOnce
 
 # Configure Airflow to use local file logging
 config:
   logging:
-    remote_logging: "False"  # Disable remote logging
+    remote_logging: "False" # Disable remote logging
     logging_level: "INFO"
     fab_logging_level: "WARN"
     log_retention_days: "30"
   core:
-    base_log_folder: "/opt/airflow/logs"  # Persistent volume mount point
+    base_log_folder: "/opt/airflow/logs" # Persistent volume mount point
     enable_xcom_pickling: "False"
   webserver:
     log_fetch_timeout_sec: "5"
@@ -102,6 +107,7 @@ Created a comprehensive test script with the following capabilities:
 ## How It Works
 
 ### Before (Problem)
+
 1. Airflow tasks run in ephemeral pods
 2. Logs are stored locally in pod filesystem
 3. When pod terminates, logs are lost
@@ -109,6 +115,7 @@ Created a comprehensive test script with the following capabilities:
 5. Users see "Could not read served logs" errors
 
 ### After (Solution)
+
 1. Airflow tasks run in pods with persistent volume mounted
 2. All logs are written to `/opt/airflow/logs` (persistent storage)
 3. When pods terminate, logs remain on persistent volume
@@ -125,6 +132,7 @@ Created a comprehensive test script with the following capabilities:
 ```
 
 Or manually:
+
 ```bash
 flux reconcile kustomization airflow -n airflow --with-source
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=airflow -n airflow --timeout=300s
@@ -160,18 +168,21 @@ You should see an `airflow-logs` PVC bound to a persistent volume.
 ## Verification Steps
 
 ### 1. Check PVC Status
+
 ```bash
 kubectl get pvc -n airflow
 # Should show airflow-logs as Bound
 ```
 
 ### 2. Check Log Directory
+
 ```bash
 kubectl exec -n airflow deployment/airflow-webserver -- ls -la /opt/airflow/logs/
 # Should show log directories organized by DAG
 ```
 
 ### 3. Check Airflow Configuration
+
 ```bash
 kubectl exec -n airflow deployment/airflow-webserver -- airflow config get-value logging remote_logging
 # Should return: False
@@ -181,6 +192,7 @@ kubectl exec -n airflow deployment/airflow-webserver -- airflow config get-value
 ```
 
 ### 4. Test Log Persistence
+
 1. Trigger a DAG run
 2. Wait for completion
 3. Delete the worker pod: `kubectl delete pod -n airflow -l component=worker`
@@ -189,16 +201,20 @@ kubectl exec -n airflow deployment/airflow-webserver -- airflow config get-value
 ## Storage Considerations
 
 ### Storage Class
+
 - Currently configured to use `local-path` storage class
 - Suitable for single-node or local development clusters
 - For production, consider using your cluster's preferred storage class
 
 ### Storage Size
+
 - Configured for 10Gi by default
 - Adjust based on your log retention needs and DAG frequency
-- Monitor usage: `kubectl exec -n airflow deployment/airflow-webserver -- df -h /opt/airflow/logs`
+- Monitor usage:
+  `kubectl exec -n airflow deployment/airflow-webserver -- df -h /opt/airflow/logs`
 
 ### Log Retention
+
 - Configured for 30-day retention
 - Airflow will automatically clean up old logs
 - Adjust `log_retention_days` in configuration as needed
@@ -206,6 +222,7 @@ kubectl exec -n airflow deployment/airflow-webserver -- airflow config get-value
 ## Alternative Solutions
 
 ### Option 1: Remote Logging (S3/GCS)
+
 For production environments, consider remote logging to cloud storage:
 
 ```yaml
@@ -217,48 +234,60 @@ config:
 ```
 
 ### Option 2: Shared NFS Storage
+
 For multi-node clusters, consider NFS-based storage:
 
 ```yaml
 logs:
   persistence:
     enabled: true
-    storageClassName: "nfs-client"  # Your NFS storage class
+    storageClassName: "nfs-client" # Your NFS storage class
     accessMode: ReadWriteMany
 ```
 
 ## Troubleshooting
 
 ### Logs Still Not Persisting
+
 1. Check PVC is bound: `kubectl get pvc -n airflow`
 2. Check volume mounts: `kubectl describe pod -n airflow -l component=webserver`
-3. Check Airflow config: `kubectl exec -n airflow deployment/airflow-webserver -- airflow config list`
+3. Check Airflow config:
+   `kubectl exec -n airflow deployment/airflow-webserver -- airflow config list`
 
 ### Storage Issues
+
 1. Check available storage: `kubectl get pv`
 2. Check storage class: `kubectl get storageclass`
 3. Check local-path-provisioner: `kubectl get pods -n storage`
 
 ### Permission Issues
+
 1. Check pod security context
-2. Verify volume permissions: `kubectl exec -n airflow deployment/airflow-webserver -- ls -la /opt/airflow/`
+2. Verify volume permissions:
+   `kubectl exec -n airflow deployment/airflow-webserver -- ls -la /opt/airflow/`
 
 ## Monitoring
 
 ### Log Volume Usage
+
 ```bash
 kubectl exec -n airflow deployment/airflow-webserver -- du -sh /opt/airflow/logs/
 ```
 
 ### Recent Log Files
+
 ```bash
 kubectl exec -n airflow deployment/airflow-webserver -- find /opt/airflow/logs/ -name "*.log" -mtime -1
 ```
 
 ### Airflow Metrics
+
 Monitor Airflow metrics via Prometheus (enabled in configuration):
+
 - Task success/failure rates
 - DAG run durations
 - Log file sizes
 
-This persistent logging setup ensures reliable log access and improves the overall Airflow user experience by eliminating the "Could not read served logs" errors.
+This persistent logging setup ensures reliable log access and improves the
+overall Airflow user experience by eliminating the "Could not read served logs"
+errors.

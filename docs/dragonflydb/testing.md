@@ -1,10 +1,12 @@
 # DragonflyDB Testing Guide
 
-This guide documents how to deploy, configure, and test DragonflyDB instances in your Kubernetes cluster.
+This guide documents how to deploy, configure, and test DragonflyDB instances in
+your Kubernetes cluster.
 
 ## Overview
 
 This testing framework demonstrates:
+
 - Deploying Dragonfly cache instances using the operator
 - Configuring storage with snapshots
 - Testing Redis-compatible operations
@@ -14,11 +16,13 @@ This testing framework demonstrates:
 ## Prerequisites
 
 Before testing, ensure:
+
 1. **DragonflyDB Operator** is installed and running (see `operator-install.md`)
 2. **Storage Class** is available (`local-path` for persistent snapshots)
 3. **Flux** is operational for GitOps deployment
 
 **Current Status:**
+
 - DragonflyDB Version: v1.28.1 (note: v1.30.3 is available)
 - Test Instance: `test-cache` in `database` namespace
 - Storage: 1Gi persistent storage via local-path StorageClass
@@ -27,9 +31,11 @@ Before testing, ensure:
 
 ### Current Test Setup
 
-The cluster includes a pre-configured test instance at `kubernetes/apps/database/test-cache/`:
+The cluster includes a pre-configured test instance at
+`kubernetes/apps/database/test-cache/`:
 
 **Instance Specification** (`dragonfly.yaml`):
+
 ```yaml
 apiVersion: dragonflydb.io/v1alpha1
 kind: Dragonfly
@@ -37,7 +43,7 @@ metadata:
   name: test-cache
   namespace: database
 spec:
-  replicas: 1  # Single instance for testing
+  replicas: 1 # Single instance for testing
 
   # Resource limits for testing environment
   resources:
@@ -67,6 +73,7 @@ spec:
 ### Flux Integration
 
 **Deployment Configuration** (`ks.yaml`):
+
 - **Dependency**: Waits for `dragonfly-operator` to be ready
 - **Interval**: 30m (standard for applications)
 - **Health Check**: Monitors the `Dragonfly` CRD status
@@ -141,6 +148,7 @@ PING
 ```
 
 **Alternative: Direct Pod Access**
+
 ```bash
 # Execute Redis commands directly in the pod (useful for automation)
 # Note: Use shell quoting for values with spaces
@@ -357,7 +365,7 @@ metadata:
   name: test-cache-scaled
   namespace: database
 spec:
-  replicas: 3  # Multi-replica setup
+  replicas: 3 # Multi-replica setup
   resources:
     requests:
       cpu: "200m"
@@ -413,6 +421,7 @@ kubectl delete dragonfly test-cache -n database
 ## Next Steps
 
 After successful testing:
+
 1. **Production Deployment**: Scale up resources and replicas
 2. **Monitoring Integration**: Add Prometheus metrics collection
 3. **Backup Strategy**: Implement automated snapshot scheduling

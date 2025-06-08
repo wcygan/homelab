@@ -1,12 +1,14 @@
 # Hardware Management Scripts - Quick Reference
 
 ## Node Information
+
 - **Node Names**: k8s-1, k8s-2, k8s-3
 - **Node IPs**: 192.168.1.98, 192.168.1.99, 192.168.1.100
 
 ## Script Usage
 
 ### 1. Node Maintenance Manager (`node:maintain`)
+
 **Purpose**: Safely drain/restore nodes for maintenance
 
 **Accepts**: Both k8s node names (k8s-1) and IP addresses (192.168.1.98)
@@ -27,6 +29,7 @@ deno task node:maintain -n k8s-1 -a restore
 ```
 
 ### 2. Hardware Change Detector (`hw:detect`)
+
 **Purpose**: Detect hardware changes and generate config patches
 
 **Accepts**: Only Talos IP addresses (192.168.1.98, 192.168.1.99, 192.168.1.100)
@@ -46,6 +49,7 @@ deno task hw:detect -n 192.168.1.98 -b snapshots/hardware/k8s-1/1749320294.json
 ```
 
 ### 3. Cluster Health Monitor (`health:monitor`)
+
 **Purpose**: Monitor overall cluster health
 
 **Accepts**: No node parameter (cluster-wide)
@@ -68,7 +72,7 @@ deno task health:monitor --flux
 
 All scripts tested successfully:
 
-1. **Node Maintenance**: 
+1. **Node Maintenance**:
    - ✅ Works with both node names and IPs
    - ✅ Dry-run mode prevents changes
    - ✅ Shows detailed status and resource usage
@@ -79,7 +83,8 @@ All scripts tested successfully:
    - ✅ Maps IPs to hostnames via talconfig.yaml
    - ✅ Detects differences in hardware configs
    - ✅ Shows unique serials/MACs per node
-   - ✅ Organized snapshots: `/snapshots/hardware/<hostname>/<unix-timestamp>.json`
+   - ✅ Organized snapshots:
+     `/snapshots/hardware/<hostname>/<unix-timestamp>.json`
    - ✅ MAC address sanitization for public repository safety
 
 3. **Health Monitor**:
@@ -99,6 +104,7 @@ All scripts tested successfully:
 ## Common Workflows
 
 ### Pre-Hardware Upgrade
+
 ```bash
 # 1. Check cluster health
 deno task health:monitor --critical-only
@@ -114,6 +120,7 @@ deno task node:maintain -n k8s-1 -a drain --dry-run
 ```
 
 ### During Hardware Upgrade
+
 ```bash
 # 1. Drain node for maintenance
 deno task node:maintain -n k8s-1 -a drain
@@ -128,6 +135,7 @@ deno task node:maintain -n k8s-1 -a restore
 ```
 
 ### Monitoring During Maintenance
+
 ```bash
 # Run in separate terminal
 deno task health:monitor --watch --critical-only

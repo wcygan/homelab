@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: airflow
-      version: "1.16.0"  # Replace with desired version
+      version: "1.16.0" # Replace with desired version
       sourceRef:
         kind: HelmRepository
         name: apache-airflow
@@ -34,13 +34,13 @@ spec:
     useStandardNaming: true
 
     # Basic configuration
-    executor: "KubernetesExecutor"  # Or CeleryExecutor, etc.
+    executor: "KubernetesExecutor" # Or CeleryExecutor, etc.
 
     # Database configuration
     data:
       metadataConnection:
         user: airflow
-        pass: airflow-db-password-changeme  # TODO: Move to 1Password/ESO
+        pass: airflow-db-password-changeme # TODO: Move to 1Password/ESO
         protocol: postgresql
         host: airflow-postgresql.airflow.svc.cluster.local
         port: 5432
@@ -54,7 +54,7 @@ spec:
     ingress:
       web:
         enabled: true
-        ingressClassName: "internal"  # or "external" based on your setup
+        ingressClassName: "internal" # or "external" based on your setup
         hosts:
           - name: "airflow.${SECRET_DOMAIN}"
             tls:
@@ -68,16 +68,16 @@ spec:
       enabled: true
       auth:
         enablePostgresUser: true
-        postgresPassword: postgres-admin-changeme  # TODO: Move to 1Password/ESO
+        postgresPassword: postgres-admin-changeme # TODO: Move to 1Password/ESO
         username: "airflow"
-        password: airflow-db-password-changeme  # TODO: Move to 1Password/ESO - must match data.metadataConnection.pass
+        password: airflow-db-password-changeme # TODO: Move to 1Password/ESO - must match data.metadataConnection.pass
         database: "airflow"
 
     # Redis configuration (if using CeleryExecutor)
     redis:
-      enabled: false  # Set to true if using CeleryExecutor
-      # If enabled, set a static password for Flux
-      # password: "your-static-redis-password"
+      enabled: false # Set to true if using CeleryExecutor
+    # If enabled, set a static password for Flux
+    # password: "your-static-redis-password"
 
     # Monitoring
     prometheus:
@@ -86,7 +86,7 @@ spec:
         enabled: true
 
     # Security
-    webserverSecretKey: ""  # Will be auto-generated
+    webserverSecretKey: "" # Will be auto-generated
 
     # Persistent logging configuration - DISABLED due to chart volume mount conflicts
     # logs:
@@ -148,8 +148,8 @@ spec:
     dags:
       gitSync:
         enabled: true
-        repo: "https://github.com/wcygan/anton.git"  # Replace with your actual repo URL if different
-        branch: "main"  # Or your default branch
+        repo: "https://github.com/wcygan/anton.git" # Replace with your actual repo URL if different
+        branch: "main" # Or your default branch
         subPath: "kubernetes/apps/airflow/airflow/dags" # Path to your DAGs within the repo
         resources:
           requests:

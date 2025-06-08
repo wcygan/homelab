@@ -10,4 +10,4 @@ spec:
   engine: FasterWhisper
   resourceProfile: cpu:1 # Using default CPU profile from KubeAI operator values
   minReplicas: 0 # Default, scale to zero
-  # maxReplicas: 1 # Optional: set max replicas if needed
+# maxReplicas: 1 # Optional: set max replicas if needed

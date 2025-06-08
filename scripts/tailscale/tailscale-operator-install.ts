@@ -14,16 +14,19 @@ import { parseArgs } from "@std/cli";
 
 const HELPER_SCRIPTS = {
   setup: "scripts/tailscale/setup-tailscale-credentials.ts",
-  install: "scripts/tailscale/install-tailscale-operator.ts"
+  install: "scripts/tailscale/install-tailscale-operator.ts",
 } as const;
 
-async function runHelperScript(scriptPath: string, args: string[] = []): Promise<boolean> {
+async function runHelperScript(
+  scriptPath: string,
+  args: string[] = [],
+): Promise<boolean> {
   try {
     const cmd = new Deno.Command("deno", {
       args: ["run", "--allow-all", scriptPath, ...args],
       stdout: "inherit",
       stderr: "inherit",
-      stdin: "inherit"
+      stdin: "inherit",
     });
 
     const { code } = await cmd.output();
@@ -40,7 +43,7 @@ async function checkPrerequisites(): Promise<boolean> {
   const checks = [
     { name: "deno", cmd: ["deno", "--version"] },
     { name: "helm", cmd: ["helm", "version", "--client"] },
-    { name: "kubectl", cmd: ["kubectl", "version", "--client"] }
+    { name: "kubectl", cmd: ["kubectl", "version", "--client"] },
   ];
 
   let allGood = true;
@@ -50,7 +53,7 @@ async function checkPrerequisites(): Promise<boolean> {
       const cmd = new Deno.Command(check.cmd[0], {
         args: check.cmd.slice(1),
         stdout: "null",
-        stderr: "null"
+        stderr: "null",
       });
 
       const { code } = await cmd.output();
@@ -69,7 +72,9 @@ async function checkPrerequisites(): Promise<boolean> {
 
   if (!allGood) {
     console.log("\n❌ Some prerequisites are missing. Please install:");
-    console.log("  - Deno: https://deno.land/manual/getting_started/installation");
+    console.log(
+      "  - Deno: https://deno.land/manual/getting_started/installation",
+    );
     console.log("  - Helm: https://helm.sh/docs/intro/install/");
     console.log("  - kubectl: https://kubernetes.io/docs/tasks/tools/");
   }
@@ -87,10 +92,10 @@ async function isTailscaleOperatorReady(): Promise<boolean> {
         "-n",
         "tailscale",
         "-o",
-        "json"
+        "json",
       ],
       stdout: "piped",
-      stderr: "null"
+      stderr: "null",
     });
     const { code, stdout } = await cmd.output();
     if (code !== 0) {
@@ -108,9 +113,13 @@ async function isTailscaleOperatorReady(): Promise<boolean> {
   }
 }
 
-async function installTailscaleOperator(options: { dryRun: boolean; skipCredentials: boolean }): Promise<void> {
+async function installTailscaleOperator(
+  options: { dryRun: boolean; skipCredentials: boolean },
+): Promise<void> {
   console.log("🚀 Tailscale Kubernetes Operator Installation\n");
-  console.log("This script will install the Tailscale Kubernetes Operator with secure");
+  console.log(
+    "This script will install the Tailscale Kubernetes Operator with secure",
+  );
   console.log("credential management and complete environment validation.\n");
 
   // Step 1: Check prerequisites
@@ -124,7 +133,9 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
   // Step 1.5: Check if operator is already installed and ready (before user prompt)
   const alreadyReady = await isTailscaleOperatorReady();
   if (alreadyReady) {
-    console.log("\n✅ Tailscale Operator is already installed and ready in the cluster. Exiting.\n");
+    console.log(
+      "\n✅ Tailscale Operator is already installed and ready in the cluster. Exiting.\n",
+    );
     return;
   }
 
@@ -140,7 +151,9 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
   // Step 2: Setup credentials (unless skipped)
   if (!options.skipCredentials) {
     console.log("📋 Step 1: Setting up OAuth credentials...\n");
-    console.log("You'll need to create OAuth credentials in the Tailscale admin console.");
+    console.log(
+      "You'll need to create OAuth credentials in the Tailscale admin console.",
+    );
     console.log("The setup script will guide you through:");
     console.log("• Visiting the Tailscale admin console");
     console.log("• Creating an OAuth client");
@@ -155,7 +168,9 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
     console.log("\n🔧 Running credential setup helper...");
     const credentialsOk = await runHelperScript(HELPER_SCRIPTS.setup);
     if (!credentialsOk) {
-      console.log("\n❌ Credential setup failed. Cannot proceed with installation.");
+      console.log(
+        "\n❌ Credential setup failed. Cannot proceed with installation.",
+      );
       console.log("Please fix the issues above and run this script again.");
       return;
     }
@@ -171,14 +186,18 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
   const installArgs: string[] = [];
   if (options.dryRun) {
     installArgs.push("--dry-run");
-    console.log("🔍 Running in dry-run mode (no actual changes will be made)\n");
+    console.log(
+      "🔍 Running in dry-run mode (no actual changes will be made)\n",
+    );
   }
 
   console.log("🔧 Running installation helper...");
   const installOk = await runHelperScript(HELPER_SCRIPTS.install, installArgs);
   if (!installOk) {
     console.log("\n❌ Installation failed.");
-    console.log("Please check the error messages above and resolve any issues.");
+    console.log(
+      "Please check the error messages above and resolve any issues.",
+    );
     return;
   }
 
@@ -193,7 +212,9 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
     console.log("\n" + "=".repeat(60));
     console.log("🚀 NEXT STEPS");
     console.log("=".repeat(60));
-    console.log("Your Tailscale Kubernetes Operator is now installed and ready to use!");
+    console.log(
+      "Your Tailscale Kubernetes Operator is now installed and ready to use!",
+    );
     console.log("");
     console.log("1. Verify the installation:");
     console.log("   kubectl get pods -n tailscale");
@@ -205,10 +226,14 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
     console.log("   kubectl cluster-info");
     console.log("");
     console.log("4. Expose your first service to Tailscale:");
-    console.log("   kubectl annotate service my-service tailscale.com/expose=true");
+    console.log(
+      "   kubectl annotate service my-service tailscale.com/expose=true",
+    );
     console.log("");
     console.log("📚 Documentation and examples:");
-    console.log("   • Tailscale K8s Operator: https://tailscale.com/kb/1185/kubernetes");
+    console.log(
+      "   • Tailscale K8s Operator: https://tailscale.com/kb/1185/kubernetes",
+    );
     console.log("=".repeat(60));
   }
 }
@@ -216,7 +241,7 @@ async function installTailscaleOperator(options: { dryRun: boolean; skipCredenti
 async function main(): Promise<void> {
   const args = parseArgs(Deno.args, {
     boolean: ["dry-run", "skip-credentials", "help", "version"],
-    alias: { d: "dry-run", s: "skip-credentials", h: "help", v: "version" }
+    alias: { d: "dry-run", s: "skip-credentials", h: "help", v: "version" },
   });
 
   if (args.version) {
@@ -279,7 +304,7 @@ REQUIREMENTS:
 
   const options = {
     dryRun: args["dry-run"],
-    skipCredentials: args["skip-credentials"]
+    skipCredentials: args["skip-credentials"],
   };
 
   await installTailscaleOperator(options);

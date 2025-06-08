@@ -1,10 +1,13 @@
 # DragonflyDB Operator Installation Guide
 
-This guide documents the installation and configuration of the DragonflyDB operator in your Kubernetes cluster using Flux GitOps.
+This guide documents the installation and configuration of the DragonflyDB
+operator in your Kubernetes cluster using Flux GitOps.
 
 ## Overview
 
-DragonflyDB is a modern, high-performance, Redis-compatible in-memory data store. The operator provides:
+DragonflyDB is a modern, high-performance, Redis-compatible in-memory data
+store. The operator provides:
+
 - Automated deployment and management of Dragonfly instances
 - Scaling and configuration management
 - Backup and recovery capabilities
@@ -13,8 +16,10 @@ DragonflyDB is a modern, high-performance, Redis-compatible in-memory data store
 ## Architecture
 
 The DragonflyDB setup consists of:
+
 1. **DragonflyDB Operator**: Manages Dragonfly instances via CRDs
-2. **Dragonfly Instances**: Individual cache/database instances created via `Dragonfly` CRD
+2. **Dragonfly Instances**: Individual cache/database instances created via
+   `Dragonfly` CRD
 3. **Storage Integration**: Uses local-path-provisioner for persistent snapshots
 
 ## Installation Process
@@ -43,9 +48,11 @@ kubernetes/apps/database/
 
 The operator is deployed via Flux using the official upstream manifests:
 
-**Source**: `https://raw.githubusercontent.com/dragonflydb/dragonfly-operator/main/manifests/dragonfly-operator.yaml`
+**Source**:
+`https://raw.githubusercontent.com/dragonflydb/dragonfly-operator/main/manifests/dragonfly-operator.yaml`
 
 **Key Configuration** (`kubernetes/apps/database/dragonfly-operator/ks.yaml`):
+
 - **Interval**: 15m (operator - fairly important)
 - **Namespace**: `database` (patched from default `dragonfly-operator-system`)
 - **Health Checks**: Monitors the operator deployment
@@ -53,7 +60,8 @@ The operator is deployed via Flux using the official upstream manifests:
 
 ### 3. Namespace Patching
 
-The operator manifests are extensively patched to relocate from the default `dragonfly-operator-system` namespace to `database`:
+The operator manifests are extensively patched to relocate from the default
+`dragonfly-operator-system` namespace to `database`:
 
 ```yaml
 # Example patches applied:
@@ -76,8 +84,8 @@ The operator manifests are extensively patched to relocate from the default `dra
    kubectl get storageclass local-path
    ```
 
-2. **Deploy via Flux**:
-   The operator is automatically deployed when the database namespace Kustomization is applied:
+2. **Deploy via Flux**: The operator is automatically deployed when the database
+   namespace Kustomization is applied:
    ```bash
    # Force reconciliation if needed
    flux reconcile kustomization cluster-apps -n flux-system --with-source
@@ -102,11 +110,13 @@ The operator manifests are extensively patched to relocate from the default `dra
 ### 5. Operator Configuration
 
 **Resource Requirements**:
+
 - Default resource limits as defined in upstream manifests
 - Runs as a single replica deployment
 - Requires cluster-wide RBAC permissions for CRD management
 
 **Key Components Installed**:
+
 - `Deployment`: dragonfly-operator
 - `ServiceAccount`: dragonfly-operator
 - `ClusterRole/ClusterRoleBinding`: Cluster-wide permissions
@@ -120,6 +130,7 @@ The operator manifests are extensively patched to relocate from the default `dra
 ### Health Checks
 
 The operator Kustomization includes health checks:
+
 ```yaml
 healthChecks:
   - apiVersion: apps/v1
@@ -128,16 +139,19 @@ healthChecks:
     namespace: database
 ```
 
-This ensures Flux waits for the operator to be ready before marking the Kustomization as successful.
+This ensures Flux waits for the operator to be ready before marking the
+Kustomization as successful.
 
 ### Dependencies
 
-The operator has no dependencies and can be deployed immediately after namespace creation.
+The operator has no dependencies and can be deployed immediately after namespace
+creation.
 
 ### Reconciliation
 
 - **Automatic**: Flux checks for upstream changes every 15 minutes
-- **Manual**: Force reconciliation with `flux reconcile kustomization dragonfly-operator -n flux-system --with-source`
+- **Manual**: Force reconciliation with
+  `flux reconcile kustomization dragonfly-operator -n flux-system --with-source`
 
 ## Troubleshooting
 
@@ -186,6 +200,7 @@ flux describe kustomization dragonfly-operator -n flux-system
 ## Next Steps
 
 After successful operator installation:
+
 1. Deploy Dragonfly instances using the `Dragonfly` CRD (see `testing.md`)
 2. Configure monitoring and alerting
 3. Set up backup and recovery procedures

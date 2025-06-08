@@ -2,11 +2,16 @@
 
 ## Overview
 
-Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with Talos Linux and Flux GitOps. This plan outlines comprehensive improvements to enhance operational maturity, reliability, and feature completeness. The homelab already demonstrates strong GitOps patterns but requires enhancements in storage, observability, standardization, and automation.
+Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
+Talos Linux and Flux GitOps. This plan outlines comprehensive improvements to
+enhance operational maturity, reliability, and feature completeness. The homelab
+already demonstrates strong GitOps patterns but requires enhancements in
+storage, observability, standardization, and automation.
 
 ## Current State Assessment
 
 ### Strengths
+
 - Mature GitOps structure with Flux v2.5.1
 - Well-architected networking (Cilium, dual ingress)
 - Modern infrastructure choices (Talos Linux, CloudNative PG, DragonflyDB)
@@ -14,6 +19,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 - Clear documentation and conventions
 
 ### Key Gaps
+
 - No distributed storage (local-path only)
 - No centralized logging solution
 - Inconsistent Flux configurations (retries, intervals, health checks)
@@ -26,7 +32,9 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 ### Phase 1: Foundation & Standardization (Parallel Tasks)
 
 #### Task 1.1: Flux Configuration Standardization
-- **Description**: Implement consistent Flux configurations across all Kustomizations
+
+- **Description**: Implement consistent Flux configurations across all
+  Kustomizations
 - **Files**: All `kubernetes/apps/**/ks.yaml` files
 - **Dependencies**: None (can run in parallel)
 - **Estimated Time**: 4 hours
@@ -39,7 +47,9 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Timeouts on all resources
 
 #### Task 1.2: Resource Limits Implementation
-- **Description**: Add resource requests/limits to all HelmReleases and deployments
+
+- **Description**: Add resource requests/limits to all HelmReleases and
+  deployments
 - **Files**: All `kubernetes/apps/**/helmrelease.yaml` files
 - **Dependencies**: None (can run in parallel)
 - **Estimated Time**: 3 hours
@@ -50,7 +60,9 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Documentation of resource allocation strategy
 
 #### Task 1.3: Secrets Migration Completion
-- **Description**: Complete migration from SOPS to 1Password for all remaining secrets
+
+- **Description**: Complete migration from SOPS to 1Password for all remaining
+  secrets
 - **Files**: All `*.sops.yaml` files
 - **Dependencies**: None (can run in parallel)
 - **Estimated Time**: 2 hours
@@ -62,6 +74,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Remove deprecated SOPS configurations
 
 #### Task 1.4: Monitoring Enhancement
+
 - **Description**: Create comprehensive monitoring dashboards and alerts
 - **Files**: `kubernetes/apps/monitoring/kube-prometheus-stack/`
 - **Dependencies**: None (can run in parallel)
@@ -74,6 +87,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Resource usage dashboards
 
 ### Phase 2: Join Point 1
+
 - Merge all Phase 1 improvements
 - Run comprehensive validation scripts
 - Ensure cluster stability with new configurations
@@ -82,6 +96,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 ### Phase 3: Storage Infrastructure (Sequential)
 
 #### Task 3.1: Rook Ceph Deployment
+
 - **Description**: Deploy Rook Ceph for unified block, object, and file storage
 - **Dependencies**: Phase 2 completion
 - **Estimated Time**: 8 hours
@@ -97,6 +112,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Initial volume migration strategy
 
 #### Task 3.2: Ceph Storage Configuration
+
 - **Description**: Configure Ceph storage pools and access policies
 - **Dependencies**: Task 3.1 (Rook Ceph base deployment)
 - **Estimated Time**: 3 hours
@@ -110,6 +126,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 ### Phase 4: Observability Stack (Parallel Tasks)
 
 #### Task 4.1: Loki Deployment
+
 - **Description**: Deploy Loki for centralized log aggregation
 - **Files**: Create `kubernetes/apps/monitoring/loki/`
 - **Dependencies**: Task 3.2 (Ceph S3 for storage backend)
@@ -122,6 +139,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Query optimization
 
 #### Task 4.2: Alloy Configuration
+
 - **Description**: Deploy and configure Grafana Alloy for log collection
 - **Files**: Create `kubernetes/apps/monitoring/alloy/`
 - **Dependencies**: Task 3.2 (Ceph S3)
@@ -134,6 +152,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Integration with Loki
 
 ### Phase 5: Join Point 2
+
 - Validate complete observability stack
 - Test log flow from applications to Loki
 - Create example queries and dashboards
@@ -142,6 +161,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 ### Phase 6: Disaster Recovery & Operations
 
 #### Task 6.1: Velero Deployment
+
 - **Description**: Deploy Velero for backup and disaster recovery
 - **Dependencies**: Phase 5 completion
 - **Estimated Time**: 5 hours
@@ -152,6 +172,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Disaster recovery runbooks
 
 #### Task 6.2: Operational Automation
+
 - **Description**: Create automated operational procedures
 - **Dependencies**: Task 6.1
 - **Estimated Time**: 6 hours
@@ -164,6 +185,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 ### Phase 7: Security Hardening (Parallel Tasks)
 
 #### Task 7.1: Network Policies
+
 - **Description**: Implement zero-trust networking with Cilium
 - **Files**: Create network policies for each namespace
 - **Dependencies**: Phase 6 completion
@@ -176,6 +198,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
   - Traffic flow documentation
 
 #### Task 7.2: Pod Security Standards
+
 - **Description**: Enforce security contexts and Pod Security Standards
 - **Files**: All deployment manifests
 - **Dependencies**: Phase 6 completion
@@ -190,6 +213,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 ### Phase 8: Application Deployment
 
 #### Task 8.1: Priority Applications
+
 - **Description**: Deploy high-priority applications from backlog
 - **Dependencies**: Phase 7 completion
 - **Estimated Time**: 8 hours
@@ -202,6 +226,7 @@ Anton is a production-grade Kubernetes homelab running on 3x MS-01 mini PCs with
 ## Execution Strategy
 
 ### Multi-Agent Setup
+
 ```bash
 # Terminal 1 - Agent A (Flux & Monitoring)
 git checkout -b feature/flux-standardization
@@ -221,6 +246,7 @@ git checkout -b feature/monitoring-ops
 ```
 
 ### Coordination Points
+
 1. **Daily Sync**: 9 AM review of progress and blockers
 2. **Status Tracking**: Update `/tmp/anton-status.md` hourly
 3. **PR Strategy**: Create draft PRs early for visibility
@@ -228,6 +254,7 @@ git checkout -b feature/monitoring-ops
 5. **Documentation**: Update relevant docs with each change
 
 ### Risk Mitigation
+
 1. **Backup Current State**: Full cluster backup before major changes
 2. **Staged Rollout**: Test changes in non-critical namespaces first
 3. **Rollback Plan**: Document rollback procedures for each phase
@@ -237,12 +264,14 @@ git checkout -b feature/monitoring-ops
 ## Success Criteria
 
 ### Phase 1 (Standardization)
+
 - [ ] All Flux configurations follow consistent patterns
 - [ ] 100% of workloads have resource limits
 - [ ] Zero SOPS secrets remaining
 - [ ] Monitoring dashboards deployed
 
 ### Phase 3 (Storage)
+
 - [ ] Rook Ceph cluster healthy and balanced
 - [ ] CephBlockPool providing RBD volumes
 - [ ] CephObjectStore serving S3 API successfully
@@ -250,21 +279,25 @@ git checkout -b feature/monitoring-ops
 - [ ] All stateful apps migrated to Ceph storage
 
 ### Phase 4 (Observability)
+
 - [ ] All pod logs collected in Loki
 - [ ] Log retention meeting requirements
 - [ ] Query performance < 5 seconds
 
 ### Phase 6 (Operations)
+
 - [ ] Successful backup/restore test
 - [ ] Automated runbooks in place
 - [ ] Recovery time < 30 minutes
 
 ### Phase 7 (Security)
+
 - [ ] Network policies enforced
 - [ ] All pods running non-root
 - [ ] Security scan passing
 
 ### Overall Project
+
 - [ ] Zero critical alerts
 - [ ] All tests passing
 - [ ] Documentation complete
@@ -282,6 +315,7 @@ git checkout -b feature/monitoring-ops
 ## Progress Tracking
 
 ### Automated Todo Generation
+
 ```typescript
 // Script to generate todos from this plan
 import { TodoWrite } from "./scripts/lib/todo.ts";
@@ -292,19 +326,20 @@ const phases = [
   // ... etc
 ];
 
-phases.forEach(phase => {
-  phase.tasks.forEach(taskId => {
+phases.forEach((phase) => {
+  phase.tasks.forEach((taskId) => {
     TodoWrite.create({
       content: `Complete Task ${taskId}`,
       status: "pending",
       priority: "high",
-      phase: phase.name
+      phase: phase.name,
     });
   });
 });
 ```
 
 ### Monitoring Progress
+
 - Use `./scripts/flux-deployment-check.ts` after each change
 - Run `./scripts/k8s-health-check.ts` hourly during execution
 - Track metrics before/after each phase

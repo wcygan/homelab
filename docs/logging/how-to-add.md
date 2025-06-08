@@ -4,9 +4,11 @@ Here's how to integrate Loki with Grafana Alloy in your `kube-prometheus-stack`:
 
 **1. Add Grafana Helm Repository (if not already done)**
 
-This step remains the same, as both Loki and Alloy charts can be found here or in Grafana's OCI registry.
+This step remains the same, as both Loki and Alloy charts can be found here or
+in Grafana's OCI registry.
 
 Create `kubernetes/flux/meta/repos/grafana-charts.yaml`:
+
 ```yaml
 # kubernetes/flux/meta/repos/grafana-charts.yaml
 ---
@@ -21,6 +23,7 @@ spec:
 ```
 
 Update `kubernetes/flux/meta/repos/kustomization.yaml`:
+
 ```yaml
 # kubernetes/flux/meta/repos/kustomization.yaml
 ---
@@ -36,9 +39,11 @@ resources:
 
 **2. Create Loki Application Structure (Promtail Disabled)**
 
-The Loki deployment itself remains largely the same, but internal Promtail will be disabled.
+The Loki deployment itself remains largely the same, but internal Promtail will
+be disabled.
 
 `kubernetes/apps/monitoring/loki/ks.yaml`:
+
 ```yaml
 # kubernetes/apps/monitoring/loki/ks.yaml
 ---
@@ -69,12 +74,14 @@ spec:
   healthChecks:
     - apiVersion: apps/v1
       kind: StatefulSet # Loki in single binary mode runs as a StatefulSet
-      name: loki          # Default HelmRelease name for Loki statefulset
+      name: loki # Default HelmRelease name for Loki statefulset
       namespace: monitoring
 ```
-*(Removed Promtail DaemonSet health check from here)*
+
+_(Removed Promtail DaemonSet health check from here)_
 
 `kubernetes/apps/monitoring/loki/app/kustomization.yaml` (remains the same):
+
 ```yaml
 # kubernetes/apps/monitoring/loki/app/kustomization.yaml
 ---
@@ -84,7 +91,9 @@ resources:
   - ./helmrelease.yaml
 ```
 
-`kubernetes/apps/monitoring/loki/app/helmrelease.yaml` (update to disable Promtail):
+`kubernetes/apps/monitoring/loki/app/helmrelease.yaml` (update to disable
+Promtail):
+
 ```yaml
 # kubernetes/apps/monitoring/loki/app/helmrelease.yaml
 ---
@@ -172,6 +181,7 @@ spec:
 Now, set up Grafana Alloy to collect logs.
 
 Create `kubernetes/apps/monitoring/alloy/ks.yaml`:
+
 ```yaml
 # kubernetes/apps/monitoring/alloy/ks.yaml
 ---
@@ -205,6 +215,7 @@ spec:
 ```
 
 Create `kubernetes/apps/monitoring/alloy/app/kustomization.yaml`:
+
 ```yaml
 # kubernetes/apps/monitoring/alloy/app/kustomization.yaml
 ---
@@ -215,7 +226,9 @@ resources:
   - ./helmrelease.yaml
 ```
 
-Create `kubernetes/apps/monitoring/alloy/app/configmap-alloy.yaml` for the Alloy configuration:
+Create `kubernetes/apps/monitoring/alloy/app/configmap-alloy.yaml` for the Alloy
+configuration:
+
 ```yaml
 # kubernetes/apps/monitoring/alloy/app/configmap-alloy.yaml
 ---
@@ -266,10 +279,10 @@ data:
         url = "http://this-is-a-dummy-url.com/api/v1/write" // Will not be used if only self-scraping for local Prometheus
       }
     }
-
 ```
 
 Create `kubernetes/apps/monitoring/alloy/app/helmrelease.yaml`:
+
 ```yaml
 # kubernetes/apps/monitoring/alloy/app/helmrelease.yaml
 ---
@@ -289,20 +302,20 @@ spec:
       sourceRef: # OCI charts don't use HelmRepository sourceRef, but this is how Flux handles OCI
         kind: OCIRepository # This kind implicitly means the chart is from an OCI registry
         name: grafana-alloy-charts # A dummy name for the OCI source if not globally defined
-        # For OCI, `url` is part of the chart spec.
-        # If you have a global OCIRepository defined for ghcr.io/grafana/alloy-charts, you can reference it.
-        # Otherwise, Flux resolves the chart path directly.
-        # For clarity, ensure you have an OCIRepository defined in flux-system similar to:
-        # apiVersion: source.toolkit.fluxcd.io/v1beta2
-        # kind: OCIRepository
-        # metadata:
-        #   name: grafana-alloy-charts
-        #   namespace: flux-system
-        # spec:
-        #   interval: 1h
-        #   url: oci://ghcr.io/grafana/alloy-charts
-        #   ref:
-        #     tag: vX.Y.Z # A tag that ensures the chart images are pulled, or a digest
+      # For OCI, `url` is part of the chart spec.
+      # If you have a global OCIRepository defined for ghcr.io/grafana/alloy-charts, you can reference it.
+      # Otherwise, Flux resolves the chart path directly.
+      # For clarity, ensure you have an OCIRepository defined in flux-system similar to:
+      # apiVersion: source.toolkit.fluxcd.io/v1beta2
+      # kind: OCIRepository
+      # metadata:
+      #   name: grafana-alloy-charts
+      #   namespace: flux-system
+      # spec:
+      #   interval: 1h
+      #   url: oci://ghcr.io/grafana/alloy-charts
+      #   ref:
+      #     tag: vX.Y.Z # A tag that ensures the chart images are pulled, or a digest
       interval: 5m
   targetNamespace: monitoring
   install:
@@ -317,16 +330,16 @@ spec:
     # Deploy Alloy as a DaemonSet to collect logs from each node
     controller:
       type: "daemonset" # This is often the default or set via presets like 'logging'
-      # The Alloy chart has presets. Using the 'logging' preset is common.
-      # configReloader:
-      #   enabled: true # Usually enabled by default
+    # The Alloy chart has presets. Using the 'logging' preset is common.
+    # configReloader:
+    #   enabled: true # Usually enabled by default
 
     # Mount the ConfigMap containing alloy.river
     configMap:
       create: false # We are creating it separately
       name: "alloy-config"
       content: "" # Important: Set to empty string when using an existing ConfigMap and specifying `configMap.name`
-                  # The chart will use the file `alloy.river` from the existing ConfigMap.
+    # The chart will use the file `alloy.river` from the existing ConfigMap.
 
     # RBAC for Kubernetes service discovery and log reading
     # The chart should configure appropriate RBAC by default.
@@ -353,24 +366,34 @@ spec:
           hostPath:
             path: /var/log
 ```
-*Note on Alloy Helm Chart*: The official Helm chart for Alloy is at `oci://ghcr.io/grafana/alloy-charts/alloy`. You might need to define an `OCIRepository` source in your Flux setup if you haven't already for `ghcr.io/grafana/alloy-charts`. Or, some versions of Flux Helm controller can directly pull OCI charts specified like this. If you have a global `OCIRepository` for `ghcr.io/grafana/alloy-charts`, ensure `chart.sourceRef` points to it. Otherwise, Flux's Helm controller (v0.32.0+) should be ableto fetch OCI charts directly.
+
+_Note on Alloy Helm Chart_: The official Helm chart for Alloy is at
+`oci://ghcr.io/grafana/alloy-charts/alloy`. You might need to define an
+`OCIRepository` source in your Flux setup if you haven't already for
+`ghcr.io/grafana/alloy-charts`. Or, some versions of Flux Helm controller can
+directly pull OCI charts specified like this. If you have a global
+`OCIRepository` for `ghcr.io/grafana/alloy-charts`, ensure `chart.sourceRef`
+points to it. Otherwise, Flux's Helm controller (v0.32.0+) should be ableto
+fetch OCI charts directly.
 
 **4. Configure Grafana Data Source (remains the same)**
 
-This part of the configuration in `kubernetes/apps/monitoring/kube-prometheus-stack/app/helmrelease.yaml` doesn't change, as Grafana will still connect to the Loki service.
+This part of the configuration in
+`kubernetes/apps/monitoring/kube-prometheus-stack/app/helmrelease.yaml` doesn't
+change, as Grafana will still connect to the Loki service.
 
 ```yaml
 # kubernetes/apps/monitoring/kube-prometheus-stack/app/helmrelease.yaml
 # ... (previous content) ...
-    grafana:
-      enabled: true
-      adminPassword: "prom-operator"
-      additionalDataSources:
-        - name: Loki
-          type: loki
-          url: http://loki.monitoring.svc.cluster.local:3100
-          access: proxy
-          isDefault: false
+grafana:
+  enabled: true
+  adminPassword: "prom-operator"
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+      access: proxy
+      isDefault: false
 # ... (rest of the content) ...
 ```
 
@@ -379,6 +402,7 @@ This part of the configuration in `kubernetes/apps/monitoring/kube-prometheus-st
 Add the Alloy Kustomization to your main monitoring Kustomization.
 
 Edit `kubernetes/apps/monitoring/kustomization.yaml`:
+
 ```yaml
 # kubernetes/apps/monitoring/kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -394,21 +418,37 @@ resources:
 
 **6. Commit and Push Changes**
 
-Commit these new and modified files to your Git repository. Flux will apply the changes:
-*   Deploy Loki (without Promtail).
-*   Deploy Grafana Alloy as a DaemonSet.
-*   Alloy will collect logs using the `loki.source.kubernetes` component and send them to Loki.
-*   Your Grafana instance will be able to query these logs from Loki.
+Commit these new and modified files to your Git repository. Flux will apply the
+changes:
+
+- Deploy Loki (without Promtail).
+- Deploy Grafana Alloy as a DaemonSet.
+- Alloy will collect logs using the `loki.source.kubernetes` component and send
+  them to Loki.
+- Your Grafana instance will be able to query these logs from Loki.
 
 **Explanation of Changes for Alloy:**
 
-*   **Promtail Disabled**: In Loki's HelmRelease (`loki/app/helmrelease.yaml`), `promtail.enabled` is set to `false`.
-*   **Alloy Deployment**: A new application `alloy` is created in the `monitoring` namespace. It's deployed as a DaemonSet using its official Helm chart ([oci://ghcr.io/grafana/alloy-charts/alloy](https://github.com/grafana/alloy)).
-*   **Alloy Configuration (`alloy.river`)**:
-    *   The configuration uses `loki.source.kubernetes` to discover and tail logs from all pods on the node where the Alloy instance is running. This component automatically adds standard Kubernetes labels (pod, namespace, container, node, etc.). [Migrate from Promtail to Grafana Alloy | Grafana Alloy documentation](https://grafana.com/docs/alloy/latest/set-up/migrate/from-promtail/) highlights that Alloy can replace Promtail.
-    *   Logs are then forwarded to `loki.write`, which sends them to your Loki service (`http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push`).
-    *   `external_labels` like `cluster` and `collector` are added for better context.
-*   **Dependencies**: The Alloy Kustomization (`alloy/ks.yaml`) depends on Loki's Kustomization to ensure the Loki service endpoint is available.
-*   **Metrics**: The Alloy chart is configured with `serviceMonitor.enabled: true` so Prometheus can scrape Alloy's own operational metrics.
+- **Promtail Disabled**: In Loki's HelmRelease (`loki/app/helmrelease.yaml`),
+  `promtail.enabled` is set to `false`.
+- **Alloy Deployment**: A new application `alloy` is created in the `monitoring`
+  namespace. It's deployed as a DaemonSet using its official Helm chart
+  ([oci://ghcr.io/grafana/alloy-charts/alloy](https://github.com/grafana/alloy)).
+- **Alloy Configuration (`alloy.river`)**:
+  - The configuration uses `loki.source.kubernetes` to discover and tail logs
+    from all pods on the node where the Alloy instance is running. This
+    component automatically adds standard Kubernetes labels (pod, namespace,
+    container, node, etc.).
+    [Migrate from Promtail to Grafana Alloy | Grafana Alloy documentation](https://grafana.com/docs/alloy/latest/set-up/migrate/from-promtail/)
+    highlights that Alloy can replace Promtail.
+  - Logs are then forwarded to `loki.write`, which sends them to your Loki
+    service (`http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push`).
+  - `external_labels` like `cluster` and `collector` are added for better
+    context.
+- **Dependencies**: The Alloy Kustomization (`alloy/ks.yaml`) depends on Loki's
+  Kustomization to ensure the Loki service endpoint is available.
+- **Metrics**: The Alloy chart is configured with `serviceMonitor.enabled: true`
+  so Prometheus can scrape Alloy's own operational metrics.
 
-This setup provides a modern way to collect logs using Grafana Alloy, which is designed to be a unified telemetry collector.
+This setup provides a modern way to collect logs using Grafana Alloy, which is
+designed to be a unified telemetry collector.

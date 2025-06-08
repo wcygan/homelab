@@ -64,7 +64,9 @@ class FluxMonitor {
     this.forceReconcile = options.forceReconcile;
   }
 
-  async runCommand(cmd: string[]): Promise<{ success: boolean; output: string; error?: string }> {
+  async runCommand(
+    cmd: string[],
+  ): Promise<{ success: boolean; output: string; error?: string }> {
     try {
       const command = new Deno.Command(cmd[0], {
         args: cmd.slice(1),
@@ -79,18 +81,23 @@ class FluxMonitor {
       return {
         success: result.success,
         output: stdout.trim(),
-        error: stderr.trim() || undefined
+        error: stderr.trim() || undefined,
       };
     } catch (error) {
       return {
         success: false,
         output: "",
-        error: `Error running command: ${error instanceof Error ? error.message : String(error)}`
+        error: `Error running command: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       };
     }
   }
 
-  private log(message: string, level: "INFO" | "WARN" | "ERROR" = "INFO"): void {
+  private log(
+    message: string,
+    level: "INFO" | "WARN" | "ERROR" = "INFO",
+  ): void {
     const timestamp = new Date().toISOString();
     const prefix = level === "ERROR" ? "❌" : level === "WARN" ? "⚠️ " : "ℹ️ ";
     console.log(`[${timestamp}] ${prefix} ${message}`);
@@ -142,7 +149,14 @@ class FluxMonitor {
   }
 
   async getGitRepositories(): Promise<FluxResource[]> {
-    const result = await this.runCommand(["flux", "get", "sources", "git", "-A", "--no-header"]);
+    const result = await this.runCommand([
+      "flux",
+      "get",
+      "sources",
+      "git",
+      "-A",
+      "--no-header",
+    ]);
     if (!result.success) {
       this.verboseLog(`Failed to get GitRepositories: ${result.error}`);
       return [];
@@ -152,7 +166,13 @@ class FluxMonitor {
   }
 
   async getKustomizations(): Promise<FluxResource[]> {
-    const result = await this.runCommand(["flux", "get", "kustomizations", "-A", "--no-header"]);
+    const result = await this.runCommand([
+      "flux",
+      "get",
+      "kustomizations",
+      "-A",
+      "--no-header",
+    ]);
     if (!result.success) {
       this.verboseLog(`Failed to get Kustomizations: ${result.error}`);
       return [];
@@ -162,7 +182,13 @@ class FluxMonitor {
   }
 
   async getHelmReleases(): Promise<FluxResource[]> {
-    const result = await this.runCommand(["flux", "get", "helmreleases", "-A", "--no-header"]);
+    const result = await this.runCommand([
+      "flux",
+      "get",
+      "helmreleases",
+      "-A",
+      "--no-header",
+    ]);
     if (!result.success) {
       this.verboseLog(`Failed to get HelmReleases: ${result.error}`);
       return [];
@@ -174,7 +200,7 @@ class FluxMonitor {
   private parseFluxOutput(output: string, kind: string): FluxResource[] {
     if (!output.trim()) return [];
 
-    const lines = output.trim().split('\n');
+    const lines = output.trim().split("\n");
     const resources: FluxResource[] = [];
 
     for (const line of lines) {
@@ -190,7 +216,8 @@ class FluxMonitor {
       const revision = parts[2];
       const suspended = parts[3] === "True";
       const ready = parts[4] === "True";
-      const message = parts.slice(5).join(' ') || (ready ? "Ready" : "Not Ready");
+      const message = parts.slice(5).join(" ") ||
+        (ready ? "Ready" : "Not Ready");
 
       // Calculate a simple age (we don't have this info from flux CLI)
       const age = "unknown";
@@ -205,7 +232,7 @@ class FluxMonitor {
         age,
         revision: revision?.substring(0, 8),
         conditions: [], // We'll get detailed conditions if needed
-        source: undefined // We'll get source info if needed
+        source: undefined, // We'll get source info if needed
       });
     }
 
@@ -214,78 +241,88 @@ class FluxMonitor {
 
   async getRecentEvents(): Promise<KubernetesEvent[]> {
     const result = await this.runCommand([
-      "kubectl", "get", "events",
+      "kubectl",
+      "get",
+      "events",
       "--all-namespaces",
       "--sort-by=.metadata.creationTimestamp",
-      "--no-headers"
+      "--no-headers",
     ]);
 
     if (!result.success) return [];
 
-    return result.output.split('\n')
-      .filter(line => line.trim())
+    return result.output.split("\n")
+      .filter((line) => line.trim())
       .slice(-20) // Get last 20 events
-      .map(line => {
+      .map((line) => {
         const parts = line.split(/\s+/);
         return {
-          namespace: parts[0] || '',
-          age: parts[1] || '',
-          type: parts[2] || '',
-          reason: parts[3] || '',
-          object: parts[4] || '',
-          message: parts.slice(5).join(' ') || ''
+          namespace: parts[0] || "",
+          age: parts[1] || "",
+          type: parts[2] || "",
+          reason: parts[3] || "",
+          object: parts[4] || "",
+          message: parts.slice(5).join(" ") || "",
         };
       });
   }
 
   async getFluxEvents(): Promise<KubernetesEvent[]> {
     const result = await this.runCommand([
-      "kubectl", "get", "events",
-      "-n", "flux-system",
+      "kubectl",
+      "get",
+      "events",
+      "-n",
+      "flux-system",
       "--sort-by=.metadata.creationTimestamp",
-      "--no-headers"
+      "--no-headers",
     ]);
 
     if (!result.success) return [];
 
-    return result.output.split('\n')
-      .filter(line => line.trim())
+    return result.output.split("\n")
+      .filter((line) => line.trim())
       .slice(-10) // Get last 10 Flux events
-      .map(line => {
+      .map((line) => {
         const parts = line.split(/\s+/);
         return {
-          namespace: 'flux-system',
-          age: parts[0] || '',
-          type: parts[1] || '',
-          reason: parts[2] || '',
-          object: parts[3] || '',
-          message: parts.slice(4).join(' ') || ''
+          namespace: "flux-system",
+          age: parts[0] || "",
+          type: parts[1] || "",
+          reason: parts[2] || "",
+          object: parts[3] || "",
+          message: parts.slice(4).join(" ") || "",
         };
       });
   }
 
   formatTable(headers: string[], rows: string[][]): void {
     const colWidths = headers.map((header, i) =>
-      Math.max(header.length, ...rows.map(row => (row[i] || '').length))
+      Math.max(header.length, ...rows.map((row) => (row[i] || "").length))
     );
 
     // Print header
-    const headerRow = headers.map((header, i) => header.padEnd(colWidths[i])).join(' | ');
+    const headerRow = headers.map((header, i) => header.padEnd(colWidths[i]))
+      .join(" | ");
     console.log(headerRow);
-    console.log('-'.repeat(headerRow.length));
+    console.log("-".repeat(headerRow.length));
 
     // Print rows
-    rows.forEach(row => {
-      const formattedRow = row.map((cell, i) => (cell || '').padEnd(colWidths[i])).join(' | ');
+    rows.forEach((row) => {
+      const formattedRow = row.map((cell, i) =>
+        (cell || "").padEnd(colWidths[i])
+      ).join(" | ");
       console.log(formattedRow);
     });
   }
 
   getStatusIcon(ready: boolean, suspended: boolean, status: string): string {
-    if (suspended) return '⏸️';
-    if (ready) return '✅';
-    if (status.includes('Progressing') || status.includes('Reconciling')) return '🔄';
-    return '❌';
+    if (suspended) return "⏸️";
+    if (ready) return "✅";
+    if (status.includes("Progressing") || status.includes("Reconciling")) {
+      return "🔄";
+    }
+    return "❌";
   }
 
   async displayFluxResources(): Promise<void> {
@@ -309,23 +346,25 @@ class FluxMonitor {
     for (const [kind, kindResources] of byKind) {
       console.log(`\n📦 ${kind}s:`);
 
-      const rows = kindResources.map(resource => [
+      const rows = kindResources.map((resource) => [
         this.getStatusIcon(resource.ready, resource.suspended, resource.status),
         resource.name,
         resource.namespace,
         resource.status,
-        resource.revision || '',
-        resource.age
+        resource.revision || "",
+        resource.age,
       ]);
 
       this.formatTable(
-        ['', 'NAME', 'NAMESPACE', 'STATUS', 'REVISION', 'AGE'],
-        rows
+        ["", "NAME", "NAMESPACE", "STATUS", "REVISION", "AGE"],
+        rows,
       );
 
       // Show error details for failed resources in verbose mode
       if (this.verbose) {
-        const failedResources = kindResources.filter(r => !r.ready && !r.suspended);
+        const failedResources = kindResources.filter((r) =>
+          !r.ready && !r.suspended
+        );
         for (const resource of failedResources) {
           console.log(`\n  ❌ ${resource.name} details:`);
           await this.showResourceDetails(resource);
@@ -335,11 +374,17 @@ class FluxMonitor {
 
     // Summary
     const totalResources = resources.length;
-    const readyResources = resources.filter(r => r.ready && !r.suspended).length;
-    const suspendedResources = resources.filter(r => r.suspended).length;
-    const failedResources = resources.filter(r => !r.ready && !r.suspended).length;
+    const readyResources =
+      resources.filter((r) => r.ready && !r.suspended).length;
+    const suspendedResources = resources.filter((r) => r.suspended).length;
+    const failedResources =
+      resources.filter((r) => !r.ready && !r.suspended).length;
 
-    console.log(`\n📊 Summary: ${readyResources}/${totalResources - suspendedResources} ready, ${suspendedResources} suspended, ${failedResources} failed\n`);
+    console.log(
+      `\n📊 Summary: ${readyResources}/${
+        totalResources - suspendedResources
+      } ready, ${suspendedResources} suspended, ${failedResources} failed\n`,
+    );
   }
 
   async showResourceDetails(resource: FluxResource): Promise<void> {
@@ -347,11 +392,38 @@ class FluxMonitor {
       let cmd: string[];
 
       if (resource.kind === "GitRepository") {
-        cmd = ["kubectl", "get", "gitrepository", resource.name, "-n", resource.namespace, "-o", "yaml"];
+        cmd = [
+          "kubectl",
+          "get",
+          "gitrepository",
+          resource.name,
+          "-n",
+          resource.namespace,
+          "-o",
+          "yaml",
+        ];
       } else if (resource.kind === "Kustomization") {
-        cmd = ["kubectl", "get", "kustomization", resource.name, "-n", resource.namespace, "-o", "yaml"];
+        cmd = [
+          "kubectl",
+          "get",
+          "kustomization",
+          resource.name,
+          "-n",
+          resource.namespace,
+          "-o",
+          "yaml",
+        ];
       } else if (resource.kind === "HelmRelease") {
-        cmd = ["kubectl", "get", "helmrelease", resource.name, "-n", resource.namespace, "-o", "yaml"];
+        cmd = [
+          "kubectl",
+          "get",
+          "helmrelease",
+          resource.name,
+          "-n",
+          resource.namespace,
+          "-o",
+          "yaml",
+        ];
       } else {
         return;
       }
@@ -359,23 +431,26 @@ class FluxMonitor {
       const result = await this.runCommand(cmd);
       if (result.success) {
         // Parse YAML to extract conditions (simplified)
-        const lines = result.output.split('\n');
+        const lines = result.output.split("\n");
         let inConditions = false;
 
         for (const line of lines) {
-          if (line.includes('conditions:')) {
+          if (line.includes("conditions:")) {
             inConditions = true;
             continue;
           }
 
-          if (inConditions && line.includes('- lastTransitionTime:')) {
+          if (inConditions && line.includes("- lastTransitionTime:")) {
             inConditions = false;
             continue;
           }
 
-          if (inConditions && line.includes('message:')) {
-            const message = line.split('message:')[1]?.trim().replace(/^["']|["']$/g, '');
-            if (message && message !== 'null') {
+          if (inConditions && line.includes("message:")) {
+            const message = line.split("message:")[1]?.trim().replace(
+              /^["']|["']$/g,
+              "",
+            );
+            if (message && message !== "null") {
               console.log(`     ${message}`);
             }
           }
@@ -395,9 +470,13 @@ class FluxMonitor {
       return;
     }
 
-    events.forEach(event => {
-      const typeIcon = event.type === 'Normal' ? '✅' : '⚠️';
-      console.log(`  ${typeIcon} ${event.age.padEnd(8)} ${event.namespace.padEnd(15)} ${event.reason.padEnd(20)} ${event.object}`);
+    events.forEach((event) => {
+      const typeIcon = event.type === "Normal" ? "✅" : "⚠️";
+      console.log(
+        `  ${typeIcon} ${event.age.padEnd(8)} ${event.namespace.padEnd(15)} ${
+          event.reason.padEnd(20)
+        } ${event.object}`,
+      );
       if (this.verbose && event.message) {
         console.log(`     ${event.message}`);
       }
@@ -414,9 +493,13 @@ class FluxMonitor {
       return;
     }
 
-    events.forEach(event => {
-      const typeIcon = event.type === 'Normal' ? '✅' : '⚠️';
-      console.log(`  ${typeIcon} ${event.age.padEnd(8)} ${event.reason.padEnd(20)} ${event.object}`);
+    events.forEach((event) => {
+      const typeIcon = event.type === "Normal" ? "✅" : "⚠️";
+      console.log(
+        `  ${typeIcon} ${event.age.padEnd(8)} ${
+          event.reason.padEnd(20)
+        } ${event.object}`,
+      );
       if (this.verbose && event.message) {
         console.log(`     ${event.message}`);
       }
@@ -426,7 +509,13 @@ class FluxMonitor {
 
   async getLatestCommit(): Promise<void> {
     console.log("📝 Latest Git Commit:");
-    const result = await this.runCommand(["git", "log", "-1", "--oneline", "--decorate"]);
+    const result = await this.runCommand([
+      "git",
+      "log",
+      "-1",
+      "--oneline",
+      "--decorate",
+    ]);
 
     if (result.success) {
       console.log(`  ${result.output}\n`);
@@ -444,10 +533,19 @@ class FluxMonitor {
       const gitRepos = await this.getGitRepositories();
       for (const repo of gitRepos) {
         const result = await this.runCommand([
-          "flux", "reconcile", "source", "git", repo.name, "-n", repo.namespace, "--with-source"
+          "flux",
+          "reconcile",
+          "source",
+          "git",
+          repo.name,
+          "-n",
+          repo.namespace,
+          "--with-source",
         ]);
         if (!result.success) {
-          this.verboseLog(`Failed to reconcile GitRepository ${repo.name}: ${result.error}`);
+          this.verboseLog(
+            `Failed to reconcile GitRepository ${repo.name}: ${result.error}`,
+          );
         }
       }
 
@@ -460,10 +558,18 @@ class FluxMonitor {
       for (const ks of kustomizations) {
         if (!ks.suspended) {
           const result = await this.runCommand([
-            "flux", "reconcile", "kustomization", ks.name, "-n", ks.namespace, "--with-source"
+            "flux",
+            "reconcile",
+            "kustomization",
+            ks.name,
+            "-n",
+            ks.namespace,
+            "--with-source",
           ]);
           if (!result.success) {
-            this.verboseLog(`Failed to reconcile Kustomization ${ks.name}: ${result.error}`);
+            this.verboseLog(
+              `Failed to reconcile Kustomization ${ks.name}: ${result.error}`,
+            );
           }
         }
       }
@@ -477,10 +583,18 @@ class FluxMonitor {
       for (const hr of helmReleases) {
         if (!hr.suspended) {
           const result = await this.runCommand([
-            "flux", "reconcile", "helmrelease", hr.name, "-n", hr.namespace, "--with-source"
+            "flux",
+            "reconcile",
+            "helmrelease",
+            hr.name,
+            "-n",
+            hr.namespace,
+            "--with-source",
           ]);
           if (!result.success) {
-            this.verboseLog(`Failed to reconcile HelmRelease ${hr.name}: ${result.error}`);
+            this.verboseLog(
+              `Failed to reconcile HelmRelease ${hr.name}: ${result.error}`,
+            );
           }
         }
       }
@@ -488,9 +602,10 @@ class FluxMonitor {
       console.log("✅ Flux reconciliation completed");
       console.log("⏳ Waiting for reconciliation to take effect...\n");
       await delay(5000); // Wait for reconciliation to take effect
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       this.log(`❌ Reconciliation failed: ${errorMessage}`, "ERROR");
     }
   }
@@ -499,7 +614,7 @@ class FluxMonitor {
     const timestamp = new Date().toLocaleString();
     console.clear();
     console.log(`🚀 Flux Monitor - ${timestamp}\n`);
-    console.log("=" .repeat(80) + "\n");
+    console.log("=".repeat(80) + "\n");
 
     await this.checkFluxStatus();
     await this.getLatestCommit();
@@ -517,7 +632,9 @@ class FluxMonitor {
     }
 
     if (this.watch) {
-      console.log(`🔍 Monitoring Flux activity (refreshing every ${this.interval}s)...`);
+      console.log(
+        `🔍 Monitoring Flux activity (refreshing every ${this.interval}s)...`,
+      );
       console.log("Press Ctrl+C to stop\n");
 
       while (true) {
@@ -575,14 +692,14 @@ async function main(): Promise<void> {
       v: "verbose",
       i: "interval",
       r: "reconcile",
-      h: "help"
+      h: "help",
     },
     default: {
       interval: "30",
       watch: false,
       verbose: false,
-      reconcile: false
-    }
+      reconcile: false,
+    },
   });
 
   if (args.help) {
@@ -594,7 +711,7 @@ async function main(): Promise<void> {
     verbose: args.verbose,
     watch: args.watch,
     interval: parseInt(args.interval),
-    forceReconcile: args.reconcile
+    forceReconcile: args.reconcile,
   });
 
   try {
@@ -603,7 +720,10 @@ async function main(): Promise<void> {
     if (error instanceof Deno.errors.Interrupted) {
       console.log("\n👋 Monitoring stopped");
     } else {
-      console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+      console.error(
+        "❌ Error:",
+        error instanceof Error ? error.message : String(error),
+      );
       Deno.exit(1);
     }
   }

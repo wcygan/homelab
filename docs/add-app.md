@@ -2,9 +2,11 @@
 
 ## Without secrets
 
-Given that the echo server is already running & configured in this application, we can attempt to clone it to learn how to add an application.
+Given that the echo server is already running & configured in this application,
+we can attempt to clone it to learn how to add an application.
 
-Echo comes from https://github.com/mendhak/docker-http-https-echo, available on Docker Hub as `mendhak/http-https-echo`.
+Echo comes from https://github.com/mendhak/docker-http-https-echo, available on
+Docker Hub as `mendhak/http-https-echo`.
 
 ### Relevant Code Snippets
 
@@ -44,11 +46,14 @@ kubernetes/apps/default/echo
 └── ks.yaml
 ```
 
-Notably, `kubernetes/apps/default/echo/ks.yaml` is a plugged into `kubernetes/apps/default/kustomization.yaml` to hook up the application.
+Notably, `kubernetes/apps/default/echo/ks.yaml` is a plugged into
+`kubernetes/apps/default/kustomization.yaml` to hook up the application.
 
 ### Scaffolding new files and directories
 
-We will call this deployment `echo-2` and it will be a clone of the `echo` configuration which has a `kustomization.yaml`, `ks.yaml` and `helmrelease.yaml` files.
+We will call this deployment `echo-2` and it will be a clone of the `echo`
+configuration which has a `kustomization.yaml`, `ks.yaml` and `helmrelease.yaml`
+files.
 
 ```bash
 # Create a new directory for the application
@@ -66,9 +71,11 @@ touch kubernetes/apps/default/echo-2/ks.yaml
 
 ### Renaming and configuration changes
 
-Because this application is a clone of the `echo` application, we need to make some changes to the files to make it unique:
+Because this application is a clone of the `echo` application, we need to make
+some changes to the files to make it unique:
 
-After scaffolding the files, update their contents to reference your new application name (`echo-2`) instead of the original (`echo`):
+After scaffolding the files, update their contents to reference your new
+application name (`echo-2`) instead of the original (`echo`):
 
 1. kubernetes/apps/default/echo-2/ks.yaml
    - Change `metadata.name` (and its `&app` anchor) to `echo-2`.

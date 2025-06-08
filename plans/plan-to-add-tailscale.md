@@ -1,19 +1,24 @@
 # Plan to Add Tailscale Operator
 
 ## Objective
-Install Tailscale Kubernetes Operator to manage Tailscale Nodes and network connectivity within your cluster.
+
+Install Tailscale Kubernetes Operator to manage Tailscale Nodes and network
+connectivity within your cluster.
 
 ## Prerequisites
+
 - Helm ≥ 3.0 installed and configured
 - `kubectl` configured to target your cluster
 - 1Password Connect server and Operator installed and healthy
-- A `OnePasswordItem` CR syncing your Tailscale OAuth credentials into a `tailscale-oauth` Secret in `tailscale-system`
+- A `OnePasswordItem` CR syncing your Tailscale OAuth credentials into a
+  `tailscale-oauth` Secret in `tailscale-system`
 - Tailscale OAuth client ID and secret available via the Kubernetes Secret
 - (Optional) 1Password CLI (`op`) installed for managing OnePasswordItem CRs
 
 ## Steps
 
-1. Ensure the `tailscale-system` namespace exists and the `tailscale-oauth` Secret is synced:
+1. Ensure the `tailscale-system` namespace exists and the `tailscale-oauth`
+   Secret is synced:
    ```bash
    kubectl get secret tailscale-oauth -n tailscale-system
    ```
@@ -58,6 +63,7 @@ Install Tailscale Kubernetes Operator to manage Tailscale Nodes and network conn
    ```
 
 ## Verification
+
 - All pods in `tailscale-system` are `Running`:
   ```bash
   kubectl get pods -n tailscale-system
@@ -69,6 +75,7 @@ Install Tailscale Kubernetes Operator to manage Tailscale Nodes and network conn
 - Create a sample `TailscaleNode` resource and verify connectivity.
 
 ## Next Steps
+
 - Define and manage `TailscaleNode` CRs via GitOps (e.g., Flux).
 - Configure Tailscale ACLs, exit nodes, and DNS settings.
 - Monitor Tailscale logs and metrics for performance and audit.

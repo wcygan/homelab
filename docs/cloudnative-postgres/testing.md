@@ -1,6 +1,7 @@
 # Testing CloudNative PostgreSQL
 
-This guide covers how to test and interact with the CloudNative PostgreSQL database deployed in your Kubernetes cluster.
+This guide covers how to test and interact with the CloudNative PostgreSQL
+database deployed in your Kubernetes cluster.
 
 ## Prerequisites
 
@@ -8,14 +9,17 @@ This guide covers how to test and interact with the CloudNative PostgreSQL datab
 - `psql` PostgreSQL client installed locally
   - **macOS**: `brew install postgresql`
   - **Ubuntu/Debian**: `sudo apt-get install postgresql-client`
-  - **Windows**: Download from [PostgreSQL Downloads](https://www.postgresql.org/download/)
+  - **Windows**: Download from
+    [PostgreSQL Downloads](https://www.postgresql.org/download/)
 
 ## Database Connection Information
 
 Your test PostgreSQL cluster provides these services:
 
-- **Read/Write Service**: `test-postgres-cluster-rw.database.svc.cluster.local:5432`
-- **Read-Only Service**: `test-postgres-cluster-r.database.svc.cluster.local:5432`
+- **Read/Write Service**:
+  `test-postgres-cluster-rw.database.svc.cluster.local:5432`
+- **Read-Only Service**:
+  `test-postgres-cluster-r.database.svc.cluster.local:5432`
 - **Database Name**: `appdb`
 - **Username**: `appuser`
 - **Password**: `TestPassword123!`
@@ -30,6 +34,7 @@ kubectl port-forward -n database svc/test-postgres-cluster-rw 5432:5432
 ```
 
 Keep this terminal window open. You should see:
+
 ```
 Forwarding from 127.0.0.1:5432 -> 5432
 Forwarding from [::1]:5432 -> 5432
@@ -46,6 +51,7 @@ psql -h localhost -p 5432 -U appuser -d appdb
 ```
 
 Or use a connection string:
+
 ```bash
 psql "postgresql://appuser:TestPassword123!@localhost:5432/appdb"
 ```
@@ -559,6 +565,7 @@ psql -h localhost -p 5433 -U appuser -d appdb
 ```
 
 In the read-only connection:
+
 ```sql
 -- These should work
 SELECT * FROM test_schema.users;
@@ -774,18 +781,18 @@ kubectl delete namespace test-namespace
 
 This comprehensive testing setup provides:
 
-✅ **Multiple connection methods** (port forwarding, direct pod access, SSL)
-✅ **Environment variable authentication** and connection security
-✅ **Schema creation** with relationships and constraints
-✅ **Realistic test data** with proper foreign key relationships
-✅ **Complex SQL queries** including JOINs, aggregations, window functions, and CTEs
-✅ **Performance testing** with EXPLAIN ANALYZE and pgbench
-✅ **CloudNative PostgreSQL specific** cluster health monitoring
-✅ **Backup and recovery** testing procedures
-✅ **Extension availability** and installation testing
-✅ **Security testing** including permissions and SSL verification
-✅ **Troubleshooting guides** for common issues encountered
-✅ **Read-only replica** testing and validation
-✅ **Comprehensive administrative** commands and monitoring
+✅ **Multiple connection methods** (port forwarding, direct pod access, SSL) ✅
+**Environment variable authentication** and connection security ✅ **Schema
+creation** with relationships and constraints ✅ **Realistic test data** with
+proper foreign key relationships ✅ **Complex SQL queries** including JOINs,
+aggregations, window functions, and CTEs ✅ **Performance testing** with EXPLAIN
+ANALYZE and pgbench ✅ **CloudNative PostgreSQL specific** cluster health
+monitoring ✅ **Backup and recovery** testing procedures ✅ **Extension
+availability** and installation testing ✅ **Security testing** including
+permissions and SSL verification ✅ **Troubleshooting guides** for common issues
+encountered ✅ **Read-only replica** testing and validation ✅ **Comprehensive
+administrative** commands and monitoring
 
-Your CloudNative PostgreSQL database is now thoroughly tested with enterprise-grade validation procedures and ready for production application development!
+Your CloudNative PostgreSQL database is now thoroughly tested with
+enterprise-grade validation procedures and ready for production application
+development!

@@ -12,16 +12,22 @@ function getErrorMessage(error: unknown): string {
 }
 
 async function checkInfiniteRetries(): Promise<void> {
-  console.log("1. Checking for infinite retries (retries: -1) in HelmReleases...");
-  console.log("   These should be changed to finite retries (e.g., retries: 3)");
+  console.log(
+    "1. Checking for infinite retries (retries: -1) in HelmReleases...",
+  );
+  console.log(
+    "   These should be changed to finite retries (e.g., retries: 3)",
+  );
   console.log();
 
   let foundInfiniteRetries = false;
 
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     if (entry.name === "helmrelease.yaml") {
       try {
         const content = await Deno.readTextFile(entry.path);
@@ -30,7 +36,9 @@ async function checkInfiniteRetries(): Promise<void> {
           foundInfiniteRetries = true;
         }
       } catch (error) {
-        console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+        console.error(
+          `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }
@@ -46,10 +54,12 @@ async function checkMissingHealthChecks(): Promise<void> {
   console.log("   Consider adding health checks for critical services");
   console.log();
 
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     if (entry.name === "ks.yaml") {
       try {
         const content = await Deno.readTextFile(entry.path);
@@ -57,7 +67,9 @@ async function checkMissingHealthChecks(): Promise<void> {
           console.log(`   ⚠ Missing health checks: ${entry.path}`);
         }
       } catch (error) {
-        console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+        console.error(
+          `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }
@@ -65,14 +77,18 @@ async function checkMissingHealthChecks(): Promise<void> {
 }
 
 async function checkMissingWaitConfig(): Promise<void> {
-  console.log("3. Checking for Kustomizations without explicit wait configuration...");
+  console.log(
+    "3. Checking for Kustomizations without explicit wait configuration...",
+  );
   console.log("   Infrastructure and dependencies should have wait: true");
   console.log();
 
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     if (entry.name === "ks.yaml") {
       try {
         const content = await Deno.readTextFile(entry.path);
@@ -80,7 +96,9 @@ async function checkMissingWaitConfig(): Promise<void> {
           console.log(`   ⚠ Missing wait config: ${entry.path}`);
         }
       } catch (error) {
-        console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+        console.error(
+          `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }
@@ -88,14 +106,18 @@ async function checkMissingWaitConfig(): Promise<void> {
 }
 
 async function checkMissingTimeout(): Promise<void> {
-  console.log("4. Checking for Kustomizations without timeout configuration...");
+  console.log(
+    "4. Checking for Kustomizations without timeout configuration...",
+  );
   console.log("   Large deployments need appropriate timeouts");
   console.log();
 
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     if (entry.name === "ks.yaml") {
       try {
         const content = await Deno.readTextFile(entry.path);
@@ -103,7 +125,9 @@ async function checkMissingTimeout(): Promise<void> {
           console.log(`   ⚠ Missing timeout: ${entry.path}`);
         }
       } catch (error) {
-        console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+        console.error(
+          `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }
@@ -115,15 +139,17 @@ async function checkMissingNamespaceInSourceRef(): Promise<void> {
   console.log("   All sourceRef should include 'namespace: flux-system'");
   console.log();
 
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     try {
       const content = await Deno.readTextFile(entry.path);
       if (content.includes("sourceRef:")) {
         // Split content into lines and find sourceRef sections
-        const lines = content.split('\n');
+        const lines = content.split("\n");
         for (let i = 0; i < lines.length; i++) {
           if (lines[i].includes("sourceRef:")) {
             // Check the next 3 lines for namespace
@@ -142,7 +168,9 @@ async function checkMissingNamespaceInSourceRef(): Promise<void> {
         }
       }
     } catch (error) {
-      console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+      console.error(
+        `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+      );
     }
   }
   console.log();
@@ -153,10 +181,12 @@ async function checkMissingResourceConstraints(): Promise<void> {
   console.log("   All deployments should specify resource requests/limits");
   console.log();
 
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     if (entry.name === "helmrelease.yaml") {
       try {
         const content = await Deno.readTextFile(entry.path);
@@ -164,7 +194,9 @@ async function checkMissingResourceConstraints(): Promise<void> {
           console.log(`   ⚠ Missing resources: ${entry.path}`);
         }
       } catch (error) {
-        console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+        console.error(
+          `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }
@@ -173,46 +205,62 @@ async function checkMissingResourceConstraints(): Promise<void> {
 
 async function checkIntervalConfigurations(): Promise<void> {
   console.log("7. Checking interval configurations...");
-  console.log("   Intervals should follow standards (5m for critical, 15m for core, 30m-1h for apps)");
+  console.log(
+    "   Intervals should follow standards (5m for critical, 15m for core, 30m-1h for apps)",
+  );
   console.log();
 
   const helmReleaseIntervals: Map<string, number> = new Map();
   const kustomizationIntervals: Map<string, number> = new Map();
 
   // Check HelmRelease intervals
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     if (entry.name === "helmrelease.yaml") {
       try {
         const content = await Deno.readTextFile(entry.path);
         const intervalMatch = content.match(/interval:\s*(.+)/);
         if (intervalMatch) {
           const interval = intervalMatch[1].trim();
-          helmReleaseIntervals.set(interval, (helmReleaseIntervals.get(interval) || 0) + 1);
+          helmReleaseIntervals.set(
+            interval,
+            (helmReleaseIntervals.get(interval) || 0) + 1,
+          );
         }
       } catch (error) {
-        console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+        console.error(
+          `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }
 
   // Check Kustomization intervals
-  for await (const entry of walk("kubernetes/apps", {
-    exts: [".yaml"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk("kubernetes/apps", {
+      exts: [".yaml"],
+      includeDirs: false,
+    })
+  ) {
     if (entry.name === "ks.yaml") {
       try {
         const content = await Deno.readTextFile(entry.path);
         const intervalMatch = content.match(/interval:\s*(.+)/);
         if (intervalMatch) {
           const interval = intervalMatch[1].trim();
-          kustomizationIntervals.set(interval, (kustomizationIntervals.get(interval) || 0) + 1);
+          kustomizationIntervals.set(
+            interval,
+            (kustomizationIntervals.get(interval) || 0) + 1,
+          );
         }
       } catch (error) {
-        console.error(`   Error reading ${entry.path}: ${getErrorMessage(error)}`);
+        console.error(
+          `   Error reading ${entry.path}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }

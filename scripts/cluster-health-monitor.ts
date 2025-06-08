@@ -2,10 +2,10 @@
 
 /**
  * Cluster Health Monitor
- * 
+ *
  * Comprehensive Kubernetes cluster health monitoring with Talos and Flux integration.
  * Provides real-time insights into cluster state, resource usage, and potential issues.
- * 
+ *
  * Features:
  * - Multi-layer health monitoring (nodes, etcd, workloads, resources)
  * - Flux GitOps status monitoring
@@ -13,36 +13,36 @@
  * - Critical issue filtering
  * - Resource usage tracking
  * - Alert detection and reporting
- * 
+ *
  * Usage Examples:
- * 
+ *
  * # One-time comprehensive health check
  * deno task health:monitor
- * 
+ *
  * # Continuous monitoring (refreshes every 10 seconds)
  * deno task health:monitor --watch
- * 
+ *
  * # Monitor with custom refresh interval
  * deno task health:monitor --watch --interval 30
- * 
+ *
  * # Show only critical issues
  * deno task health:monitor --critical-only
- * 
+ *
  * # Include Flux GitOps monitoring
  * deno task health:monitor --flux
- * 
+ *
  * # Full monitoring setup for maintenance
  * deno task health:monitor --watch --flux --critical-only
- * 
+ *
  * # Quick check during operations
  * deno task health:monitor --critical-only
- * 
+ *
  * Monitoring Layers:
  * - Cluster: Node health, etcd quorum, schedulability
  * - Workloads: Pod distribution, critical pod health, restart counts
  * - Resources: CPU/memory usage, capacity planning
  * - Flux: GitOps reconciliation status (optional)
- * 
+ *
  * Alert Types:
  * - etcd quorum risks
  * - Node conditions (disk pressure, memory pressure, etc.)
@@ -50,7 +50,7 @@
  * - Pod distribution imbalances
  * - Critical pod failures or restarts
  * - Flux reconciliation failures
- * 
+ *
  * Use Cases:
  * - Pre-maintenance health validation
  * - During hardware upgrades monitoring
@@ -105,8 +105,20 @@ interface HealthStatus {
 
 class ClusterHealthMonitor {
   private status: HealthStatus | null = null;
-  private criticalNamespaces = ["kube-system", "flux-system", "cert-manager", "network"];
-  private criticalApps = ["etcd", "kube-apiserver", "kube-controller-manager", "kube-scheduler", "cilium", "coredns"];
+  private criticalNamespaces = [
+    "kube-system",
+    "flux-system",
+    "cert-manager",
+    "network",
+  ];
+  private criticalApps = [
+    "etcd",
+    "kube-apiserver",
+    "kube-controller-manager",
+    "kube-scheduler",
+    "cilium",
+    "coredns",
+  ];
 
   async monitor(options: {
     watch: boolean;
@@ -117,14 +129,16 @@ class ClusterHealthMonitor {
     if (options.watch) {
       console.log(colors.blue("🔍 Starting cluster health monitoring..."));
       console.log(colors.gray(`Refresh interval: ${options.interval}s\n`));
-      
+
       // Initial check
       await this.checkHealth(options);
-      
+
       // Continuous monitoring
       while (true) {
-        await new Promise(resolve => setTimeout(resolve, options.interval * 1000));
-        
+        await new Promise((resolve) =>
+          setTimeout(resolve, options.interval * 1000)
+        );
+
         // Clear screen for fresh output
         console.clear();
         await this.checkHealth(options);
@@ -160,16 +174,16 @@ class ClusterHealthMonitor {
 
     // Check nodes
     await this.checkNodes();
-    
+
     // Check etcd
     await this.checkEtcd();
-    
+
     // Check workloads
     await this.checkWorkloads(options.criticalOnly);
-    
+
     // Check resources
     await this.checkResources();
-    
+
     // Check Flux if requested
     if (options.includeFlux) {
       await this.checkFlux();
@@ -182,28 +196,32 @@ class ClusterHealthMonitor {
   private async checkNodes() {
     try {
       const nodes = await $`kubectl get nodes -o json`.json();
-      
+
       this.status!.cluster.nodes.total = nodes.items.length;
-      
+
       nodes.items.forEach((node: any) => {
-        const isReady = node.status.conditions.find((c: any) => c.type === "Ready")?.status === "True";
+        const isReady = node.status.conditions.find((c: any) =>
+          c.type === "Ready"
+        )?.status === "True";
         if (isReady) {
           this.status!.cluster.nodes.ready++;
         }
-        
+
         if (node.spec.unschedulable) {
           this.status!.cluster.nodes.cordoned++;
           this.status!.alerts.push(`Node ${node.metadata.name} is cordoned`);
         }
-        
+
         // Check for other node conditions
         node.status.conditions.forEach((condition: any) => {
           if (condition.type !== "Ready" && condition.status === "True") {
-            this.status!.alerts.push(`Node ${node.metadata.name}: ${condition.type}`);
+            this.status!.alerts.push(
+              `Node ${node.metadata.name}: ${condition.type}`,
+            );
           }
         });
       });
-      
+
       if (this.status!.cluster.nodes.ready < this.status!.cluster.nodes.total) {
         this.status!.cluster.healthy = false;
       }
@@ -215,28 +233,36 @@ class ClusterHealthMonitor {
 
   private async checkEtcd() {
     try {
-      const etcdPods = await $`kubectl -n kube-system get pods -l component=etcd -o json`.json();
-      
+      const etcdPods =
+        await $`kubectl -n kube-system get pods -l component=etcd -o json`
+          .json();
+
       this.status!.cluster.etcd.members = etcdPods.items.length;
-      
+
       for (const pod of etcdPods.items) {
-        const isReady = pod.status.conditions?.find((c: any) => c.type === "Ready")?.status === "True";
+        const isReady = pod.status.conditions?.find((c: any) =>
+          c.type === "Ready"
+        )?.status === "True";
         if (isReady) {
           this.status!.cluster.etcd.healthyMembers++;
         }
-        
+
         // Try to determine leader
         if (pod.metadata.annotations?.["etcd.kubernetes.io/etcd-leader"]) {
           this.status!.cluster.etcd.leader = pod.spec.nodeName;
         }
       }
-      
+
       // Check quorum
       const quorum = Math.floor(this.status!.cluster.etcd.members / 2) + 1;
       if (this.status!.cluster.etcd.healthyMembers < quorum) {
         this.status!.cluster.etcd.healthy = false;
         this.status!.cluster.healthy = false;
-        this.status!.alerts.push(`etcd quorum at risk: ${this.status!.cluster.etcd.healthyMembers}/${this.status!.cluster.etcd.members} healthy`);
+        this.status!.alerts.push(
+          `etcd quorum at risk: ${this.status!.cluster.etcd.healthyMembers}/${
+            this.status!.cluster.etcd.members
+          } healthy`,
+        );
       }
     } catch (error) {
       this.status!.cluster.etcd.healthy = false;
@@ -247,11 +273,11 @@ class ClusterHealthMonitor {
   private async checkWorkloads(criticalOnly: boolean) {
     try {
       const pods = await $`kubectl get pods --all-namespaces -o json`.json();
-      
+
       this.status!.workloads.totalPods = pods.items.length;
-      
+
       const criticalPods: any[] = [];
-      
+
       pods.items.forEach((pod: any) => {
         // Count pod states
         switch (pod.status.phase) {
@@ -261,51 +287,67 @@ class ClusterHealthMonitor {
           case "Pending":
             this.status!.workloads.pendingPods++;
             if (!criticalOnly) {
-              this.status!.alerts.push(`Pod ${pod.metadata.namespace}/${pod.metadata.name} is pending`);
+              this.status!.alerts.push(
+                `Pod ${pod.metadata.namespace}/${pod.metadata.name} is pending`,
+              );
             }
             break;
           case "Failed":
             this.status!.workloads.failedPods++;
-            this.status!.alerts.push(`Pod ${pod.metadata.namespace}/${pod.metadata.name} has failed`);
+            this.status!.alerts.push(
+              `Pod ${pod.metadata.namespace}/${pod.metadata.name} has failed`,
+            );
             break;
         }
-        
+
         // Check critical pods
-        const isCritical = this.criticalNamespaces.includes(pod.metadata.namespace) ||
-                          this.criticalApps.some(app => pod.metadata.name.includes(app));
-        
+        const isCritical =
+          this.criticalNamespaces.includes(pod.metadata.namespace) ||
+          this.criticalApps.some((app) => pod.metadata.name.includes(app));
+
         if (isCritical) {
           criticalPods.push(pod);
-          
+
           if (pod.status.phase !== "Running") {
             this.status!.workloads.criticalPodsHealthy = false;
-            this.status!.alerts.push(`Critical pod ${pod.metadata.namespace}/${pod.metadata.name} is ${pod.status.phase}`);
+            this.status!.alerts.push(
+              `Critical pod ${pod.metadata.namespace}/${pod.metadata.name} is ${pod.status.phase}`,
+            );
           }
-          
+
           // Check container restarts
           pod.status.containerStatuses?.forEach((container: any) => {
             if (container.restartCount > 5) {
-              this.status!.alerts.push(`Critical pod ${pod.metadata.namespace}/${pod.metadata.name} has ${container.restartCount} restarts`);
+              this.status!.alerts.push(
+                `Critical pod ${pod.metadata.namespace}/${pod.metadata.name} has ${container.restartCount} restarts`,
+              );
             }
           });
         }
       });
-      
+
       // Check for pod distribution issues
       const nodeDistribution = new Map<string, number>();
       pods.items.forEach((pod: any) => {
         if (pod.spec.nodeName && pod.status.phase === "Running") {
-          nodeDistribution.set(pod.spec.nodeName, (nodeDistribution.get(pod.spec.nodeName) || 0) + 1);
+          nodeDistribution.set(
+            pod.spec.nodeName,
+            (nodeDistribution.get(pod.spec.nodeName) || 0) + 1,
+          );
         }
       });
-      
-      const avgPodsPerNode = this.status!.workloads.runningPods / this.status!.cluster.nodes.ready;
+
+      const avgPodsPerNode = this.status!.workloads.runningPods /
+        this.status!.cluster.nodes.ready;
       nodeDistribution.forEach((count, node) => {
         if (count > avgPodsPerNode * 1.5) {
-          this.status!.alerts.push(`High pod density on ${node}: ${count} pods (avg: ${avgPodsPerNode.toFixed(0)})`);
+          this.status!.alerts.push(
+            `High pod density on ${node}: ${count} pods (avg: ${
+              avgPodsPerNode.toFixed(0)
+            })`,
+          );
         }
       });
-      
     } catch (error) {
       this.status!.workloads.criticalPodsHealthy = false;
       this.status!.alerts.push(`Failed to check workloads: ${error.message}`);
@@ -317,45 +359,50 @@ class ClusterHealthMonitor {
       // Get node metrics
       const metrics = await $`kubectl top nodes --no-headers`.text();
       const nodes = await $`kubectl get nodes -o json`.json();
-      
-      const lines = metrics.trim().split('\n');
-      
+
+      const lines = metrics.trim().split("\n");
+
       for (const line of lines) {
-        const [name, cpu, cpuPercent, memory, memoryPercent] = line.split(/\s+/);
-        
+        const [name, cpu, cpuPercent, memory, memoryPercent] = line.split(
+          /\s+/,
+        );
+
         const cpuPercentNum = parseInt(cpuPercent);
         const memoryPercentNum = parseInt(memoryPercent);
-        
+
         // Get pod capacity
         const node = nodes.items.find((n: any) => n.metadata.name === name);
         const podCapacity = node?.status.capacity?.pods || "unknown";
-        const podCount = node?.status.allocatable ? 
-          await this.getPodsOnNode(name) : 0;
-        
+        const podCount = node?.status.allocatable
+          ? await this.getPodsOnNode(name)
+          : 0;
+
         this.status!.resources.nodes.push({
           name,
-          cpu: { 
-            used: cpu, 
+          cpu: {
+            used: cpu,
             capacity: node?.status.capacity?.cpu || "unknown",
-            percentage: cpuPercentNum 
+            percentage: cpuPercentNum,
           },
-          memory: { 
-            used: memory, 
+          memory: {
+            used: memory,
             capacity: node?.status.capacity?.memory || "unknown",
-            percentage: memoryPercentNum 
+            percentage: memoryPercentNum,
           },
-          pods: { 
+          pods: {
             count: podCount,
-            capacity: podCapacity 
+            capacity: podCapacity,
           },
         });
-        
+
         // Alert on high resource usage
         if (cpuPercentNum > 80) {
           this.status!.alerts.push(`High CPU usage on ${name}: ${cpuPercent}`);
         }
         if (memoryPercentNum > 85) {
-          this.status!.alerts.push(`High memory usage on ${name}: ${memoryPercent}`);
+          this.status!.alerts.push(
+            `High memory usage on ${name}: ${memoryPercent}`,
+          );
         }
       }
     } catch (error) {
@@ -377,21 +424,34 @@ class ClusterHealthMonitor {
       const sources = await $`kubectl get gitrepositories -A -o json`.json();
       this.status!.flux.sources.total = sources.items.length;
       sources.items.forEach((source: any) => {
-        if (source.status?.conditions?.find((c: any) => c.type === "Ready" && c.status === "True")) {
+        if (
+          source.status?.conditions?.find((c: any) =>
+            c.type === "Ready" && c.status === "True"
+          )
+        ) {
           this.status!.flux.sources.ready++;
         } else {
-          this.status!.alerts.push(`Flux source ${source.metadata.namespace}/${source.metadata.name} not ready`);
+          this.status!.alerts.push(
+            `Flux source ${source.metadata.namespace}/${source.metadata.name} not ready`,
+          );
         }
       });
 
       // Check Kustomizations
-      const kustomizations = await $`kubectl get kustomizations -A -o json`.json();
+      const kustomizations = await $`kubectl get kustomizations -A -o json`
+        .json();
       this.status!.flux.kustomizations.total = kustomizations.items.length;
       kustomizations.items.forEach((ks: any) => {
-        if (ks.status?.conditions?.find((c: any) => c.type === "Ready" && c.status === "True")) {
+        if (
+          ks.status?.conditions?.find((c: any) =>
+            c.type === "Ready" && c.status === "True"
+          )
+        ) {
           this.status!.flux.kustomizations.ready++;
         } else {
-          this.status!.alerts.push(`Flux kustomization ${ks.metadata.namespace}/${ks.metadata.name} not ready`);
+          this.status!.alerts.push(
+            `Flux kustomization ${ks.metadata.namespace}/${ks.metadata.name} not ready`,
+          );
         }
       });
 
@@ -399,16 +459,26 @@ class ClusterHealthMonitor {
       const helmreleases = await $`kubectl get helmreleases -A -o json`.json();
       this.status!.flux.helmreleases.total = helmreleases.items.length;
       helmreleases.items.forEach((hr: any) => {
-        if (hr.status?.conditions?.find((c: any) => c.type === "Ready" && c.status === "True")) {
+        if (
+          hr.status?.conditions?.find((c: any) =>
+            c.type === "Ready" && c.status === "True"
+          )
+        ) {
           this.status!.flux.helmreleases.ready++;
         } else {
-          this.status!.alerts.push(`Flux helmrelease ${hr.metadata.namespace}/${hr.metadata.name} not ready`);
+          this.status!.alerts.push(
+            `Flux helmrelease ${hr.metadata.namespace}/${hr.metadata.name} not ready`,
+          );
         }
       });
 
-      if (this.status!.flux.sources.ready < this.status!.flux.sources.total ||
-          this.status!.flux.kustomizations.ready < this.status!.flux.kustomizations.total ||
-          this.status!.flux.helmreleases.ready < this.status!.flux.helmreleases.total) {
+      if (
+        this.status!.flux.sources.ready < this.status!.flux.sources.total ||
+        this.status!.flux.kustomizations.ready <
+          this.status!.flux.kustomizations.total ||
+        this.status!.flux.helmreleases.ready <
+          this.status!.flux.helmreleases.total
+      ) {
         this.status!.flux.healthy = false;
       }
     } catch (error) {
@@ -419,7 +489,9 @@ class ClusterHealthMonitor {
 
   private async getPodsOnNode(nodeName: string): Promise<number> {
     try {
-      const result = await $`kubectl get pods --all-namespaces --field-selector spec.nodeName=${nodeName} -o json`.json();
+      const result =
+        await $`kubectl get pods --all-namespaces --field-selector spec.nodeName=${nodeName} -o json`
+          .json();
       return result.items.length;
     } catch {
       return 0;
@@ -429,7 +501,7 @@ class ClusterHealthMonitor {
   private displayStatus(criticalOnly: boolean) {
     const healthIcon = this.status!.cluster.healthy ? "🟢" : "🔴";
     const healthText = this.status!.cluster.healthy ? "HEALTHY" : "UNHEALTHY";
-    
+
     console.log("═".repeat(55));
     console.log(`${healthIcon} Cluster Health: ${colors.bold(healthText)}`);
     console.log(`Time: ${new Date(this.status!.timestamp).toLocaleString()}`);
@@ -437,14 +509,24 @@ class ClusterHealthMonitor {
 
     // Cluster Status
     console.log(colors.blue("\n📊 CLUSTER STATUS:"));
-    console.log(`  Nodes: ${this.status!.cluster.nodes.ready}/${this.status!.cluster.nodes.total} Ready`);
+    console.log(
+      `  Nodes: ${this.status!.cluster.nodes.ready}/${
+        this.status!.cluster.nodes.total
+      } Ready`,
+    );
     if (this.status!.cluster.nodes.cordoned > 0) {
-      console.log(colors.yellow(`  Cordoned: ${this.status!.cluster.nodes.cordoned}`));
+      console.log(
+        colors.yellow(`  Cordoned: ${this.status!.cluster.nodes.cordoned}`),
+      );
     }
 
     // etcd Status
     const etcdIcon = this.status!.cluster.etcd.healthy ? "✓" : "✗";
-    console.log(`\n  etcd: ${this.status!.cluster.etcd.healthyMembers}/${this.status!.cluster.etcd.members} Members ${etcdIcon}`);
+    console.log(
+      `\n  etcd: ${this.status!.cluster.etcd.healthyMembers}/${
+        this.status!.cluster.etcd.members
+      } Members ${etcdIcon}`,
+    );
     if (this.status!.cluster.etcd.leader) {
       console.log(`  Leader: ${this.status!.cluster.etcd.leader}`);
     }
@@ -454,28 +536,30 @@ class ClusterHealthMonitor {
     console.log(`  Total Pods: ${this.status!.workloads.totalPods}`);
     console.log(`  Running: ${this.status!.workloads.runningPods}`);
     if (this.status!.workloads.pendingPods > 0) {
-      console.log(colors.yellow(`  Pending: ${this.status!.workloads.pendingPods}`));
+      console.log(
+        colors.yellow(`  Pending: ${this.status!.workloads.pendingPods}`),
+      );
     }
     if (this.status!.workloads.failedPods > 0) {
       console.log(colors.red(`  Failed: ${this.status!.workloads.failedPods}`));
     }
-    
+
     const criticalIcon = this.status!.workloads.criticalPodsHealthy ? "✓" : "✗";
     console.log(`  Critical Pods: ${criticalIcon}`);
 
     // Resource Usage
     if (this.status!.resources.nodes.length > 0) {
       console.log(colors.blue("\n💻 RESOURCES:"));
-      
+
       const resourceTable = new Table()
         .header(["Node", "CPU", "Memory", "Pods"])
         .body(
-          this.status!.resources.nodes.map(node => [
+          this.status!.resources.nodes.map((node) => [
             node.name,
             `${node.cpu.percentage}%`,
             `${node.memory.percentage}%`,
             `${node.pods.count}/${node.pods.capacity}`,
-          ])
+          ]),
         );
       resourceTable.render();
     }
@@ -484,24 +568,40 @@ class ClusterHealthMonitor {
     if (this.status!.flux) {
       const fluxIcon = this.status!.flux.healthy ? "✓" : "✗";
       console.log(colors.blue("\n🔄 FLUX STATUS:"));
-      console.log(`  Sources: ${this.status!.flux.sources.ready}/${this.status!.flux.sources.total} ${fluxIcon}`);
-      console.log(`  Kustomizations: ${this.status!.flux.kustomizations.ready}/${this.status!.flux.kustomizations.total}`);
-      console.log(`  HelmReleases: ${this.status!.flux.helmreleases.ready}/${this.status!.flux.helmreleases.total}`);
+      console.log(
+        `  Sources: ${this.status!.flux.sources.ready}/${
+          this.status!.flux.sources.total
+        } ${fluxIcon}`,
+      );
+      console.log(
+        `  Kustomizations: ${this.status!.flux.kustomizations.ready}/${
+          this.status!.flux.kustomizations.total
+        }`,
+      );
+      console.log(
+        `  HelmReleases: ${this.status!.flux.helmreleases.ready}/${
+          this.status!.flux.helmreleases.total
+        }`,
+      );
     }
 
     // Alerts
     if (this.status!.alerts.length > 0) {
       console.log(colors.red("\n⚠️  ALERTS:"));
-      const displayAlerts = criticalOnly ? 
-        this.status!.alerts.filter(a => a.includes("Critical") || a.includes("etcd") || a.includes("Failed")) :
-        this.status!.alerts;
-      
-      displayAlerts.slice(0, 10).forEach(alert => {
+      const displayAlerts = criticalOnly
+        ? this.status!.alerts.filter((a) =>
+          a.includes("Critical") || a.includes("etcd") || a.includes("Failed")
+        )
+        : this.status!.alerts;
+
+      displayAlerts.slice(0, 10).forEach((alert) => {
         console.log(`  • ${alert}`);
       });
-      
+
       if (displayAlerts.length > 10) {
-        console.log(colors.gray(`  ... and ${displayAlerts.length - 10} more alerts`));
+        console.log(
+          colors.gray(`  ... and ${displayAlerts.length - 10} more alerts`),
+        );
       }
     } else {
       console.log(colors.green("\n✅ No alerts"));
@@ -518,12 +618,19 @@ if (import.meta.main) {
     .version("0.1.0")
     .description("Monitor Kubernetes cluster health with detailed insights")
     .option("-w, --watch", "Continuously monitor cluster health")
-    .option("-i, --interval <seconds:number>", "Update interval in seconds", { default: 10 })
-    .option("-c, --critical-only", "Show only critical issues", { default: false })
+    .option("-i, --interval <seconds:number>", "Update interval in seconds", {
+      default: 10,
+    })
+    .option("-c, --critical-only", "Show only critical issues", {
+      default: false,
+    })
     .option("-f, --flux", "Include Flux status monitoring", { default: false })
     .example("One-time check", "cluster-health-monitor.ts")
     .example("Continuous monitoring", "cluster-health-monitor.ts --watch")
-    .example("Critical only", "cluster-health-monitor.ts --watch --critical-only")
+    .example(
+      "Critical only",
+      "cluster-health-monitor.ts --watch --critical-only",
+    )
     .example("With Flux", "cluster-health-monitor.ts --watch --flux")
     .action(async (options) => {
       try {

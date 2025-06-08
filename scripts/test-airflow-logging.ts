@@ -9,7 +9,7 @@ import { parseArgs } from "@std/cli/parse-args";
 
 const args = parseArgs(Deno.args, {
   boolean: ["help", "deploy", "test", "logs", "cleanup"],
-  alias: { h: "help", d: "deploy", t: "test", l: "logs", c: "cleanup" }
+  alias: { h: "help", d: "deploy", t: "test", l: "logs", c: "cleanup" },
 });
 
 function showHelp() {
@@ -53,9 +53,11 @@ async function deployAirflow() {
     // Check PVC status
     console.log("📊 Checking persistent volume status...");
     await $`kubectl get pvc -n airflow`;
-
   } catch (error) {
-    console.error("❌ Deployment failed:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "❌ Deployment failed:",
+      error instanceof Error ? error.message : String(error),
+    );
     throw error;
   }
 }
@@ -66,7 +68,9 @@ async function testLogging() {
   try {
     // Check if DAG is available
     console.log("📋 Checking available DAGs...");
-    const webserverPod = await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`.text();
+    const webserverPod =
+      await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`
+        .text();
 
     if (!webserverPod) {
       throw new Error("No webserver pod found");
@@ -86,9 +90,11 @@ async function testLogging() {
     // Check task status
     console.log("📊 Checking task status...");
     await $`kubectl exec -n airflow ${webserverPod} -- airflow tasks list hello_world`;
-
   } catch (error) {
-    console.error("❌ Test failed:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "❌ Test failed:",
+      error instanceof Error ? error.message : String(error),
+    );
     throw error;
   }
 }
@@ -102,7 +108,9 @@ async function checkLogs() {
     await $`kubectl get pvc -n airflow`;
 
     // Check if logs directory exists in PVC
-    const webserverPod = await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`.text();
+    const webserverPod =
+      await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`
+        .text();
 
     if (webserverPod) {
       console.log("📁 Checking logs directory structure:");
@@ -118,9 +126,11 @@ async function checkLogs() {
       await $`kubectl exec -n airflow ${webserverPod} -- airflow config get-value logging remote_logging`;
       await $`kubectl exec -n airflow ${webserverPod} -- airflow config get-value core base_log_folder`;
     }
-
   } catch (error) {
-    console.error("❌ Log check failed:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "❌ Log check failed:",
+      error instanceof Error ? error.message : String(error),
+    );
     throw error;
   }
 }
@@ -129,18 +139,23 @@ async function cleanup() {
   console.log("🧹 Cleaning up test resources...");
 
   try {
-    const webserverPod = await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`.text();
+    const webserverPod =
+      await $`kubectl get pods -n airflow -l component=webserver -o jsonpath='{.items[0].metadata.name}'`
+        .text();
 
     if (webserverPod) {
       // Clear old DAG runs
       console.log("🗑️ Clearing old DAG runs...");
-      await $`kubectl exec -n airflow ${webserverPod} -- airflow dags delete hello_world --yes`.noThrow();
+      await $`kubectl exec -n airflow ${webserverPod} -- airflow dags delete hello_world --yes`
+        .noThrow();
     }
 
     console.log("✅ Cleanup completed");
-
   } catch (error) {
-    console.error("❌ Cleanup failed:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "❌ Cleanup failed:",
+      error instanceof Error ? error.message : String(error),
+    );
   }
 }
 
@@ -169,11 +184,15 @@ async function main() {
 
     if (!args.deploy && !args.test && !args.logs && !args.cleanup) {
       console.log("ℹ️ No action specified. Use --help for usage information.");
-      console.log("💡 Quick start: ./scripts/test-airflow-logging.ts --deploy --test");
+      console.log(
+        "💡 Quick start: ./scripts/test-airflow-logging.ts --deploy --test",
+      );
     }
-
   } catch (error) {
-    console.error("❌ Script failed:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "❌ Script failed:",
+      error instanceof Error ? error.message : String(error),
+    );
     Deno.exit(1);
   }
 }

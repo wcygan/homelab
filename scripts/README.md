@@ -1,22 +1,27 @@
 # Kubernetes Cluster Monitoring Scripts
 
-This directory contains Deno-based scripts for monitoring and verifying your Talos Kubernetes cluster and GitOps deployments.
+This directory contains Deno-based scripts for monitoring and verifying your
+Talos Kubernetes cluster and GitOps deployments.
 
 ## Scripts Overview
 
 ### 🏥 `k8s-health-check.ts` - Cluster Health Monitoring
 
-Comprehensive health monitoring for your Kubernetes cluster, checking nodes, pods, and system components.
+Comprehensive health monitoring for your Kubernetes cluster, checking nodes,
+pods, and system components.
 
 **Features:**
+
 - Node health and readiness verification
-- Critical namespace pod monitoring (`kube-system`, `flux-system`, `cert-manager`, `external-secrets`)
+- Critical namespace pod monitoring (`kube-system`, `flux-system`,
+  `cert-manager`, `external-secrets`)
 - Storage class verification
 - High restart count detection
 - Continuous monitoring mode
 - Detailed verbose output
 
 **Usage:**
+
 ```bash
 # Basic health check
 ./scripts/k8s-health-check.ts
@@ -36,9 +41,11 @@ Comprehensive health monitoring for your Kubernetes cluster, checking nodes, pod
 
 ### 🔄 `flux-deployment-check.ts` - GitOps Deployment Verification
 
-Monitors and verifies Flux GitOps deployments, checking the health of GitRepositories, Kustomizations, and HelmReleases.
+Monitors and verifies Flux GitOps deployments, checking the health of
+GitRepositories, Kustomizations, and HelmReleases.
 
 **Features:**
+
 - Flux installation verification
 - GitRepository source health checking
 - Kustomization deployment status
@@ -48,6 +55,7 @@ Monitors and verifies Flux GitOps deployments, checking the health of GitReposit
 - Namespace-grouped reporting
 
 **Usage:**
+
 ```bash
 # Basic deployment check
 ./scripts/flux-deployment-check.ts
@@ -68,21 +76,26 @@ Monitors and verifies Flux GitOps deployments, checking the health of GitReposit
 ## Prerequisites
 
 ### Required Tools
+
 - **Deno**: For running the TypeScript scripts
 - **kubectl**: Configured with access to your cluster
 - **flux**: Flux CLI tool (for GitOps verification script)
 
 ### Permissions
+
 Both scripts require:
+
 - `--allow-all` Deno permissions (for subprocess execution)
 - Valid kubeconfig with cluster access
 - Appropriate RBAC permissions to read cluster resources
 
 ## Integration with Your Cluster
 
-These scripts are designed specifically for your Talos Kubernetes cluster setup and understand:
+These scripts are designed specifically for your Talos Kubernetes cluster setup
+and understand:
 
-- **Critical Namespaces**: Monitors `kube-system`, `flux-system`, `cert-manager`, `external-secrets`
+- **Critical Namespaces**: Monitors `kube-system`, `flux-system`,
+  `cert-manager`, `external-secrets`
 - **Flux Resources**: Checks GitRepositories, Kustomizations, and HelmReleases
 - **Node Roles**: Understands control-plane and worker node roles
 - **Talos OS**: Recognizes Talos-specific node information
@@ -90,14 +103,17 @@ These scripts are designed specifically for your Talos Kubernetes cluster setup 
 ## Exit Codes
 
 Both scripts follow standard Unix exit code conventions:
+
 - `0`: Success - all checks passed
 - `1`: Failure - issues detected or script error
 
-This makes them suitable for use in CI/CD pipelines, monitoring systems, or automation scripts.
+This makes them suitable for use in CI/CD pipelines, monitoring systems, or
+automation scripts.
 
 ## Examples
 
 ### Basic Monitoring Workflow
+
 ```bash
 # Quick cluster health check
 ./scripts/k8s-health-check.ts
@@ -111,6 +127,7 @@ This makes them suitable for use in CI/CD pipelines, monitoring systems, or auto
 ```
 
 ### CI/CD Integration
+
 ```bash
 # In your CI pipeline
 if ! ./scripts/k8s-health-check.ts; then
@@ -127,6 +144,7 @@ echo "All checks passed!"
 ```
 
 ### Troubleshooting Mode
+
 ```bash
 # Verbose health check with specific namespace focus
 ./scripts/k8s-health-check.ts --verbose -n kube-system
@@ -146,6 +164,7 @@ echo "All checks passed!"
 ## Future Enhancements
 
 Potential improvements for these scripts:
+
 - Slack/Discord notification integration
 - Prometheus metrics export
 - Custom resource definition monitoring
@@ -155,4 +174,6 @@ Potential improvements for these scripts:
 
 ---
 
-These scripts follow the [deno-utilities](../.cursor/rules/deno-utilities.mdc) patterns established in this workspace and integrate seamlessly with your existing Talos cluster management workflow.
+These scripts follow the [deno-utilities](../.cursor/rules/deno-utilities.mdc)
+patterns established in this workspace and integrate seamlessly with your
+existing Talos cluster management workflow.

@@ -1,6 +1,9 @@
 # Hardware Upgrades with Cluster-Template
 
-This guide covers hardware upgrades for Talos Linux clusters built using the [onedr0p/cluster-template](https://github.com/onedr0p/cluster-template). It provides a systematic approach to safely upgrading hardware components while maintaining cluster availability.
+This guide covers hardware upgrades for Talos Linux clusters built using the
+[onedr0p/cluster-template](https://github.com/onedr0p/cluster-template). It
+provides a systematic approach to safely upgrading hardware components while
+maintaining cluster availability.
 
 ## Table of Contents
 
@@ -15,7 +18,8 @@ This guide covers hardware upgrades for Talos Linux clusters built using the [on
 
 ## Overview
 
-The cluster-template uses `talhelper` to manage Talos configurations declaratively. This approach simplifies hardware upgrades by:
+The cluster-template uses `talhelper` to manage Talos configurations
+declaratively. This approach simplifies hardware upgrades by:
 
 - Generating node-specific configurations from `talconfig.yaml`
 - Managing patches for hardware-specific settings
@@ -69,10 +73,10 @@ nodes:
   - hostname: "k8s-1"
     ipAddress: "192.168.1.98"
     installDiskSelector:
-      serial: "24304A343650"  # Current disk serial
+      serial: "24304A343650" # Current disk serial
     networkInterfaces:
       - deviceSelector:
-          hardwareAddr: "58:47:ca:79:7c:a2"  # Current NIC MAC
+          hardwareAddr: "58:47:ca:79:7c:a2" # Current NIC MAC
 ```
 
 ## Configuration Management
@@ -170,31 +174,35 @@ kubectl get pods --all-namespaces --field-selector spec.nodeName=${NODE_NAME}
 #### For Disk Upgrades
 
 1. Get new disk information:
+
 ```bash
 # After hardware installation, boot node and check
 talosctl get disks -n ${NODE_IP}
 ```
 
 2. Update `talconfig.yaml`:
+
 ```yaml
 nodes:
   - hostname: "k8s-1"
     installDiskSelector:
-      serial: "NEW_DISK_SERIAL"  # Update this
+      serial: "NEW_DISK_SERIAL" # Update this
 ```
 
 #### For Network Card Upgrades
 
 1. Get new interface information:
+
 ```bash
 talosctl get links -n ${NODE_IP}
 ```
 
 2. Update network configuration:
+
 ```yaml
 networkInterfaces:
   - deviceSelector:
-      hardwareAddr: "NEW_MAC_ADDRESS"  # Update this
+      hardwareAddr: "NEW_MAC_ADDRESS" # Update this
 ```
 
 ### Step 3: Regenerate and Apply Configuration
@@ -237,6 +245,7 @@ kubectl uncordon ${NODE_NAME}
 After adding new disks, configure them as user volumes:
 
 1. Create a node-specific patch:
+
 ```bash
 mkdir -p talos/patches/${NODE_NAME}
 cat > talos/patches/${NODE_NAME}/storage.yaml <<EOF
@@ -255,6 +264,7 @@ EOF
 ```
 
 2. Update `talconfig.yaml` to include the patch:
+
 ```yaml
 nodes:
   - hostname: "k8s-1"
@@ -263,6 +273,7 @@ nodes:
 ```
 
 3. Apply the changes:
+
 ```bash
 task talos:generate-config
 task talos:apply-node IP=${NODE_IP}
@@ -416,7 +427,7 @@ nodes:
   - hostname: "k8s-1"
     ipAddress: "192.168.1.98"
     installDiskSelector:
-      serial: "24304A343650"  # Keep system disk
+      serial: "24304A343650" # Keep system disk
     patches:
       - "@./patches/k8s-1/nvme-storage.yaml"
 
@@ -437,18 +448,19 @@ machine:
 # Update for 10GbE upgrade
 networkInterfaces:
   - deviceSelector:
-      hardwareAddr: "aa:bb:cc:dd:ee:ff"  # New 10GbE NIC
+      hardwareAddr: "aa:bb:cc:dd:ee:ff" # New 10GbE NIC
     addresses:
       - "192.168.1.98/24"
     routes:
       - network: "0.0.0.0/0"
         gateway: "192.168.1.254"
-    mtu: 9000  # Enable jumbo frames
+    mtu: 9000 # Enable jumbo frames
 ```
 
 ### Example 3: Memory/CPU Scaling
 
-While CPU/memory don't require Talos config changes, update resource allocations:
+While CPU/memory don't require Talos config changes, update resource
+allocations:
 
 ```yaml
 # patches/global/machine-kubelet.yaml

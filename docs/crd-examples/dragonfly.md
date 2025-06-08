@@ -2,9 +2,12 @@
 
 ## Valid Dragonfly Configuration
 
-Based on the [official Dragonfly documentation](https://www.dragonflydb.io/docs/managing-dragonfly/operator/dragonfly-configuration), here are valid configuration examples:
+Based on the
+[official Dragonfly documentation](https://www.dragonflydb.io/docs/managing-dragonfly/operator/dragonfly-configuration),
+here are valid configuration examples:
 
 ### Basic Configuration
+
 ```yaml
 apiVersion: dragonflydb.io/v1alpha1
 kind: Dragonfly
@@ -23,6 +26,7 @@ spec:
 ```
 
 ### With Persistent Storage
+
 ```yaml
 apiVersion: dragonflydb.io/v1alpha1
 kind: Dragonfly
@@ -39,7 +43,7 @@ spec:
       cpu: "1"
       memory: "2Gi"
   snapshot:
-    cron: "0 */6 * * *"  # Every 6 hours
+    cron: "0 */6 * * *" # Every 6 hours
     persistentVolumeClaimSpec:
       accessModes:
         - ReadWriteOnce
@@ -50,6 +54,7 @@ spec:
 ```
 
 ### With Authentication
+
 ```yaml
 apiVersion: dragonflydb.io/v1alpha1
 kind: Dragonfly
@@ -69,6 +74,7 @@ spec:
 ```
 
 ### With Custom Args
+
 ```yaml
 apiVersion: dragonflydb.io/v1alpha1
 kind: Dragonfly
@@ -98,15 +104,15 @@ These fields are **NOT** valid in the Dragonfly CRD:
 ```yaml
 spec:
   # These will cause validation errors:
-  redis:           # Not a valid field
+  redis: # Not a valid field
     port: 6379
 
-  storage:         # Not a valid field - use snapshot.persistentVolumeClaimSpec
+  storage: # Not a valid field - use snapshot.persistentVolumeClaimSpec
     size: "10Gi"
 
-  port: 6379       # Not a valid field - port is always 6379
+  port: 6379 # Not a valid field - port is always 6379
 
-  memcached:       # Use memcachedPort instead
+  memcached: # Use memcachedPort instead
     port: 11211
 ```
 
@@ -115,7 +121,7 @@ spec:
 ```yaml
 spec:
   # For memcached protocol support:
-  memcachedPort: 11211  # Valid field (since v1.1.2)
+  memcachedPort: 11211 # Valid field (since v1.1.2)
 
   # For storage:
   snapshot:
