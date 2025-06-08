@@ -44,7 +44,8 @@
       "Bash(kubectl delete:*)",
       "Bash(flux describe:*)",
       "Bash(flux get sources git:*)",
-      "Bash(flux get helmrelease:*)"
+      "Bash(flux get helmrelease:*)",
+      "Bash(kubectl top:*)"
     ],
     "deny": []
   }

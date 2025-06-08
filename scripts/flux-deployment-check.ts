@@ -195,15 +195,16 @@ class FluxDeploymentChecker {
 
       const namespace = parts[0];
       const name = parts[1];
-      const ready = parts[2] === "True";
-      const status = parts[3];
-      const revision = parts.length > 5 ? parts[5] : undefined;
+      const revision = parts[2];
+      const suspended = parts[3] === "True";
+      const ready = parts[4] === "True";
+      const message = parts.slice(5).join(' ');
 
       repos.push({
         name,
         namespace,
         url: "unknown", // We'd need kubectl to get the URL
-        branch: "main", // Default assumption
+        branch: revision.includes("refs/heads/") ? revision.split("refs/heads/")[1].split("@")[0] : "main",
         ready,
         lastFetchedRevision: revision,
         conditions: [] // We'd need kubectl to get detailed conditions
