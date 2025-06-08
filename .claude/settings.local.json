@@ -57,7 +57,11 @@
       "Bash(./tests/test-configmap-storage.ts)",
       "Bash(./tests/simulate-growth-data.ts)",
       "Bash(deno check:*)",
-      "Bash(./scripts/test-monitoring-fixes.ts)"
+      "Bash(./scripts/test-monitoring-fixes.ts)",
+      "Bash(deno run:*)",
+      "Bash(deno eval:*)",
+      "Bash(time deno run:*)",
+      "Bash(time deno task:*)"
     ],
     "deny": []
   }

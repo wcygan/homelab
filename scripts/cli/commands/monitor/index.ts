@@ -6,23 +6,11 @@ import { formatHumanOutput, formatJsonOutput } from "../../shared/output.ts";
 import { fluxQuickCheck } from "./flux.ts";
 import { k8sQuickCheck } from "./k8s.ts";
 import { storageQuickCheck } from "./storage.ts";
+import { networkQuickCheck } from "./network.ts";
 
 /**
- * Task implementations - some real, some still placeholders
+ * All task implementations complete
  */
-
-async function networkQuickCheck() {
-  // Placeholder for network check
-  await new Promise(resolve => setTimeout(resolve, 1100));
-  
-  return {
-    status: "healthy" as const,
-    timestamp: new Date().toISOString(),
-    summary: { total: 1, healthy: 1, warnings: 0, critical: 0 },
-    details: ["Network check not implemented yet"],
-    issues: []
-  };
-}
 
 /**
  * Default quick monitor command - runs all domains in parallel
