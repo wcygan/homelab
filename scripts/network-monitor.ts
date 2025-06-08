@@ -56,6 +56,21 @@ interface IngressControllerHealth {
   };
 }
 
+interface DNSCheckResult {
+  hostname: string;
+  internal: {
+    resolved: boolean;
+    ip?: string;
+    error?: string;
+  };
+  external: {
+    resolved: boolean;
+    ip?: string;
+    error?: string;
+  };
+  splitBrain: boolean; // True if internal and external resolve differently
+}
+
 interface NetworkHealthSummary {
   ingressControllers: IngressControllerHealth[];
   certificates: CertificateInfo[];
@@ -64,8 +79,8 @@ interface NetworkHealthSummary {
     external: number;
     total: number;
   };
+  dnsChecks: DNSCheckResult[];
   // TODO: Future additions
-  // dnsChecks: DNSCheckResult[];
   // endpointHealth: EndpointHealth[];
   // cloudflareTunnelStatus?: CloudflareTunnelStatus;
 }
@@ -75,6 +90,7 @@ class NetworkMonitor {
     private verbose = false,
     private certWarningDays = 30,
     private certCriticalDays = 7,
+    private checkDns = false,
   ) {}
 
   async run(): Promise<void> {
@@ -110,10 +126,17 @@ class NetworkMonitor {
       total: ingresses.length,
     };
 
+    // Check DNS resolution if enabled
+    let dnsChecks: DNSCheckResult[] = [];
+    if (this.checkDns) {
+      dnsChecks = await this.checkDNSResolution(ingresses);
+    }
+
     return {
       ingressControllers: controllers,
       certificates,
       ingressCount,
+      dnsChecks,
     };
   }
 
@@ -338,8 +361,26 @@ class NetworkMonitor {
       console.log(table.toString());
     }
 
+    // Display DNS Resolution Results
+    if (summary.dnsChecks.length > 0) {
+      console.log(colors.bold("\nDNS Resolution Status:"));
+      const dnsTable = new Table()
+        .header(["Hostname", "Internal DNS", "External DNS", "Split Brain"])
+        .body(
+          summary.dnsChecks.map(check => [
+            check.hostname,
+            this.formatDNSResult(check.internal),
+            this.formatDNSResult(check.external),
+            check.splitBrain ? colors.yellow("⚠️  Yes") : colors.green("✅ No"),
+          ])
+        )
+        .padding(1)
+        .border(true);
+      
+      console.log(dnsTable.toString());
+    }
+
     // TODO: Future displays
-    // - DNS resolution results
     // - Endpoint connectivity tests
     // - Cloudflare tunnel status
     // - Response time metrics
@@ -357,6 +398,20 @@ class NetworkMonitor {
         return colors.red("❌ Expired");
       case "unknown":
         return colors.gray("❓ Unknown");
+    }
+  }
+
+  private formatDNSResult(result: { resolved: boolean; ip?: string; error?: string }): string {
+    if (result.resolved && result.ip) {
+      return colors.green(`✅ ${result.ip}`);
+    } else if (result.ip === "N/A") {
+      return colors.gray("— N/A");
+    } else if (result.error === "timeout") {
+      return colors.yellow("⏱️  Timeout");
+    } else if (result.error) {
+      return colors.red(`❌ Error`);
+    } else {
+      return colors.red("❌ Not resolved");
     }
   }
 
@@ -380,14 +435,117 @@ class NetworkMonitor {
       hasIssues = true;
     }
 
+    // Check DNS issues
+    if (summary.dnsChecks.length > 0) {
+      const dnsIssues = summary.dnsChecks.filter(d => 
+        (!d.external.resolved && d.external.ip !== "N/A") || 
+        d.splitBrain
+      );
+      if (dnsIssues.length > 0) {
+        console.log(colors.bold.yellow(`\n⚠️  ${dnsIssues.length} DNS issue(s) detected!`));
+        for (const dns of dnsIssues) {
+          if (!dns.external.resolved) {
+            console.log(colors.yellow(`   - ${dns.hostname}: Not resolving externally`));
+          }
+          if (dns.splitBrain) {
+            console.log(colors.yellow(`   - ${dns.hostname}: Split-brain DNS detected`));
+          }
+        }
+      }
+    }
+
     return hasIssues;
   }
 
-  // TODO: Future methods
-  async checkDNSResolution(): Promise<void> {
-    // Test DNS resolution via k8s-gateway
-    // Verify internal vs external resolution
-    // Check for DNS conflicts
+  private async checkDNSResolution(ingresses: IngressInfo[]): Promise<DNSCheckResult[]> {
+    const dnsChecks: DNSCheckResult[] = [];
+    const processedHosts = new Set<string>();
+
+    // Get k8s-gateway service IP
+    let k8sGatewayIP: string | undefined;
+    try {
+      const gatewayService = await $`kubectl get svc -n network k8s-gateway -o json`.json();
+      k8sGatewayIP = gatewayService.status.loadBalancer?.ingress?.[0]?.ip || gatewayService.spec.clusterIP;
+      if (this.verbose) {
+        console.log(colors.gray(`Using k8s-gateway at ${k8sGatewayIP}`));
+      }
+    } catch (error) {
+      console.error(colors.yellow("k8s-gateway service not found, skipping DNS checks"));
+      return dnsChecks;
+    }
+
+    // Extract unique hostnames from ingresses
+    for (const ingress of ingresses) {
+      if (!ingress.spec.rules) continue;
+      
+      for (const rule of ingress.spec.rules) {
+        if (rule.host && !processedHosts.has(rule.host)) {
+          processedHosts.add(rule.host);
+          
+          const result = await this.checkHostDNS(rule.host, k8sGatewayIP);
+          dnsChecks.push(result);
+        }
+      }
+    }
+
+    return dnsChecks;
+  }
+
+  private async checkHostDNS(hostname: string, k8sGatewayIP?: string): Promise<DNSCheckResult> {
+    const result: DNSCheckResult = {
+      hostname,
+      internal: { resolved: false },
+      external: { resolved: false },
+      splitBrain: false,
+    };
+
+    // Check internal resolution via k8s-gateway
+    if (k8sGatewayIP) {
+      try {
+        // For internal resolution, check if it's an internal-only domain
+        const isInternalDomain = hostname.includes('.local') || hostname.includes('.cluster.local') || 
+                                hostname.includes('tailscale') || !hostname.includes('.');
+        
+        if (isInternalDomain) {
+          // Try to resolve using k8s-gateway with a timeout
+          const internalDns = await $`timeout 2 dig +short @${k8sGatewayIP} ${hostname}`.text();
+          const ips = internalDns.trim().split('\n').filter(ip => ip && !ip.startsWith(';'));
+          if (ips.length > 0) {
+            result.internal.resolved = true;
+            result.internal.ip = ips[0];
+          }
+        } else {
+          // For external domains, mark as N/A for internal resolution
+          result.internal.resolved = false;
+          result.internal.ip = "N/A";
+        }
+      } catch (error) {
+        if (error.message.includes("timeout")) {
+          result.internal.error = "timeout";
+        } else {
+          result.internal.error = error.message;
+        }
+      }
+    }
+
+    // Check external resolution
+    try {
+      const externalDns = await $`dig +short ${hostname} @8.8.8.8`.text();
+      const ips = externalDns.trim().split('\n').filter(ip => ip && !ip.startsWith(';'));
+      if (ips.length > 0) {
+        result.external.resolved = true;
+        result.external.ip = ips[0];
+      }
+    } catch (error) {
+      result.external.error = error.message;
+    }
+
+    // Check for split-brain DNS
+    if (result.internal.resolved && result.external.resolved) {
+      result.splitBrain = result.internal.ip !== result.external.ip;
+    }
+
+    return result;
   }
 
   async testEndpointConnectivity(): Promise<void> {
@@ -417,8 +575,8 @@ const command = new Command()
   .option("-v, --verbose", "Enable verbose output")
   .option("--cert-warning <days:number>", "Certificate warning threshold in days", { default: 30 })
   .option("--cert-critical <days:number>", "Certificate critical threshold in days", { default: 7 })
+  .option("--check-dns", "Include DNS resolution checks")
   // TODO: Future options
-  // .option("--check-dns", "Include DNS resolution checks")
   // .option("--check-endpoints", "Test endpoint connectivity")
   // .option("--check-cloudflare", "Check Cloudflare tunnel status")
   // .option("--watch", "Run continuously and watch for changes")
@@ -430,6 +588,7 @@ const command = new Command()
       options.verbose,
       options.certWarning,
       options.certCritical,
+      options.checkDns,
     );
     await monitor.run();
   });
