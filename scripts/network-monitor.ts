@@ -411,7 +411,7 @@ class NetworkMonitor {
         .body(
           summary.endpointHealth.map(endpoint => [
             endpoint.url,
-            `${endpoint.backend.service}:${endpoint.backend.port}`,
+            `${endpoint.backend.service}:${endpoint.backend.port || "named"}`,
             this.formatEndpointStatus(endpoint.status),
             this.formatResponseTime(endpoint.responseTime, endpoint.status),
             endpoint.statusCode?.toString() || "—",
@@ -681,7 +681,7 @@ class NetworkMonitor {
       path: path.path,
       backend: {
         service: path.backend.service.name,
-        port: path.backend.service.port.number,
+        port: path.backend.service.port?.number || 0,
       },
       status: "error",
     };
