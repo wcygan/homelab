@@ -50,7 +50,12 @@
       "Bash(talosctl config:*)",
       "Bash(./scripts/k8s-health-check.ts:*)",
       "Bash(./tests/test-storage-via-pods.ts)",
-      "Bash(./scripts/storage-health-check.ts:*)"
+      "Bash(./scripts/storage-health-check.ts:*)",
+      "Bash(ls:*)",
+      "Bash(kubectl auth can-i:*)",
+      "Bash(timeout 30 deno task test:*)",
+      "Bash(./tests/test-configmap-storage.ts)",
+      "Bash(./tests/simulate-growth-data.ts)"
     ],
     "deny": []
   }

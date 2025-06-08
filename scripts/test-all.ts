@@ -22,6 +22,7 @@ interface TestSuite {
   args?: string[];
   timeout?: number; // seconds
   critical?: boolean; // If true, failure blocks other tests
+  requires?: "k8s" | "talos" | "both"; // Network requirements
 }
 
 interface TestSummary {
@@ -40,6 +41,10 @@ class UnifiedTestRunner {
   private quick = false;
   private ci = false;
   private failFast = false;
+  private networkStatus: {
+    k8sAccess: boolean;
+    talosAccess: boolean;
+  } = { k8sAccess: false, talosAccess: false };
 
   // Define all available test suites
   private readonly testSuites: TestSuite[] = [
@@ -49,6 +54,7 @@ class UnifiedTestRunner {
       script: "check-flux-config.ts",
       category: "flux",
       critical: true,
+      requires: "k8s",
     },
     {
       name: "Flux Deployment Status",
@@ -56,6 +62,7 @@ class UnifiedTestRunner {
       category: "flux",
       args: ["--timeout", "30"],
       critical: true,
+      requires: "k8s",
     },
     
     // Hardware Tests
@@ -64,17 +71,20 @@ class UnifiedTestRunner {
       script: "hardware-inventory.ts",
       category: "hardware",
       timeout: 60,
+      requires: "talos",
     },
     {
       name: "Talos Configuration Validation",
       script: "validate-talos-config.ts",
       category: "hardware",
       critical: true,
+      requires: "talos",
     },
     {
       name: "Hardware Change Detection",
       script: "detect-hardware-changes.ts",
       category: "hardware",
+      requires: "talos",
     },
     
     // Health Tests
@@ -84,6 +94,7 @@ class UnifiedTestRunner {
       category: "health",
       args: ["--critical-only"],
       critical: true,
+      requires: "k8s",
     },
     {
       name: "Kubernetes Health Check",
@@ -91,6 +102,7 @@ class UnifiedTestRunner {
       category: "health",
       args: ["--verbose"],
       critical: true,
+      requires: "k8s",
     },
     
     // Storage Tests
@@ -100,6 +112,7 @@ class UnifiedTestRunner {
       category: "storage",
       args: ["--growth-analysis"],
       critical: true,
+      requires: "k8s",
     },
     
     // Network Tests
@@ -108,12 +121,14 @@ class UnifiedTestRunner {
       script: "network-monitor.ts",
       category: "network",
       critical: true,
+      requires: "k8s",
     },
     {
       name: "Network Full Check",
       script: "network-monitor.ts",
       category: "network",
       args: ["--check-dns", "--check-endpoints"],
+      requires: "k8s",
     },
   ];
 
@@ -128,14 +143,34 @@ class UnifiedTestRunner {
     console.log(colors.bold.blue("🧪 Unified Homelab Test Suite"));
     console.log("=" . repeat(50));
     
-    const suitesToRun = this.quick 
+    // Check network connectivity first
+    await this.checkNetworkAccess();
+    
+    // Filter tests based on network connectivity
+    let suitesToRun = this.quick 
       ? this.testSuites.filter(s => s.critical)
       : this.testSuites;
+    
+    // Filter out tests that require unavailable network access
+    const filteredSuites = suitesToRun.filter(suite => {
+      if (!suite.requires) return true;
+      if (suite.requires === "k8s") return this.networkStatus.k8sAccess;
+      if (suite.requires === "talos") return this.networkStatus.talosAccess;
+      if (suite.requires === "both") return this.networkStatus.k8sAccess && this.networkStatus.talosAccess;
+      return true;
+    });
+    
+    const skippedCount = suitesToRun.length - filteredSuites.length;
+    suitesToRun = filteredSuites;
 
     if (this.quick) {
       console.log(colors.yellow("📋 Running critical tests only (quick mode)"));
     } else {
       console.log(`📋 Running ${suitesToRun.length} test suites`);
+    }
+    
+    if (skippedCount > 0) {
+      console.log(colors.gray(`📋 Skipped ${skippedCount} tests due to network requirements`));
     }
     
     console.log("");
@@ -418,6 +453,46 @@ class UnifiedTestRunner {
       acc[result.category].push(result);
       return acc;
     }, {} as Record<string, TestResult[]>);
+  }
+
+  private async checkNetworkAccess(): Promise<void> {
+    if (this.verbose) {
+      console.log(colors.gray("🔍 Checking network connectivity..."));
+    }
+
+    // Check Kubernetes access
+    try {
+      await $`kubectl cluster-info`.quiet().timeout(5000);
+      this.networkStatus.k8sAccess = true;
+      if (this.verbose) {
+        console.log(colors.green("✅ Kubernetes cluster accessible"));
+      }
+    } catch {
+      this.networkStatus.k8sAccess = false;
+      if (this.verbose) {
+        console.log(colors.red("❌ Kubernetes cluster not accessible"));
+      }
+    }
+
+    // Check Talos access (try to connect to first node)
+    try {
+      await $`talosctl version --nodes 192.168.1.98`.quiet().timeout(3000);
+      this.networkStatus.talosAccess = true;
+      if (this.verbose) {
+        console.log(colors.green("✅ Talos nodes accessible"));
+      }
+    } catch {
+      this.networkStatus.talosAccess = false;
+      if (this.verbose) {
+        console.log(colors.yellow("⚠️  Talos nodes not accessible (skipping hardware tests)"));
+      }
+    }
+
+    if (!this.networkStatus.k8sAccess && !this.networkStatus.talosAccess) {
+      console.log(colors.red("❌ No cluster connectivity detected!"));
+      console.log(colors.gray("   Make sure you're connected to the homelab network or VPN"));
+      Deno.exit(1);
+    }
   }
 }
 

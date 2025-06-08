@@ -14,11 +14,9 @@ interface StorageMetrics {
   available: string;
   usagePercent: number;
   status: "healthy" | "warning" | "critical";
-  // TODO: Future additions
-  // growthRatePerDay: number;
-  // daysUntilFull: number | null;
-  // node: string;
-  // lastBackup?: Date;
+  growthRatePerDay?: number;
+  daysUntilFull?: number | null;
+  node?: string;
 }
 
 interface PVCInfo {
@@ -38,12 +36,27 @@ interface PVCInfo {
   };
 }
 
+interface HistoricalMetrics {
+  timestamp: string;
+  usagePercent: number;
+  usedBytes: number;
+}
+
+interface MetricsHistory {
+  [pvcKey: string]: HistoricalMetrics[];
+}
+
 class StorageMonitor {
+  private static readonly HISTORY_CONFIGMAP = "storage-metrics-history";
+  private static readonly HISTORY_NAMESPACE = "default";
+  private static readonly MAX_HISTORY_ENTRIES = 30; // Keep 30 days of history
+
   constructor(
     private namespace?: string,
     private verbose = false,
     private warningThreshold = 80,
     private criticalThreshold = 90,
+    private includeGrowthAnalysis = false,
   ) {}
 
   async run(): Promise<void> {
@@ -52,7 +65,15 @@ class StorageMonitor {
 
     try {
       const metrics = await this.collectPVCMetrics();
+      
+      if (this.includeGrowthAnalysis) {
+        await this.analyzeGrowthRates(metrics);
+      }
+      
       this.displayResults(metrics);
+      
+      // Store current metrics for future analysis
+      await this.storeMetricsHistory(metrics);
       
       // Check for critical issues
       const criticalPVCs = metrics.filter(m => m.status === "critical");
@@ -186,19 +207,35 @@ class StorageMonitor {
       return;
     }
 
+    const headers = ["Namespace", "PVC Name", "Storage Class", "Capacity", "Used", "Available", "Usage %", "Status"];
+    if (this.includeGrowthAnalysis) {
+      headers.push("Growth/Day", "Days Until Full");
+    }
+
     const table = new Table()
-      .header(["Namespace", "PVC Name", "Storage Class", "Capacity", "Used", "Available", "Usage %", "Status"])
+      .header(headers)
       .body(
-        metrics.map(m => [
-          m.namespace,
-          m.pvcName,
-          m.storageClass,
-          m.capacity,
-          m.used,
-          m.available,
-          this.formatUsagePercent(m.usagePercent),
-          this.formatStatus(m.status),
-        ])
+        metrics.map(m => {
+          const row = [
+            m.namespace,
+            m.pvcName,
+            m.storageClass,
+            m.capacity,
+            m.used,
+            m.available,
+            this.formatUsagePercent(m.usagePercent),
+            this.formatStatus(m.status),
+          ];
+          
+          if (this.includeGrowthAnalysis) {
+            row.push(
+              this.formatGrowthRate(m.growthRatePerDay),
+              this.formatDaysUntilFull(m.daysUntilFull)
+            );
+          }
+          
+          return row;
+        })
       )
       .padding(1)
       .border(true);
@@ -217,6 +254,13 @@ class StorageMonitor {
     console.log(colors.green(`  Healthy: ${summary.healthy}`));
     console.log(colors.yellow(`  Warning: ${summary.warning}`));
     console.log(colors.red(`  Critical: ${summary.critical}`));
+    
+    if (this.includeGrowthAnalysis) {
+      const rapidGrowth = metrics.filter(m => (m.growthRatePerDay ?? 0) > 5);
+      if (rapidGrowth.length > 0) {
+        console.log(colors.yellow(`  Rapid Growth (>5%/day): ${rapidGrowth.length}`));
+      }
+    }
   }
 
   private formatUsagePercent(percent: number): string {
@@ -237,17 +281,154 @@ class StorageMonitor {
     }
   }
 
+  private formatGrowthRate(rate?: number): string {
+    if (rate === undefined) return colors.gray("N/A");
+    const color = rate > 5 ? colors.red : rate > 2 ? colors.yellow : colors.green;
+    return color(`${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`);
+  }
+
+  private formatDaysUntilFull(days?: number | null): string {
+    if (days === undefined || days === null) return colors.gray("N/A");
+    if (days < 0) return colors.gray("Never");
+    if (days < 7) return colors.red(`${days.toFixed(0)} days`);
+    if (days < 30) return colors.yellow(`${days.toFixed(0)} days`);
+    return colors.green(`${days.toFixed(0)} days`);
+  }
+
+  async analyzeGrowthRates(metrics: StorageMetrics[]): Promise<void> {
+    const history = await this.loadMetricsHistory();
+    
+    for (const metric of metrics) {
+      const pvcKey = `${metric.namespace}/${metric.pvcName}`;
+      const historicalData = history[pvcKey] || [];
+      
+      if (historicalData.length >= 2) {
+        // Calculate growth rate
+        const oldestEntry = historicalData[0];
+        const daysDiff = (Date.now() - new Date(oldestEntry.timestamp).getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (daysDiff > 0) {
+          const growthPercent = metric.usagePercent - oldestEntry.usagePercent;
+          metric.growthRatePerDay = growthPercent / daysDiff;
+          
+          // Predict days until full
+          if (metric.growthRatePerDay > 0) {
+            const remainingPercent = 100 - metric.usagePercent;
+            metric.daysUntilFull = remainingPercent / metric.growthRatePerDay;
+          } else {
+            metric.daysUntilFull = null;
+          }
+        }
+      }
+      
+      // Get node information
+      if (metric.pvcName) {
+        try {
+          const pvcs = await $`kubectl get pvc ${metric.pvcName} -n ${metric.namespace} -o json`.json();
+          if (pvcs.spec?.volumeName) {
+            const pv = await $`kubectl get pv ${pvcs.spec.volumeName} -o json`.json();
+            const nodeAffinity = pv.spec.nodeAffinity?.required?.nodeSelectorTerms?.[0];
+            const nodeSelector = nodeAffinity?.matchExpressions?.find((expr: any) => 
+              expr.key === "kubernetes.io/hostname"
+            );
+            if (nodeSelector?.values?.[0]) {
+              metric.node = nodeSelector.values[0];
+            }
+          }
+        } catch {}
+      }
+    }
+  }
+
+  async loadMetricsHistory(): Promise<MetricsHistory> {
+    try {
+      const cm = await $`kubectl get configmap ${StorageMonitor.HISTORY_CONFIGMAP} -n ${StorageMonitor.HISTORY_NAMESPACE} -o json`.json();
+      return JSON.parse(cm.data?.history || "{}");
+    } catch {
+      // ConfigMap doesn't exist yet
+      return {};
+    }
+  }
+
+  async storeMetricsHistory(metrics: StorageMetrics[]): Promise<void> {
+    const history = await this.loadMetricsHistory();
+    const timestamp = new Date().toISOString();
+    
+    for (const metric of metrics) {
+      const pvcKey = `${metric.namespace}/${metric.pvcName}`;
+      if (!history[pvcKey]) {
+        history[pvcKey] = [];
+      }
+      
+      // Parse used bytes for historical tracking
+      const usedBytes = this.parseStorageSize(metric.used);
+      
+      history[pvcKey].push({
+        timestamp,
+        usagePercent: metric.usagePercent,
+        usedBytes,
+      });
+      
+      // Keep only the last N entries
+      if (history[pvcKey].length > StorageMonitor.MAX_HISTORY_ENTRIES) {
+        history[pvcKey] = history[pvcKey].slice(-StorageMonitor.MAX_HISTORY_ENTRIES);
+      }
+    }
+    
+    // Save back to ConfigMap using a temp file to avoid pipe issues
+    const historyJson = JSON.stringify(history);
+    const tempFile = await Deno.makeTempFile({ suffix: ".json" });
+    
+    try {
+      await Deno.writeTextFile(tempFile, historyJson);
+      
+      // Check if ConfigMap exists
+      const exists = await $`kubectl get configmap ${StorageMonitor.HISTORY_CONFIGMAP} -n ${StorageMonitor.HISTORY_NAMESPACE}`.quiet().noThrow();
+      
+      if (exists.code === 0) {
+        // Update existing ConfigMap
+        await $`kubectl create configmap ${StorageMonitor.HISTORY_CONFIGMAP} -n ${StorageMonitor.HISTORY_NAMESPACE} --from-file=history=${tempFile} --dry-run=client -o yaml | kubectl replace -f -`;
+      } else {
+        // Create new ConfigMap
+        await $`kubectl create configmap ${StorageMonitor.HISTORY_CONFIGMAP} -n ${StorageMonitor.HISTORY_NAMESPACE} --from-file=history=${tempFile}`;
+      }
+    } catch (error) {
+      if (this.verbose) {
+        console.log(colors.yellow(`Could not store metrics history: ${error.message}`));
+      }
+    } finally {
+      // Clean up temp file
+      try {
+        await Deno.remove(tempFile);
+      } catch {}
+    }
+  }
+
+  private parseStorageSize(size: string): number {
+    if (size === "Unknown") return 0;
+    
+    const match = size.match(/^([\d.]+)([KMGT]?)i?B?$/i);
+    if (!match) return 0;
+    
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    
+    const multipliers: { [key: string]: number } = {
+      '': 1,
+      'K': 1024,
+      'M': 1024 * 1024,
+      'G': 1024 * 1024 * 1024,
+      'T': 1024 * 1024 * 1024 * 1024,
+    };
+    
+    return value * (multipliers[unit] || 1);
+  }
+
   // TODO: Future additions
   async checkProvisionerHealth(): Promise<void> {
     // Check local-path-provisioner pod health
     // Check for stuck provisioning operations
     // Monitor provisioner event logs
-  }
-
-  async calculateGrowthRates(): Promise<void> {
-    // Store historical metrics in ConfigMap
-    // Calculate daily/weekly growth rates
-    // Predict when volumes will fill
   }
 
   async exportMetrics(format: "json" | "prometheus"): Promise<void> {
@@ -271,11 +452,11 @@ const command = new Command()
   .option("-v, --verbose", "Enable verbose output")
   .option("-w, --warning <threshold:number>", "Warning threshold percentage", { default: 80 })
   .option("-c, --critical <threshold:number>", "Critical threshold percentage", { default: 90 })
+  .option("-g, --growth-analysis", "Include growth rate analysis")
   // TODO: Future options
   // .option("--watch", "Run continuously and watch for changes")
   // .option("--interval <seconds:number>", "Check interval in seconds", { default: 300 })
   // .option("--export <format:string>", "Export metrics (json|prometheus)")
-  // .option("--growth-analysis", "Include growth rate analysis")
   // .option("--check-provisioner", "Check storage provisioner health")
   // .option("--alert-webhook <url:string>", "Webhook URL for alerts")
   .action(async (options) => {
@@ -284,6 +465,7 @@ const command = new Command()
       options.verbose,
       options.warning,
       options.critical,
+      options.growthAnalysis,
     );
     await monitor.run();
   });
