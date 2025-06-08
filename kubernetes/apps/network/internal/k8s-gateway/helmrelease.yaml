@@ -42,3 +42,9 @@ spec:
         lbipam.cilium.io/ips: "192.168.1.102"
       externalTrafficPolicy: Cluster
     watchedResources: ["Ingress", "Service"]
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
