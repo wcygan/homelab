@@ -190,109 +190,150 @@ class FluxDeploymentChecker {
   }
 
   async getGitRepositories(): Promise<GitRepositoryInfo[]> {
-    const result = await this.runFlux([
+    // Get all GitRepository resources using kubectl with JSON output
+    const result = await this.runKubectl([
       "get",
-      "sources",
-      "git",
+      "gitrepository",
       "-A",
-      "--no-header",
+      "-o",
+      "json",
     ]);
+    
     if (!result.success) {
       throw new Error(`Failed to get GitRepositories: ${result.error}`);
     }
 
-    const repos: GitRepositoryInfo[] = [];
-    const lines = result.output.trim().split("\n");
+    try {
+      const data = JSON.parse(result.output);
+      const repos: GitRepositoryInfo[] = [];
 
-    for (const line of lines) {
-      if (!line.trim()) continue;
+      for (const item of data.items || []) {
+        const readyCondition = item.status?.conditions?.find(
+          (c: any) => c.type === "Ready"
+        );
+        const ready = readyCondition?.status === "True";
+        const revision = item.status?.artifact?.revision || "";
+        
+        repos.push({
+          name: item.metadata.name,
+          namespace: item.metadata.namespace,
+          url: item.spec?.url || "unknown",
+          branch: revision.includes("refs/heads/")
+            ? revision.split("refs/heads/")[1].split("@")[0]
+            : "main",
+          ready,
+          lastFetchedRevision: revision,
+          conditions: item.status?.conditions || [],
+        });
+      }
 
-      const parts = line.trim().split(/\s+/);
-      if (parts.length < 5) continue;
-
-      const namespace = parts[0];
-      const name = parts[1];
-      const revision = parts[2];
-      const suspended = parts[3] === "True";
-      const ready = parts[4] === "True";
-      const message = parts.slice(5).join(" ");
-
-      repos.push({
-        name,
-        namespace,
-        url: "unknown", // We'd need kubectl to get the URL
-        branch: revision.includes("refs/heads/")
-          ? revision.split("refs/heads/")[1].split("@")[0]
-          : "main",
-        ready,
-        lastFetchedRevision: revision,
-        conditions: [], // We'd need kubectl to get detailed conditions
-      });
+      return repos;
+    } catch (error) {
+      throw new Error(`Failed to parse GitRepository JSON: ${error}`);
     }
-
-    return repos;
   }
 
   async getKustomizations(): Promise<FluxResource[]> {
-    const result = await this.runFlux([
+    const result = await this.runKubectl([
       "get",
-      "kustomizations",
+      "kustomization",
       "-A",
-      "--no-header",
+      "-o",
+      "json",
     ]);
+    
     if (!result.success) {
       throw new Error(`Failed to get Kustomizations: ${result.error}`);
     }
 
-    return this.parseFluxResources(result.output, "Kustomization");
+    try {
+      const data = JSON.parse(result.output);
+      const resources: FluxResource[] = [];
+
+      for (const item of data.items || []) {
+        const readyCondition = item.status?.conditions?.find(
+          (c: any) => c.type === "Ready"
+        );
+        const ready = readyCondition?.status === "True";
+        const suspended = item.spec?.suspend === true;
+        
+        resources.push({
+          name: item.metadata.name,
+          namespace: item.metadata.namespace,
+          kind: "Kustomization",
+          ready,
+          suspended,
+          lastAppliedRevision: item.status?.lastAppliedRevision || "",
+          lastReconcileTime: item.status?.lastHandledReconcileAt,
+          conditions: item.status?.conditions || [],
+          source: item.spec?.sourceRef ? {
+            kind: item.spec.sourceRef.kind,
+            name: item.spec.sourceRef.name,
+            namespace: item.spec.sourceRef.namespace,
+          } : undefined,
+          dependsOn: item.spec?.dependsOn || [],
+        });
+      }
+
+      return resources;
+    } catch (error) {
+      throw new Error(`Failed to parse Kustomization JSON: ${error}`);
+    }
   }
 
   async getHelmReleases(): Promise<FluxResource[]> {
-    const result = await this.runFlux([
+    const result = await this.runKubectl([
       "get",
-      "helmreleases",
+      "helmrelease",
       "-A",
-      "--no-header",
+      "-o",
+      "json",
     ]);
+    
     if (!result.success) {
       throw new Error(`Failed to get HelmReleases: ${result.error}`);
     }
 
-    return this.parseFluxResources(result.output, "HelmRelease");
+    try {
+      const data = JSON.parse(result.output);
+      const resources: FluxResource[] = [];
+
+      for (const item of data.items || []) {
+        const readyCondition = item.status?.conditions?.find(
+          (c: any) => c.type === "Ready"
+        );
+        const ready = readyCondition?.status === "True";
+        const suspended = item.spec?.suspend === true;
+        
+        resources.push({
+          name: item.metadata.name,
+          namespace: item.metadata.namespace,
+          kind: "HelmRelease",
+          ready,
+          suspended,
+          lastAppliedRevision: item.status?.lastAppliedRevision || "",
+          lastReconcileTime: item.status?.lastHandledReconcileAt,
+          conditions: item.status?.conditions || [],
+          source: item.spec?.sourceRef ? {
+            kind: item.spec.sourceRef.kind,
+            name: item.spec.sourceRef.name,
+            namespace: item.spec.sourceRef.namespace,
+          } : undefined,
+          dependsOn: item.spec?.dependsOn || [],
+        });
+      }
+
+      return resources;
+    } catch (error) {
+      throw new Error(`Failed to parse HelmRelease JSON: ${error}`);
+    }
   }
 
+  // This method is no longer needed with JSON parsing
+  // Keeping it for backward compatibility if needed
   private parseFluxResources(output: string, kind: string): FluxResource[] {
-    const resources: FluxResource[] = [];
-    const lines = output.trim().split("\n");
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-
-      const parts = line.trim().split(/\s+/);
-      if (parts.length < 5) continue;
-
-      const namespace = parts[0];
-      const name = parts[1];
-      const revision = parts[2];
-      const suspended = parts[3] === "True";
-      const ready = parts[4] === "True";
-      const message = parts.slice(5).join(" ") ||
-        (ready ? "Ready" : "Not Ready");
-
-      resources.push({
-        name,
-        namespace,
-        kind,
-        ready,
-        suspended,
-        lastAppliedRevision: revision,
-        conditions: [], // We'd need kubectl to get detailed conditions
-        source: undefined, // We'd need kubectl to get source info
-        dependsOn: undefined, // We'd need kubectl to get dependencies
-      });
-    }
-
-    return resources;
+    console.warn("parseFluxResources is deprecated, use JSON parsing instead");
+    return [];
   }
 
   async checkGitRepositories(repos: GitRepositoryInfo[]): Promise<boolean> {
@@ -307,8 +348,11 @@ class FluxDeploymentChecker {
         if (this.verbose) {
           if (repo.lastFetchedRevision) {
             this.verboseLog(
-              `   Last fetched: ${repo.lastFetchedRevision.substring(0, 8)}`,
+              `   Last fetched: ${repo.lastFetchedRevision}`,
             );
+          }
+          if (repo.url !== "unknown") {
+            this.verboseLog(`   URL: ${repo.url}`);
           }
         }
       } else {
@@ -319,12 +363,13 @@ class FluxDeploymentChecker {
         allHealthy = false;
 
         // Get detailed info if verbose
-        if (this.verbose) {
-          await this.showResourceDetails(
-            "GitRepository",
-            repo.name,
-            repo.namespace,
+        if (this.verbose && repo.conditions.length > 0) {
+          const failedConditions = repo.conditions.filter(
+            (c: any) => c.status === "False" && c.message
           );
+          for (const condition of failedConditions) {
+            this.verboseLog(`   ${condition.type}: ${condition.message}`);
+          }
         }
       }
     }
@@ -391,9 +436,7 @@ class FluxDeploymentChecker {
           this.verboseLog(`   ${resource.name}: Ready`);
           if (resource.lastAppliedRevision) {
             this.verboseLog(
-              `     Last applied: ${
-                resource.lastAppliedRevision.substring(0, 8)
-              }`,
+              `     Last applied: ${resource.lastAppliedRevision}`,
             );
           }
         }
