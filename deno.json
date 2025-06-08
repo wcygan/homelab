@@ -22,6 +22,10 @@
     "hw:detect": "deno run --allow-all scripts/detect-hardware-changes.ts",
     "health:monitor": "deno run --allow-all scripts/cluster-health-monitor.ts",
     "storage:check": "deno run --allow-all scripts/storage-health-check.ts",
-    "network:check": "deno run --allow-all scripts/network-monitor.ts"
+    "network:check": "deno run --allow-all scripts/network-monitor.ts",
+    "test:all": "deno run --allow-all scripts/test-all.ts",
+    "test:quick": "deno run --allow-all scripts/test-all.ts --quick",
+    "test:ci": "deno run --allow-all scripts/test-all.ts --ci",
+    "test:verbose": "deno run --allow-all scripts/test-all.ts --verbose"
   }
 }
