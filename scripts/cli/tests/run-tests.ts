@@ -108,26 +108,28 @@ class CLITestSuite {
   }
   
   private async testBackwardsCompatibility(): Promise<void> {
-    const legacyTasks = [
-      "test:quick",
-      "health:monitor:json", 
-      "storage:check:json",
-      "network:check:json",
-      "test:all:json"
+    const currentTasks = [
+      { task: "monitor", expectsJson: false },
+      { task: "monitor:json", expectsJson: true },
+      { task: "monitor:all", expectsJson: false }
     ];
     
-    for (const task of legacyTasks) {
-      await this.runTest(`Legacy Task: ${task}`, async () => {
+    for (const { task, expectsJson } of currentTasks) {
+      await this.runTest(`Deno Task: ${task}`, async () => {
         const result = await this.runCommand(["deno", "task", task], { useDeno: false });
         
         // Allow exit codes 0, 1, 2 but not 3
         if (result.code === 3) {
-          throw new Error(`Legacy task failed with error code ${result.code}`);
+          throw new Error(`Task failed with error code ${result.code}`);
         }
         
         // Verify output contains expected patterns
-        if (task.includes("json") && !result.output.includes("{")) {
+        if (expectsJson && !result.output.includes("{")) {
           throw new Error("JSON task did not produce JSON output");
+        }
+        
+        if (!expectsJson && result.output.includes("{") && result.output.includes("}")) {
+          throw new Error("Non-JSON task produced JSON output");
         }
       });
     }

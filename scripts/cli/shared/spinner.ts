@@ -1,5 +1,11 @@
 import { colors } from "@cliffy/ansi/colors";
-import { sleep } from "./utils.ts";
+
+/**
+ * Sleep utility for delays
+ */
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /**
  * Spinner animation frames
