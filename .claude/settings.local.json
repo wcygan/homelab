@@ -45,7 +45,12 @@
       "Bash(flux describe:*)",
       "Bash(flux get sources git:*)",
       "Bash(flux get helmrelease:*)",
-      "Bash(kubectl top:*)"
+      "Bash(kubectl top:*)",
+      "Bash(./tests/test-talos-disk-usage.ts)",
+      "Bash(talosctl config:*)",
+      "Bash(./scripts/k8s-health-check.ts:*)",
+      "Bash(./tests/test-storage-via-pods.ts)",
+      "Bash(./scripts/storage-health-check.ts:*)"
     ],
     "deny": []
   }

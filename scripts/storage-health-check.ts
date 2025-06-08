@@ -78,20 +78,20 @@ class StorageMonitor {
         continue;
       }
 
-      // For now, we'll use a simplified approach
-      // TODO: Future enhancement - get actual usage from nodes
       const capacity = pvc.status.capacity?.storage || "Unknown";
-      const usagePercent = this.mockUsagePercent(); // Temporary mock
+      
+      // Get actual usage from pods
+      const usage = await this.getActualUsage(pvc);
       
       metrics.push({
         namespace: pvc.metadata.namespace,
         pvcName: pvc.metadata.name,
         storageClass: pvc.spec.storageClassName || "default",
         capacity,
-        used: this.calculateUsed(capacity, usagePercent),
-        available: this.calculateAvailable(capacity, usagePercent),
-        usagePercent,
-        status: this.getHealthStatus(usagePercent),
+        used: usage.used,
+        available: usage.available,
+        usagePercent: usage.percent,
+        status: this.getHealthStatus(usage.percent),
       });
     }
 
@@ -104,27 +104,74 @@ class StorageMonitor {
     return result.items as PVCInfo[];
   }
 
-  private mockUsagePercent(): number {
-    // TODO: Replace with actual usage collection
-    // This will involve:
-    // 1. Getting the PV for each PVC
-    // 2. Finding which node hosts the volume
-    // 3. Executing df command on that node
-    // 4. Parsing the actual usage
-    return Math.floor(Math.random() * 100);
+  private async getActualUsage(pvc: PVCInfo): Promise<{used: string, available: string, percent: number}> {
+    try {
+      // Find pods using this PVC
+      const pods = await $`kubectl get pods -n ${pvc.metadata.namespace} -o json`.json();
+      
+      for (const pod of pods.items) {
+        // Check if pod uses this PVC
+        const volumeMount = this.findVolumeMount(pod, pvc.metadata.name);
+        if (volumeMount && pod.status.phase === "Running") {
+          // Get the first container name
+          const containerName = pod.spec.containers[0]?.name;
+          if (!containerName) continue;
+          
+          try {
+            // Execute df command in the pod
+            const dfResult = await $`kubectl exec -n ${pvc.metadata.namespace} ${pod.metadata.name} -c ${containerName} -- df -h ${volumeMount}`.text();
+            const lines = dfResult.trim().split('\n');
+            
+            if (lines.length > 1) {
+              // Parse df output: Filesystem Size Used Avail Use% Mounted
+              const parts = lines[1].split(/\s+/);
+              if (parts.length >= 5) {
+                const used = parts[2];
+                const available = parts[3];
+                const percentStr = parts[4].replace('%', '');
+                const percent = parseInt(percentStr) || 0;
+                
+                if (this.verbose) {
+                  console.log(colors.gray(`  Found usage for ${pvc.metadata.namespace}/${pvc.metadata.name}: ${used}/${parts[1]} (${percent}%)`));
+                }
+                
+                return { used, available, percent };
+              }
+            }
+          } catch (error) {
+            // Pod might not have df command, continue to next pod
+            if (this.verbose) {
+              console.log(colors.gray(`  Could not get df from pod ${pod.metadata.name}: ${error.message}`));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (this.verbose) {
+        console.log(colors.yellow(`  Could not get actual usage for ${pvc.metadata.namespace}/${pvc.metadata.name}: ${error.message}`));
+      }
+    }
+    
+    // Fallback to showing capacity as available
+    const capacity = pvc.status.capacity?.storage || "Unknown";
+    return { used: "Unknown", available: capacity, percent: 0 };
   }
 
-  private calculateUsed(capacity: string, usagePercent: number): string {
-    if (capacity === "Unknown") return "Unknown";
-    // Simple calculation for now
-    // TODO: Proper unit parsing and conversion
-    return `${(usagePercent / 100).toFixed(1)}Gi`;
-  }
-
-  private calculateAvailable(capacity: string, usagePercent: number): string {
-    if (capacity === "Unknown") return "Unknown";
-    // Simple calculation for now
-    return `${((100 - usagePercent) / 100).toFixed(1)}Gi`;
+  private findVolumeMount(pod: any, pvcName: string): string | null {
+    // Find if pod uses this PVC
+    const volume = pod.spec.volumes?.find((v: any) => 
+      v.persistentVolumeClaim?.claimName === pvcName
+    );
+    
+    if (!volume) return null;
+    
+    // Find mount path
+    for (const container of pod.spec.containers || []) {
+      const mount = container.volumeMounts?.find((vm: any) => vm.name === volume.name);
+      if (mount) return mount.mountPath;
+    }
+    
+    return null;
   }
 
   private getHealthStatus(usagePercent: number): StorageMetrics["status"] {
