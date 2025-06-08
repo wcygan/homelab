@@ -12,26 +12,13 @@
     "@david/dax": "jsr:@david/dax@^0.42.0"
   },
   "tasks": {
-    "monitor": "deno run --allow-all scripts/cli/homelab.ts",
-    "check-flux-config": "deno run --allow-all scripts/cli/homelab.ts monitor flux check",
-    "check-flux-config:json": "deno run --allow-all scripts/cli/homelab.ts monitor flux check --json",
-    "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts",
-    "check-flux-deployment": "deno run --allow-read --allow-net --allow-run scripts/flux-deployment-check.ts",
-    "monitor-flux": "deno run --allow-read --allow-net --allow-run scripts/flux-monitor.ts",
+    "monitor": "deno run --allow-all scripts/cli/homelab.ts monitor",
+    "monitor:json": "deno run --allow-all scripts/cli/homelab.ts monitor --json",
+    "monitor:all": "deno run --allow-all scripts/cli/homelab.ts monitor all",
     "hw:inventory": "deno run --allow-all scripts/hardware-inventory.ts",
     "hw:validate": "deno run --allow-all scripts/validate-talos-config.ts",
-    "node:maintain": "deno run --allow-all scripts/node-maintenance.ts",
     "hw:detect": "deno run --allow-all scripts/detect-hardware-changes.ts",
-    "health:monitor": "deno run --allow-all scripts/cli/homelab.ts monitor k8s health",
-    "health:monitor:json": "deno run --allow-all scripts/cli/homelab.ts monitor k8s health --json",
-    "storage:check": "deno run --allow-all scripts/cli/homelab.ts monitor storage health",
-    "storage:check:json": "deno run --allow-all scripts/cli/homelab.ts monitor storage health --json",
-    "network:check": "deno run --allow-all scripts/cli/homelab.ts monitor network health",
-    "network:check:json": "deno run --allow-all scripts/cli/homelab.ts monitor network health --json",
-    "test:all": "deno run --allow-all scripts/cli/homelab.ts monitor all",
-    "test:all:json": "deno run --allow-all scripts/cli/homelab.ts monitor all --json",
-    "test:quick": "deno run --allow-all scripts/cli/homelab.ts monitor",
-    "test:ci": "deno run --allow-all scripts/cli/homelab.ts monitor all --ci",
-    "test:verbose": "deno run --allow-all scripts/cli/homelab.ts monitor all --verbose"
+    "node:maintain": "deno run --allow-all scripts/node-maintenance.ts",
+    "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts"
   }
 }
