@@ -3,23 +3,11 @@ import type { ParallelTask } from "../../shared/parallel.ts";
 import type { CLIOptions, QuickCheckResult } from "../../shared/types.ts";
 import { aggregateStatus, createSummary, collectIssues } from "../../shared/utils.ts";
 import { formatHumanOutput, formatJsonOutput } from "../../shared/output.ts";
+import { fluxQuickCheck } from "./flux.ts";
 
 /**
- * Dummy task implementations for skeleton testing
+ * Task implementations - some real, some still placeholders
  */
-
-async function fluxQuickCheck() {
-  // Placeholder for flux check
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  return {
-    status: "healthy" as const,
-    timestamp: new Date().toISOString(),
-    summary: { total: 1, healthy: 1, warnings: 0, critical: 0 },
-    details: ["Flux check not implemented yet"],
-    issues: []
-  };
-}
 
 async function k8sQuickCheck() {
   // Placeholder for k8s check
