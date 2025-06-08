@@ -57,6 +57,79 @@ fluxCommand
 
 monitorCommand.command("flux", fluxCommand);
 
+// K8s subcommands
+const k8sCommand = new Command()
+  .name("k8s")
+  .description("Monitor Kubernetes cluster health")
+  .option("-j, --json", "Output in JSON format")
+  .option("-v, --verbose", "Enable detailed output");
+
+k8sCommand
+  .command("health")
+  .description("Check Kubernetes cluster health")
+  .option("-j, --json", "Output in JSON format")
+  .option("-n, --namespace <namespace>", "Check specific namespace")
+  .option("--no-flux", "Exclude Flux checks")
+  .action(async (options) => {
+    const { runK8sHealth } = await import("./commands/monitor/k8s-detailed.ts");
+    await runK8sHealth(options);
+  });
+
+monitorCommand.command("k8s", k8sCommand);
+
+// Storage subcommands
+const storageCommand = new Command()
+  .name("storage")
+  .description("Monitor storage health and usage")
+  .option("-j, --json", "Output in JSON format")
+  .option("-v, --verbose", "Enable detailed output");
+
+storageCommand
+  .command("health")
+  .description("Check storage health and PVC usage")
+  .option("-j, --json", "Output in JSON format")
+  .option("--growth-analysis", "Include growth rate analysis")
+  .option("--check-provisioner", "Check storage provisioner health")
+  .action(async (options) => {
+    const { runStorageHealth } = await import("./commands/monitor/storage-detailed.ts");
+    await runStorageHealth(options);
+  });
+
+monitorCommand.command("storage", storageCommand);
+
+// Network subcommands
+const networkCommand = new Command()
+  .name("network")
+  .description("Monitor network connectivity and health")
+  .option("-j, --json", "Output in JSON format")
+  .option("-v, --verbose", "Enable detailed output");
+
+networkCommand
+  .command("health")
+  .description("Check network connectivity and ingress health")
+  .option("-j, --json", "Output in JSON format")
+  .option("--check-dns", "Include DNS resolution tests")
+  .option("--check-endpoints", "Include endpoint connectivity tests")
+  .action(async (options) => {
+    const { runNetworkHealth } = await import("./commands/monitor/network-detailed.ts");
+    await runNetworkHealth(options);
+  });
+
+monitorCommand.command("network", networkCommand);
+
+// All command - comprehensive monitoring
+monitorCommand
+  .command("all")
+  .description("Run comprehensive health checks across all domains")
+  .option("-j, --json", "Output in JSON format")
+  .option("-v, --verbose", "Enable detailed output")
+  .option("--quick", "Quick checks only (same as default monitor)")
+  .option("--ci", "CI mode with strict checks")
+  .action(async (options) => {
+    const { runComprehensiveMonitor } = await import("./commands/monitor/all.ts");
+    await runComprehensiveMonitor(options);
+  });
+
 cli.command("monitor", monitorCommand);
 
 // Parse arguments and execute

@@ -61,7 +61,8 @@
       "Bash(deno run:*)",
       "Bash(deno eval:*)",
       "Bash(time deno run:*)",
-      "Bash(time deno task:*)"
+      "Bash(time deno task:*)",
+      "Bash(task health:monitor:json)"
     ],
     "deny": []
   }
