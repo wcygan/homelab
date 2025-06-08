@@ -43,6 +43,12 @@ operator:
       enabled: true
   replicas: 1
   rollOutPods: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
 prometheus:
   enabled: true
   serviceMonitor:
@@ -72,3 +78,9 @@ securityContext:
       - SYS_RESOURCE
 socketLB:
   hostNamespaceOnly: true
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
