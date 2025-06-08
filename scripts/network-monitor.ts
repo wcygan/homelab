@@ -71,6 +71,20 @@ interface DNSCheckResult {
   splitBrain: boolean; // True if internal and external resolve differently
 }
 
+interface EndpointHealth {
+  url: string;
+  hostname: string;
+  path: string;
+  backend: {
+    service: string;
+    port: number;
+  };
+  status: "healthy" | "unhealthy" | "timeout" | "error";
+  statusCode?: number;
+  responseTime?: number; // in milliseconds
+  error?: string;
+}
+
 interface NetworkHealthSummary {
   ingressControllers: IngressControllerHealth[];
   certificates: CertificateInfo[];
@@ -80,8 +94,8 @@ interface NetworkHealthSummary {
     total: number;
   };
   dnsChecks: DNSCheckResult[];
+  endpointHealth: EndpointHealth[];
   // TODO: Future additions
-  // endpointHealth: EndpointHealth[];
   // cloudflareTunnelStatus?: CloudflareTunnelStatus;
 }
 
@@ -91,6 +105,8 @@ class NetworkMonitor {
     private certWarningDays = 30,
     private certCriticalDays = 7,
     private checkDns = false,
+    private checkEndpoints = false,
+    private responseTimeThreshold = 1000,
   ) {}
 
   async run(): Promise<void> {
@@ -132,11 +148,18 @@ class NetworkMonitor {
       dnsChecks = await this.checkDNSResolution(ingresses);
     }
 
+    // Check endpoint connectivity if enabled
+    let endpointHealth: EndpointHealth[] = [];
+    if (this.checkEndpoints) {
+      endpointHealth = await this.testEndpointConnectivity(ingresses);
+    }
+
     return {
       ingressControllers: controllers,
       certificates,
       ingressCount,
       dnsChecks,
+      endpointHealth,
     };
   }
 
@@ -380,10 +403,28 @@ class NetworkMonitor {
       console.log(dnsTable.toString());
     }
 
+    // Display Endpoint Health
+    if (summary.endpointHealth.length > 0) {
+      console.log(colors.bold("\nEndpoint Connectivity:"));
+      const endpointTable = new Table()
+        .header(["URL", "Backend", "Status", "Response Time", "HTTP Code"])
+        .body(
+          summary.endpointHealth.map(endpoint => [
+            endpoint.url,
+            `${endpoint.backend.service}:${endpoint.backend.port}`,
+            this.formatEndpointStatus(endpoint.status),
+            this.formatResponseTime(endpoint.responseTime, endpoint.status),
+            endpoint.statusCode?.toString() || "—",
+          ])
+        )
+        .padding(1)
+        .border(true);
+      
+      console.log(endpointTable.toString());
+    }
+
     // TODO: Future displays
-    // - Endpoint connectivity tests
     // - Cloudflare tunnel status
-    // - Response time metrics
   }
 
   private formatCertStatus(status: CertificateInfo["status"]): string {
@@ -412,6 +453,34 @@ class NetworkMonitor {
       return colors.red(`❌ Error`);
     } else {
       return colors.red("❌ Not resolved");
+    }
+  }
+
+  private formatEndpointStatus(status: EndpointHealth["status"]): string {
+    switch (status) {
+      case "healthy":
+        return colors.green("✅ Healthy");
+      case "unhealthy":
+        return colors.red("❌ Unhealthy");
+      case "timeout":
+        return colors.yellow("⏱️  Timeout");
+      case "error":
+        return colors.red("❌ Error");
+    }
+  }
+
+  private formatResponseTime(responseTime?: number, status?: string): string {
+    if (!responseTime || status === "timeout" || status === "error") {
+      return "—";
+    }
+    
+    const ms = responseTime;
+    if (ms < this.responseTimeThreshold) {
+      return colors.green(`${ms}ms`);
+    } else if (ms < this.responseTimeThreshold * 2) {
+      return colors.yellow(`${ms}ms`);
+    } else {
+      return colors.red(`${ms}ms`);
     }
   }
 
@@ -450,6 +519,30 @@ class NetworkMonitor {
           if (dns.splitBrain) {
             console.log(colors.yellow(`   - ${dns.hostname}: Split-brain DNS detected`));
           }
+        }
+      }
+    }
+
+    // Check endpoint connectivity issues
+    if (summary.endpointHealth.length > 0) {
+      const endpointIssues = summary.endpointHealth.filter(e => 
+        e.status !== "healthy"
+      );
+      if (endpointIssues.length > 0) {
+        console.log(colors.bold.red(`\n⚠️  ${endpointIssues.length} endpoint(s) unhealthy!`));
+        for (const endpoint of endpointIssues) {
+          console.log(colors.red(`   - ${endpoint.url}: ${endpoint.status}`));
+        }
+        hasIssues = true;
+      }
+
+      const slowEndpoints = summary.endpointHealth.filter(e => 
+        e.status === "healthy" && e.responseTime && e.responseTime > this.responseTimeThreshold
+      );
+      if (slowEndpoints.length > 0) {
+        console.log(colors.bold.yellow(`\n⚠️  ${slowEndpoints.length} endpoint(s) responding slowly!`));
+        for (const endpoint of slowEndpoints) {
+          console.log(colors.yellow(`   - ${endpoint.url}: ${endpoint.responseTime}ms`));
         }
       }
     }
@@ -548,10 +641,80 @@ class NetworkMonitor {
     return result;
   }
 
-  async testEndpointConnectivity(): Promise<void> {
-    // Test actual HTTP/HTTPS connectivity
-    // Measure response times
-    // Check for SSL errors
+  private async testEndpointConnectivity(ingresses: IngressInfo[]): Promise<EndpointHealth[]> {
+    const endpoints: EndpointHealth[] = [];
+    
+    for (const ingress of ingresses) {
+      if (!ingress.spec.rules) continue;
+      
+      // Only test external ingresses to avoid internal network issues
+      const isExternal = ingress.spec.ingressClassName === "external";
+      if (!isExternal && !this.verbose) continue;
+      
+      for (const rule of ingress.spec.rules) {
+        if (!rule.host || !rule.http?.paths) continue;
+        
+        for (const path of rule.http.paths) {
+          const protocol = ingress.spec.tls?.some(tls => 
+            tls.hosts?.includes(rule.host)
+          ) ? "https" : "http";
+          
+          const url = `${protocol}://${rule.host}${path.path}`;
+          const endpoint = await this.checkEndpoint(url, rule.host, path);
+          endpoints.push(endpoint);
+        }
+      }
+    }
+    
+    return endpoints;
+  }
+
+  private async checkEndpoint(
+    url: string, 
+    hostname: string,
+    path: IngressInfo["spec"]["rules"][0]["http"]["paths"][0]
+  ): Promise<EndpointHealth> {
+    const startTime = Date.now();
+    const endpoint: EndpointHealth = {
+      url,
+      hostname,
+      path: path.path,
+      backend: {
+        service: path.backend.service.name,
+        port: path.backend.service.port.number,
+      },
+      status: "error",
+    };
+
+    try {
+      // Use curl for connectivity testing with timeout
+      const response = await $`curl -s -o /dev/null -w "%{http_code}|%{time_total}" \
+        --connect-timeout 5 \
+        --max-time 10 \
+        -k \
+        ${url}`.text();
+      
+      const [statusCode, responseTime] = response.trim().split('|');
+      endpoint.statusCode = parseInt(statusCode);
+      endpoint.responseTime = Math.round(parseFloat(responseTime) * 1000); // Convert to ms
+      
+      if (endpoint.statusCode >= 200 && endpoint.statusCode < 400) {
+        endpoint.status = "healthy";
+      } else if (endpoint.statusCode === 0) {
+        endpoint.status = "timeout";
+      } else {
+        endpoint.status = "unhealthy";
+      }
+    } catch (error) {
+      endpoint.error = error.message;
+      endpoint.responseTime = Date.now() - startTime;
+      
+      if (error.message.includes("timeout")) {
+        endpoint.status = "timeout";
+      }
+    }
+
+    return endpoint;
   }
 
   async checkCloudflareTunnel(): Promise<void> {
@@ -576,19 +739,21 @@ const command = new Command()
   .option("--cert-warning <days:number>", "Certificate warning threshold in days", { default: 30 })
   .option("--cert-critical <days:number>", "Certificate critical threshold in days", { default: 7 })
   .option("--check-dns", "Include DNS resolution checks")
+  .option("--check-endpoints", "Test endpoint connectivity")
+  .option("--response-time-threshold <ms:number>", "Response time warning threshold", { default: 1000 })
   // TODO: Future options
-  // .option("--check-endpoints", "Test endpoint connectivity")
   // .option("--check-cloudflare", "Check Cloudflare tunnel status")
   // .option("--watch", "Run continuously and watch for changes")
   // .option("--interval <seconds:number>", "Check interval in seconds", { default: 300 })
   // .option("--export <format:string>", "Export metrics (json|prometheus)")
-  // .option("--response-time-threshold <ms:number>", "Response time warning threshold", { default: 1000 })
   .action(async (options) => {
     const monitor = new NetworkMonitor(
       options.verbose,
       options.certWarning,
       options.certCritical,
       options.checkDns,
+      options.checkEndpoints,
+      options.responseTimeThreshold,
     );
     await monitor.run();
   });
