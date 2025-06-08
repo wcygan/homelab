@@ -1,13 +1,42 @@
 #!/usr/bin/env -S deno run --allow-all
 
 import { Command } from "@cliffy/command";
+import { colors } from "@cliffy/ansi/colors";
 import { printQuickMonitor } from "./commands/monitor/index.ts";
 
 // Main CLI entry point
 const cli = new Command()
   .name("homelab")
   .description("Homelab monitoring and management CLI")
-  .version("1.0.0");
+  .version("1.0.0")
+  .action(() => {
+    // Show available commands when no arguments provided
+    console.log(colors.bold("Homelab CLI"));
+    console.log("=".repeat(35));
+    console.log();
+    console.log(colors.bold("Available Commands:"));
+    console.log();
+    console.log(`  ${colors.cyan("monitor")}              Quick parallel health check of all systems`);
+    console.log(`  ${colors.cyan("monitor --json")}      Output health check in JSON format for CI/CD`);
+    console.log(`  ${colors.cyan("monitor flux")}        Check Flux GitOps components and configurations`);
+    console.log(`  ${colors.cyan("monitor k8s")}         Check Kubernetes cluster health and resources`);
+    console.log(`  ${colors.cyan("monitor storage")}     Check storage health and PVC usage`);
+    console.log(`  ${colors.cyan("monitor network")}     Check network connectivity and ingress health`);
+    console.log(`  ${colors.cyan("monitor all")}         Run comprehensive health checks (slower)`);
+    console.log();
+    console.log(colors.bold("Examples:"));
+    console.log();
+    console.log(`  ${colors.gray("# Quick health check (< 1s)")}`)
+    console.log(`  $ homelab monitor`);
+    console.log();
+    console.log(`  ${colors.gray("# Check specific domain with details")}`)
+    console.log(`  $ homelab monitor flux check --verbose`);
+    console.log();
+    console.log(`  ${colors.gray("# CI/CD integration with JSON output")}`)
+    console.log(`  $ homelab monitor --json`);
+    console.log();
+    console.log(`Run ${colors.cyan("homelab --help")} for detailed usage information.`);
+  });
 
 // Monitor command with subcommands
 const monitorCommand = new Command()

@@ -12,7 +12,7 @@
     "@david/dax": "jsr:@david/dax@^0.42.0"
   },
   "tasks": {
-    "monitor": "deno run --allow-all scripts/cli/homelab.ts monitor",
+    "monitor": "deno run --allow-all scripts/cli/homelab.ts",
     "monitor:json": "deno run --allow-all scripts/cli/homelab.ts monitor --json",
     "monitor:all": "deno run --allow-all scripts/cli/homelab.ts monitor all",
     "hw:inventory": "deno run --allow-all scripts/hardware-inventory.ts",
