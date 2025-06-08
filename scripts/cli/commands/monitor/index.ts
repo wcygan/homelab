@@ -5,23 +5,11 @@ import { aggregateStatus, createSummary, collectIssues } from "../../shared/util
 import { formatHumanOutput, formatJsonOutput } from "../../shared/output.ts";
 import { fluxQuickCheck } from "./flux.ts";
 import { k8sQuickCheck } from "./k8s.ts";
+import { storageQuickCheck } from "./storage.ts";
 
 /**
  * Task implementations - some real, some still placeholders
  */
-
-async function storageQuickCheck() {
-  // Placeholder for storage check
-  await new Promise(resolve => setTimeout(resolve, 900));
-  
-  return {
-    status: "warning" as const,
-    timestamp: new Date().toISOString(),
-    summary: { total: 1, healthy: 0, warnings: 1, critical: 0 },
-    details: ["Storage check not implemented yet"],
-    issues: ["Storage check not implemented - placeholder warning"]
-  };
-}
 
 async function networkQuickCheck() {
   // Placeholder for network check
