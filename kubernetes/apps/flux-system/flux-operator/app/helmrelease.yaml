@@ -25,7 +25,7 @@ spec:
     name: flux-operator
   install:
     remediation:
-      retries: -1
+      retries: 3
   upgrade:
     cleanupOnFail: true
     remediation:
