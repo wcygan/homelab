@@ -20,6 +20,8 @@
     "hw:validate": "deno run --allow-all scripts/validate-talos-config.ts",
     "node:maintain": "deno run --allow-all scripts/node-maintenance.ts",
     "hw:detect": "deno run --allow-all scripts/detect-hardware-changes.ts",
-    "health:monitor": "deno run --allow-all scripts/cluster-health-monitor.ts"
+    "health:monitor": "deno run --allow-all scripts/cluster-health-monitor.ts",
+    "storage:check": "deno run --allow-all scripts/storage-health-check.ts",
+    "network:check": "deno run --allow-all scripts/network-monitor.ts"
   }
 }
