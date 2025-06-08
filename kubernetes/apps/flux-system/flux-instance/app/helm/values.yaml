@@ -15,3 +15,9 @@ instance:
     url: "https://github.com/wcygan/homelab.git"
     ref: "refs/heads/main"
     path: kubernetes/flux/cluster
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
