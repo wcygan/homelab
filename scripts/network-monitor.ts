@@ -42,6 +42,8 @@ interface CertificateInfo {
   expiryDate?: Date;
   daysUntilExpiry?: number;
   status: "valid" | "warning" | "critical" | "expired" | "unknown";
+  certManagerManaged?: boolean;
+  issuer?: string;
 }
 
 interface IngressControllerHealth {
@@ -166,10 +168,14 @@ class NetworkMonitor {
     const certificates: CertificateInfo[] = [];
     const processedSecrets = new Set<string>();
 
+    // Check certificates from ingresses
     for (const ingress of ingresses) {
       if (!ingress.spec.tls) continue;
 
       for (const tls of ingress.spec.tls) {
+        // Skip if no secretName (e.g., Tailscale ingresses)
+        if (!tls.secretName) continue;
+        
         const secretKey = `${ingress.metadata.namespace}/${tls.secretName}`;
         if (processedSecrets.has(secretKey)) continue;
         processedSecrets.add(secretKey);
@@ -180,6 +186,38 @@ class NetworkMonitor {
           tls.hosts,
         );
         certificates.push(certInfo);
+      }
+    }
+
+    // Also check cert-manager Certificate resources
+    try {
+      const certManagerCerts = await $`kubectl get certificate -A -o json`.json();
+      for (const cert of certManagerCerts.items || []) {
+        const secretKey = `${cert.metadata.namespace}/${cert.spec.secretName}`;
+        if (processedSecrets.has(secretKey)) {
+          // Update existing cert info with cert-manager details
+          const existingCert = certificates.find(c => 
+            c.namespace === cert.metadata.namespace && c.secretName === cert.spec.secretName
+          );
+          if (existingCert) {
+            existingCert.certManagerManaged = true;
+            existingCert.issuer = cert.spec.issuerRef?.name;
+          }
+        } else {
+          processedSecrets.add(secretKey);
+          const certInfo = await this.checkCertificate(
+            cert.metadata.namespace,
+            cert.spec.secretName,
+            cert.spec.dnsNames || [],
+          );
+          certInfo.certManagerManaged = true;
+          certInfo.issuer = cert.spec.issuerRef?.name;
+          certificates.push(certInfo);
+        }
+      }
+    } catch (error) {
+      if (this.verbose) {
+        console.error(colors.yellow("cert-manager not installed or no Certificate resources found"));
       }
     }
 
@@ -197,21 +235,56 @@ class NetworkMonitor {
     hosts: string[],
   ): Promise<CertificateInfo> {
     try {
-      // For now, return mock data
-      // TODO: Implement actual certificate checking
-      const mockDaysUntilExpiry = Math.floor(Math.random() * 90);
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + mockDaysUntilExpiry);
+      // Get the TLS secret
+      const secret = await $`kubectl get secret ${secretName} -n ${namespace} -o json`.json();
+      
+      if (!secret.data || !secret.data["tls.crt"]) {
+        return {
+          namespace,
+          secretName,
+          hosts,
+          status: "unknown",
+        };
+      }
 
-      return {
-        namespace,
-        secretName,
-        hosts,
-        expiryDate,
-        daysUntilExpiry: mockDaysUntilExpiry,
-        status: this.getCertStatus(mockDaysUntilExpiry),
-      };
+      // Decode the base64 certificate
+      const certBase64 = secret.data["tls.crt"];
+      const certPem = atob(certBase64);
+      
+      // Save cert to temp file for openssl processing
+      const tempFile = await Deno.makeTempFile({ suffix: ".crt" });
+      await Deno.writeTextFile(tempFile, certPem);
+      
+      try {
+        // Extract certificate details using openssl
+        const certDetails = await $`openssl x509 -in ${tempFile} -noout -dates`.text();
+        
+        // Parse the notAfter date
+        const notAfterMatch = certDetails.match(/notAfter=(.*)/);
+        if (!notAfterMatch) {
+          throw new Error("Could not parse certificate expiry date");
+        }
+        
+        const expiryDate = new Date(notAfterMatch[1]);
+        const now = new Date();
+        const daysUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return {
+          namespace,
+          secretName,
+          hosts,
+          expiryDate,
+          daysUntilExpiry,
+          status: this.getCertStatus(daysUntilExpiry),
+        };
+      } finally {
+        // Clean up temp file
+        await Deno.remove(tempFile);
+      }
     } catch (error) {
+      if (this.verbose) {
+        console.error(colors.yellow(`Failed to check certificate ${namespace}/${secretName}: ${error.message}`));
+      }
       return {
         namespace,
         secretName,
@@ -248,7 +321,7 @@ class NetworkMonitor {
       console.log(colors.yellow("  No TLS certificates found"));
     } else {
       const table = new Table()
-        .header(["Namespace", "Secret", "Hosts", "Days Until Expiry", "Status"])
+        .header(["Namespace", "Secret", "Hosts", "Days Until Expiry", "Status", "Managed By"])
         .body(
           summary.certificates.map(cert => [
             cert.namespace,
@@ -256,6 +329,7 @@ class NetworkMonitor {
             cert.hosts.join(", "),
             cert.daysUntilExpiry?.toString() ?? "Unknown",
             this.formatCertStatus(cert.status),
+            cert.certManagerManaged ? `cert-manager (${cert.issuer || "unknown"})` : "manual",
           ])
         )
         .padding(1)
