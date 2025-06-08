@@ -13,6 +13,12 @@ spec:
     namespace: flux-system
   targetNamespace: external-secrets
   wait: true
+  timeout: 10m
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: onepassword-connect
+      namespace: external-secrets
   dependsOn:
     - name: external-secrets
       namespace: external-secrets
