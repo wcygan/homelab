@@ -578,9 +578,55 @@ scripts/cli/
 │       ├── output.ts       # Output formatting
 │       ├── spinner.ts      # Progress indicators
 │       └── parallel.ts     # Parallel execution helpers
+├── tests/
+│   ├── unit/
+│   │   ├── utils.test.ts   # Unit tests for utilities
+│   │   ├── spinner.test.ts # Spinner system tests
+│   │   └── parallel.test.ts # Parallel execution tests
+│   ├── integration/
+│   │   ├── cli.test.ts     # CLI integration tests
+│   │   ├── commands.test.ts # Command integration tests
+│   │   └── output.test.ts  # Output format tests
+│   ├── fixtures/
+│   │   ├── mock-data.ts    # Test data and mocks
+│   │   └── test-helpers.ts # Testing utilities
+│   └── run-tests.ts        # Test runner
 └── legacy/
     └── wrapper.ts          # Backwards compatibility wrapper
 ```
+
+### Testing Suite
+
+The CLI includes a comprehensive testing suite at `scripts/cli/tests/` to ensure reliability and prevent regressions:
+
+**Test Organization:**
+- **Unit tests**: Test individual functions and components in isolation
+- **Integration tests**: Test complete CLI workflows and command interactions
+- **Fixtures**: Mock data, test helpers, and reusable testing utilities
+
+**Test Commands:**
+```bash
+# Run all CLI tests
+deno run --allow-all scripts/cli/tests/run-tests.ts
+
+# Run specific test category
+deno test --allow-all scripts/cli/tests/unit/
+deno test --allow-all scripts/cli/tests/integration/
+
+# Run single test file
+deno test --allow-all scripts/cli/tests/unit/utils.test.ts
+
+# Test with coverage
+deno test --allow-all --coverage=coverage/ scripts/cli/tests/
+deno coverage coverage/ --html
+```
+
+**Testing Strategy:**
+1. **Each component is tested** as it's implemented
+2. **Mock external dependencies** (kubectl, flux commands) for fast, reliable tests
+3. **Test both success and failure scenarios** for robust error handling
+4. **Validate output formats** for both human-readable and JSON outputs
+5. **Performance benchmarks** to ensure speed targets are met
 
 ### Default Quick Check Implementation
 
