@@ -9,33 +9,34 @@ export function formatHumanOutput(result: QuickCheckResult): string {
   const lines: string[] = [];
   
   // Header
-  lines.push("Homelab Quick Health Check");
-  lines.push("=".repeat(25));
+  lines.push("");
+  lines.push(colors.bold("Homelab Quick Health Check"));
+  lines.push("=".repeat(26));
   lines.push("");
   
   // Domain results
   for (const domain of result.domains) {
     const icon = getStatusIcon(domain.result?.status || domain.status);
-    const duration = domain.duration ? `[${formatDuration(domain.duration)}]` : "";
+    const duration = domain.duration ? colors.gray(` [${formatDuration(domain.duration)}]`) : "";
     const warnings = domain.result?.summary?.warnings ? 
       colors.yellow(` ${domain.result.summary.warnings} warnings`) : "";
     
-    lines.push(`${icon} ${domain.name.padEnd(20)} ${duration}${warnings}`);
+    lines.push(`${icon} ${domain.name.padEnd(22)}${duration}${warnings}`);
   }
   
   lines.push("");
   
   // Summary
-  const summaryIcon = getStatusIcon(result.status);
-  lines.push(`Summary (${formatDuration(result.totalDuration)} total):`);
-  lines.push(`  ${summaryIcon} ${result.summary.healthy} healthy  ` +
+  const statusText = result.status.charAt(0).toUpperCase() + result.status.slice(1);
+  lines.push(`${colors.bold("Summary")} (${formatDuration(result.totalDuration)} total):`);
+  lines.push(`  ${colors.green("✓")} ${result.summary.healthy} healthy  ` +
     `${colors.yellow("⚠")} ${result.summary.warnings} warning  ` +
     `${colors.red("✗")} ${result.summary.critical} critical`);
   
   // Issues
   if (result.issues.length > 0) {
     lines.push("");
-    lines.push("Issues:");
+    lines.push(colors.bold("Issues:"));
     for (const issue of result.issues) {
       lines.push(`  ${colors.yellow("⚠")} ${issue}`);
     }

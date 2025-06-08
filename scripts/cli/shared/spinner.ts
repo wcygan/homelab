@@ -14,13 +14,15 @@ export class Spinner {
   private frameIndex = 0;
   private isSpinning = false;
   private intervalId?: number;
+  private silent: boolean;
 
-  constructor(message: string) {
+  constructor(message: string, silent = false) {
     this.message = message;
+    this.silent = silent;
   }
 
   start(): void {
-    if (this.isSpinning) return;
+    if (this.isSpinning || this.silent) return;
     
     this.isSpinning = true;
     this.frameIndex = 0;
@@ -36,18 +38,20 @@ export class Spinner {
   }
 
   stop(status: "success" | "warning" | "error", duration?: number): void {
-    if (!this.isSpinning) return;
+    if (!this.isSpinning && !this.silent) return;
     
     this.isSpinning = false;
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
     
-    // Clear line and show final result
-    this.clearLine();
-    const icon = this.getStatusIcon(status);
-    const durationText = duration ? colors.gray(` [${this.formatDuration(duration)}]`) : "";
-    console.log(`${icon} ${this.message}${durationText}`);
+    // Clear line and show final result only if not silent
+    if (!this.silent) {
+      this.clearLine();
+      const icon = this.getStatusIcon(status);
+      const durationText = duration ? colors.gray(` [${this.formatDuration(duration)}]`) : "";
+      console.log(`${icon} ${this.message}${durationText}`);
+    }
   }
 
   private render(): void {

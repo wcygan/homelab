@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --allow-all
 
 import { Command } from "@cliffy/command";
+import { printQuickMonitor } from "./commands/monitor/index.ts";
 
 // Main CLI entry point
 const cli = new Command()
@@ -12,8 +13,10 @@ const cli = new Command()
 const monitorCommand = new Command()
   .name("monitor")
   .description("Monitor homelab components")
-  .action(() => {
-    console.log("Quick parallel health check - not implemented yet");
+  .option("-j, --json", "Output in JSON format for CI/CD integration")
+  .option("-v, --verbose", "Enable detailed output")
+  .action(async (options) => {
+    await printQuickMonitor(options);
   });
 
 cli.command("monitor", monitorCommand);

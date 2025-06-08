@@ -22,13 +22,18 @@ export class ParallelExecutor {
   private tasks: Map<string, ParallelTask> = new Map();
   private spinners: Map<string, Spinner> = new Map();
   private results: Map<string, DomainCheck> = new Map();
+  private silent: boolean;
+
+  constructor(silent = false) {
+    this.silent = silent;
+  }
 
   /**
    * Add a task to be executed
    */
   addTask(task: ParallelTask): void {
     this.tasks.set(task.id, task);
-    this.spinners.set(task.id, new Spinner(task.name));
+    this.spinners.set(task.id, new Spinner(task.name, this.silent));
     this.results.set(task.id, {
       name: task.name,
       status: "pending"
@@ -143,9 +148,10 @@ export class ParallelExecutor {
  */
 export async function executeParallelTasks(
   tasks: ParallelTask[],
-  sequential = false
+  sequential = false,
+  silent = false
 ): Promise<DomainCheck[]> {
-  const executor = new ParallelExecutor();
+  const executor = new ParallelExecutor(silent);
   
   // Add all tasks
   for (const task of tasks) {
