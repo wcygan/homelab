@@ -59,7 +59,7 @@ class StorageMonitor {
     private includeGrowthAnalysis = false,
   ) {}
 
-  async run(): Promise<void> {
+  async run(checkProvisioner = false): Promise<void> {
     console.log(colors.bold.blue("Storage Health Check"));
     console.log("=" . repeat(50));
 
@@ -74,6 +74,11 @@ class StorageMonitor {
       
       // Store current metrics for future analysis
       await this.storeMetricsHistory(metrics);
+      
+      // Check provisioner health if requested
+      if (checkProvisioner) {
+        await this.checkProvisionerHealth();
+      }
       
       // Check for critical issues
       const criticalPVCs = metrics.filter(m => m.status === "critical");
@@ -424,11 +429,80 @@ class StorageMonitor {
     return value * (multipliers[unit] || 1);
   }
 
-  // TODO: Future additions
   async checkProvisionerHealth(): Promise<void> {
-    // Check local-path-provisioner pod health
-    // Check for stuck provisioning operations
-    // Monitor provisioner event logs
+    console.log("\n" + colors.bold.blue("Storage Provisioner Health"));
+    console.log("=" . repeat(50));
+    
+    try {
+      // Check local-path-provisioner deployment
+      const deployment = await $`kubectl get deployment local-path-provisioner -n storage -o json`.json();
+      
+      const replicas = deployment.status.replicas || 0;
+      const readyReplicas = deployment.status.readyReplicas || 0;
+      const status = readyReplicas === replicas ? colors.green("✅ Healthy") : colors.red("❌ Unhealthy");
+      
+      console.log(`\nLocal Path Provisioner:`);
+      console.log(`  Status: ${status}`);
+      console.log(`  Replicas: ${readyReplicas}/${replicas}`);
+      
+      // Check for recent events
+      const events = await $`kubectl get events -n storage --field-selector involvedObject.name=local-path-provisioner --sort-by='.lastTimestamp' -o json`.json();
+      const recentEvents = (events.items || []).slice(-5);
+      
+      if (recentEvents.length > 0) {
+        console.log(`  Recent Events:`);
+        for (const event of recentEvents) {
+          const type = event.type === "Warning" ? colors.yellow("Warning") : colors.gray("Normal");
+          console.log(`    ${type}: ${event.message}`);
+        }
+      }
+      
+      // Check for pending PVCs
+      const allPVCs = await $`kubectl get pvc -A -o json`.json();
+      const pendingPVCs = (allPVCs.items || []).filter((pvc: any) => pvc.status.phase === "Pending");
+      
+      if (pendingPVCs.length > 0) {
+        console.log(colors.yellow(`\n⚠️  ${pendingPVCs.length} PVCs pending provisioning:`));
+        for (const pvc of pendingPVCs) {
+          const age = this.getResourceAge(pvc.metadata.creationTimestamp);
+          console.log(`  - ${pvc.metadata.namespace}/${pvc.metadata.name} (${age})`);
+        }
+      } else {
+        console.log(colors.green("\n✅ No pending PVCs"));
+      }
+      
+      // Check provisioner logs for errors
+      if (this.verbose) {
+        console.log("\nChecking provisioner logs for recent errors...");
+        try {
+          const logs = await $`kubectl logs -n storage deployment/local-path-provisioner --tail=50 --since=1h`.text();
+          const errorLines = logs.split('\n').filter(line => 
+            line.toLowerCase().includes('error') || 
+            line.toLowerCase().includes('fail')
+          );
+          
+          if (errorLines.length > 0) {
+            console.log(colors.yellow(`Found ${errorLines.length} error entries in recent logs`));
+          } else {
+            console.log(colors.green("No errors in recent logs"));
+          }
+        } catch {}
+      }
+      
+    } catch (error) {
+      console.log(colors.red(`Could not check provisioner health: ${error.message}`));
+    }
+  }
+  
+  private getResourceAge(timestamp: string): string {
+    const age = Date.now() - new Date(timestamp).getTime();
+    const minutes = Math.floor(age / (1000 * 60));
+    const hours = Math.floor(age / (1000 * 60 * 60));
+    const days = Math.floor(age / (1000 * 60 * 60 * 24));
+    
+    if (days > 0) return `${days}d`;
+    if (hours > 0) return `${hours}h`;
+    return `${minutes}m`;
   }
 
   async exportMetrics(format: "json" | "prometheus"): Promise<void> {
@@ -453,11 +527,11 @@ const command = new Command()
   .option("-w, --warning <threshold:number>", "Warning threshold percentage", { default: 80 })
   .option("-c, --critical <threshold:number>", "Critical threshold percentage", { default: 90 })
   .option("-g, --growth-analysis", "Include growth rate analysis")
+  .option("-p, --check-provisioner", "Check storage provisioner health")
   // TODO: Future options
   // .option("--watch", "Run continuously and watch for changes")
   // .option("--interval <seconds:number>", "Check interval in seconds", { default: 300 })
   // .option("--export <format:string>", "Export metrics (json|prometheus)")
-  // .option("--check-provisioner", "Check storage provisioner health")
   // .option("--alert-webhook <url:string>", "Webhook URL for alerts")
   .action(async (options) => {
     const monitor = new StorageMonitor(
@@ -467,7 +541,7 @@ const command = new Command()
       options.critical,
       options.growthAnalysis,
     );
-    await monitor.run();
+    await monitor.run(options.checkProvisioner);
   });
 
 if (import.meta.main) {
