@@ -4,23 +4,11 @@ import type { CLIOptions, QuickCheckResult } from "../../shared/types.ts";
 import { aggregateStatus, createSummary, collectIssues } from "../../shared/utils.ts";
 import { formatHumanOutput, formatJsonOutput } from "../../shared/output.ts";
 import { fluxQuickCheck } from "./flux.ts";
+import { k8sQuickCheck } from "./k8s.ts";
 
 /**
  * Task implementations - some real, some still placeholders
  */
-
-async function k8sQuickCheck() {
-  // Placeholder for k8s check
-  await new Promise(resolve => setTimeout(resolve, 1200));
-  
-  return {
-    status: "healthy" as const,
-    timestamp: new Date().toISOString(),
-    summary: { total: 1, healthy: 1, warnings: 0, critical: 0 },
-    details: ["K8s health check not implemented yet"],
-    issues: []
-  };
-}
 
 async function storageQuickCheck() {
   // Placeholder for storage check
