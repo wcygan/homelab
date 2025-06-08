@@ -291,7 +291,7 @@ class UnifiedTestRunner {
         output: error.message,
       };
 
-      if (!this.ci) {
+      if (!this.ci && !this.jsonOutput) {
         this.displayTestResult(result, duration);
       }
 
@@ -489,10 +489,71 @@ class UnifiedTestRunner {
     }
 
     if (!this.networkStatus.k8sAccess && !this.networkStatus.talosAccess) {
-      console.log(colors.red("❌ No cluster connectivity detected!"));
-      console.log(colors.gray("   Make sure you're connected to the homelab network or VPN"));
-      Deno.exit(1);
+      if (!this.jsonOutput) {
+        console.log(colors.red("❌ No cluster connectivity detected!"));
+        console.log(colors.gray("   Make sure you're connected to the homelab network or VPN"));
+      }
+      Deno.exit(ExitCode.ERROR);
     }
+  }
+
+  private isMonitoringScript(script: string): boolean {
+    const monitoringScripts = [
+      "check-flux-config.ts",
+      "cluster-health-monitor.ts",
+      "k8s-health-check.ts",
+      "network-monitor.ts",
+      "storage-health-check.ts"
+    ];
+    return monitoringScripts.includes(script);
+  }
+
+  private createMonitoringResult(totalDuration: number): MonitoringResult {
+    const summary = this.calculateSummary();
+    summary.totalDuration = totalDuration;
+
+    const status: MonitoringResult["status"] = 
+      summary.failed > 0 || summary.criticalIssues.length > 0 ? "critical" :
+      summary.warnings > 0 ? "warning" :
+      "healthy";
+
+    // Extract issues from JSON output of monitoring scripts
+    const allIssues: string[] = [];
+    for (const result of this.results) {
+      if (result.output && this.isMonitoringScript(result.name)) {
+        try {
+          const json = JSON.parse(result.output);
+          if (json.issues && Array.isArray(json.issues)) {
+            allIssues.push(...json.issues);
+          }
+        } catch {
+          // Not JSON output, use extracted issues
+          if (result.issues) {
+            allIssues.push(...result.issues);
+          }
+        }
+      } else if (result.issues) {
+        allIssues.push(...result.issues);
+      }
+    }
+
+    return {
+      status,
+      timestamp: new Date().toISOString(),
+      summary: {
+        total: summary.totalTests,
+        healthy: summary.passed,
+        warnings: summary.warnings,
+        critical: summary.failed,
+      },
+      details: {
+        testResults: this.results,
+        byCategory: this.groupByCategory(),
+        networkStatus: this.networkStatus,
+        duration: totalDuration,
+      },
+      issues: allIssues,
+    };
   }
 }
 

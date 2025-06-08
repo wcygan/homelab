@@ -4,6 +4,7 @@ import { Command } from "@cliffy/command";
 import { Table } from "@cliffy/table";
 import { colors } from "@cliffy/ansi/colors";
 import { $ } from "@david/dax";
+import { MonitoringResult, ExitCode } from "./types/monitoring.ts";
 
 interface IngressInfo {
   metadata: {
@@ -107,25 +108,51 @@ class NetworkMonitor {
     private checkDns = false,
     private checkEndpoints = false,
     private responseTimeThreshold = 1000,
+    private jsonOutput = false,
   ) {}
 
   async run(): Promise<void> {
-    console.log(colors.bold.blue("Network & Ingress Health Monitor"));
-    console.log("=" . repeat(50));
+    if (!this.jsonOutput) {
+      console.log(colors.bold.blue("Network & Ingress Health Monitor"));
+      console.log("=" . repeat(50));
+    }
 
+    let exitCode = ExitCode.SUCCESS;
+    
     try {
       const summary = await this.collectNetworkHealth();
-      await this.displayResults(summary);
       
-      // Check for critical issues
-      const hasIssues = this.checkForIssues(summary);
-      if (hasIssues) {
-        Deno.exit(1);
+      if (this.jsonOutput) {
+        const result = this.createMonitoringResult(summary);
+        console.log(JSON.stringify(result, null, 2));
+        exitCode = this.getExitCodeFromResult(result);
+      } else {
+        await this.displayResults(summary);
+        const hasIssues = this.checkForIssues(summary);
+        exitCode = hasIssues ? ExitCode.CRITICAL : ExitCode.SUCCESS;
       }
     } catch (error) {
-      console.error(colors.red(`Error: ${error.message}`));
-      Deno.exit(1);
+      if (this.jsonOutput) {
+        const result: MonitoringResult = {
+          status: "error",
+          timestamp: new Date().toISOString(),
+          summary: {
+            total: 0,
+            healthy: 0,
+            warnings: 0,
+            critical: 0,
+          },
+          details: [],
+          issues: [`Script execution error: ${error.message}`],
+        };
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.error(colors.red(`Error: ${error.message}`));
+      }
+      exitCode = ExitCode.ERROR;
     }
+    
+    Deno.exit(exitCode);
   }
 
   private async collectNetworkHealth(): Promise<NetworkHealthSummary> {
@@ -728,6 +755,128 @@ class NetworkMonitor {
     // Track changes over time
     // Send notifications on issues
   }
+
+  private createMonitoringResult(summary: NetworkHealthSummary): MonitoringResult {
+    const issues: string[] = [];
+    let warnings = 0;
+    let critical = 0;
+    let healthy = 0;
+    let total = 0;
+
+    // Check ingress controllers
+    for (const controller of summary.ingressControllers) {
+      total++;
+      if (controller.ready) {
+        healthy++;
+      } else {
+        critical++;
+        issues.push(`Ingress controller ${controller.name} is unhealthy (${controller.replicas.ready}/${controller.replicas.desired} replicas)`);
+      }
+    }
+
+    // Check certificates
+    for (const cert of summary.certificates) {
+      total++;
+      switch (cert.status) {
+        case "valid":
+          healthy++;
+          break;
+        case "warning":
+          warnings++;
+          issues.push(`Certificate ${cert.hosts.join(", ")} expires in ${cert.daysUntilExpiry} days`);
+          break;
+        case "critical":
+        case "expired":
+          critical++;
+          issues.push(`Certificate ${cert.hosts.join(", ")} is ${cert.status} (${cert.daysUntilExpiry} days until expiry)`);
+          break;
+        case "unknown":
+          warnings++;
+          issues.push(`Certificate ${cert.namespace}/${cert.secretName} status unknown`);
+          break;
+      }
+    }
+
+    // Check DNS
+    for (const dns of summary.dnsChecks) {
+      total++;
+      if (dns.external.resolved || dns.external.ip === "N/A") {
+        if (dns.splitBrain) {
+          warnings++;
+          issues.push(`Split-brain DNS detected for ${dns.hostname}`);
+        } else {
+          healthy++;
+        }
+      } else {
+        critical++;
+        issues.push(`DNS resolution failed for ${dns.hostname}`);
+      }
+    }
+
+    // Check endpoints
+    for (const endpoint of summary.endpointHealth) {
+      total++;
+      switch (endpoint.status) {
+        case "healthy":
+          if (endpoint.responseTime && endpoint.responseTime > this.responseTimeThreshold) {
+            warnings++;
+            issues.push(`Endpoint ${endpoint.url} is slow (${endpoint.responseTime}ms)`);
+          } else {
+            healthy++;
+          }
+          break;
+        case "unhealthy":
+        case "error":
+          critical++;
+          issues.push(`Endpoint ${endpoint.url} is ${endpoint.status}`);
+          break;
+        case "timeout":
+          critical++;
+          issues.push(`Endpoint ${endpoint.url} timed out`);
+          break;
+      }
+    }
+
+    // Determine overall status
+    let status: MonitoringResult["status"] = "healthy";
+    if (critical > 0) {
+      status = "critical";
+    } else if (warnings > 0) {
+      status = "warning";
+    }
+
+    return {
+      status,
+      timestamp: new Date().toISOString(),
+      summary: {
+        total,
+        healthy,
+        warnings,
+        critical,
+      },
+      details: {
+        ingressControllers: summary.ingressControllers,
+        certificates: summary.certificates,
+        ingressCount: summary.ingressCount,
+        dnsChecks: summary.dnsChecks,
+        endpointHealth: summary.endpointHealth,
+      },
+      issues,
+    };
+  }
+
+  private getExitCodeFromResult(result: MonitoringResult): number {
+    switch (result.status) {
+      case "healthy":
+        return ExitCode.SUCCESS;
+      case "warning":
+        return ExitCode.WARNING;
+      case "critical":
+        return ExitCode.CRITICAL;
+      case "error":
+        return ExitCode.ERROR;
+    }
+  }
 }
 
 // CLI setup
@@ -741,6 +890,7 @@ const command = new Command()
   .option("--check-dns", "Include DNS resolution checks")
   .option("--check-endpoints", "Test endpoint connectivity")
   .option("--response-time-threshold <ms:number>", "Response time warning threshold", { default: 1000 })
+  .option("--json", "Output results in JSON format")
   // TODO: Future options
   // .option("--check-cloudflare", "Check Cloudflare tunnel status")
   // .option("--watch", "Run continuously and watch for changes")
@@ -754,6 +904,7 @@ const command = new Command()
       options.checkDns,
       options.checkEndpoints,
       options.responseTimeThreshold,
+      options.json,
     );
     await monitor.run();
   });

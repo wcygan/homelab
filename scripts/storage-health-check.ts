@@ -4,6 +4,7 @@ import { Command } from "@cliffy/command";
 import { Table } from "@cliffy/table";
 import { colors } from "@cliffy/ansi/colors";
 import { $ } from "@david/dax";
+import { MonitoringResult, ExitCode } from "./types/monitoring.ts";
 
 interface StorageMetrics {
   namespace: string;
@@ -50,6 +51,7 @@ class StorageMonitor {
   private static readonly HISTORY_CONFIGMAP = "storage-metrics-history";
   private static readonly HISTORY_NAMESPACE = "default";
   private static readonly MAX_HISTORY_ENTRIES = 30; // Keep 30 days of history
+  private issues: string[] = [];
 
   constructor(
     private namespace?: string,
@@ -57,11 +59,17 @@ class StorageMonitor {
     private warningThreshold = 80,
     private criticalThreshold = 90,
     private includeGrowthAnalysis = false,
+    private jsonOutput = false,
   ) {}
 
   async run(checkProvisioner = false): Promise<void> {
-    console.log(colors.bold.blue("Storage Health Check"));
-    console.log("=" . repeat(50));
+    if (!this.jsonOutput) {
+      console.log(colors.bold.blue("Storage Health Check"));
+      console.log("=" . repeat(50));
+    }
+
+    let exitCode = ExitCode.SUCCESS;
+    this.issues = [];
 
     try {
       const metrics = await this.collectPVCMetrics();
@@ -70,26 +78,52 @@ class StorageMonitor {
         await this.analyzeGrowthRates(metrics);
       }
       
-      this.displayResults(metrics);
-      
-      // Store current metrics for future analysis
-      await this.storeMetricsHistory(metrics);
-      
-      // Check provisioner health if requested
-      if (checkProvisioner) {
-        await this.checkProvisionerHealth();
-      }
-      
-      // Check for critical issues
-      const criticalPVCs = metrics.filter(m => m.status === "critical");
-      if (criticalPVCs.length > 0) {
-        console.log(colors.bold.red(`\n⚠️  ${criticalPVCs.length} PVCs in critical state!`));
-        Deno.exit(1);
+      if (this.jsonOutput) {
+        const result = await this.createMonitoringResult(metrics, checkProvisioner);
+        console.log(JSON.stringify(result, null, 2));
+        exitCode = this.getExitCodeFromResult(result);
+      } else {
+        this.displayResults(metrics);
+        
+        // Store current metrics for future analysis
+        await this.storeMetricsHistory(metrics);
+        
+        // Check provisioner health if requested
+        if (checkProvisioner) {
+          await this.checkProvisionerHealth();
+        }
+        
+        // Check for critical issues
+        const criticalPVCs = metrics.filter(m => m.status === "critical");
+        if (criticalPVCs.length > 0) {
+          console.log(colors.bold.red(`\n⚠️  ${criticalPVCs.length} PVCs in critical state!`));
+          exitCode = ExitCode.CRITICAL;
+        } else if (metrics.filter(m => m.status === "warning").length > 0) {
+          exitCode = ExitCode.WARNING;
+        }
       }
     } catch (error) {
-      console.error(colors.red(`Error: ${error.message}`));
-      Deno.exit(1);
+      if (this.jsonOutput) {
+        const result: MonitoringResult = {
+          status: "error",
+          timestamp: new Date().toISOString(),
+          summary: {
+            total: 0,
+            healthy: 0,
+            warnings: 0,
+            critical: 0,
+          },
+          details: [],
+          issues: [`Script execution error: ${error.message}`],
+        };
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.error(colors.red(`Error: ${error.message}`));
+      }
+      exitCode = ExitCode.ERROR;
     }
+    
+    Deno.exit(exitCode);
   }
 
   async collectPVCMetrics(): Promise<StorageMetrics[]> {
@@ -430,8 +464,10 @@ class StorageMonitor {
   }
 
   async checkProvisionerHealth(): Promise<void> {
-    console.log("\n" + colors.bold.blue("Storage Provisioner Health"));
-    console.log("=" . repeat(50));
+    if (!this.jsonOutput) {
+      console.log("\n" + colors.bold.blue("Storage Provisioner Health"));
+      console.log("=" . repeat(50));
+    }
     
     try {
       // Check local-path-provisioner deployment
@@ -441,38 +477,40 @@ class StorageMonitor {
       const readyReplicas = deployment.status.readyReplicas || 0;
       const status = readyReplicas === replicas ? colors.green("✅ Healthy") : colors.red("❌ Unhealthy");
       
-      console.log(`\nLocal Path Provisioner:`);
-      console.log(`  Status: ${status}`);
-      console.log(`  Replicas: ${readyReplicas}/${replicas}`);
-      
-      // Check for recent events
-      const events = await $`kubectl get events -n storage --field-selector involvedObject.name=local-path-provisioner --sort-by='.lastTimestamp' -o json`.json();
-      const recentEvents = (events.items || []).slice(-5);
-      
-      if (recentEvents.length > 0) {
-        console.log(`  Recent Events:`);
-        for (const event of recentEvents) {
-          const type = event.type === "Warning" ? colors.yellow("Warning") : colors.gray("Normal");
-          console.log(`    ${type}: ${event.message}`);
+      if (!this.jsonOutput) {
+        console.log(`\nLocal Path Provisioner:`);
+        console.log(`  Status: ${status}`);
+        console.log(`  Replicas: ${readyReplicas}/${replicas}`);
+        
+        // Check for recent events
+        const events = await $`kubectl get events -n storage --field-selector involvedObject.name=local-path-provisioner --sort-by='.lastTimestamp' -o json`.json();
+        const recentEvents = (events.items || []).slice(-5);
+        
+        if (recentEvents.length > 0) {
+          console.log(`  Recent Events:`);
+          for (const event of recentEvents) {
+            const type = event.type === "Warning" ? colors.yellow("Warning") : colors.gray("Normal");
+            console.log(`    ${type}: ${event.message}`);
+          }
         }
-      }
-      
-      // Check for pending PVCs
-      const allPVCs = await $`kubectl get pvc -A -o json`.json();
-      const pendingPVCs = (allPVCs.items || []).filter((pvc: any) => pvc.status.phase === "Pending");
-      
-      if (pendingPVCs.length > 0) {
-        console.log(colors.yellow(`\n⚠️  ${pendingPVCs.length} PVCs pending provisioning:`));
-        for (const pvc of pendingPVCs) {
-          const age = this.getResourceAge(pvc.metadata.creationTimestamp);
-          console.log(`  - ${pvc.metadata.namespace}/${pvc.metadata.name} (${age})`);
+        
+        // Check for pending PVCs
+        const allPVCs = await $`kubectl get pvc -A -o json`.json();
+        const pendingPVCs = (allPVCs.items || []).filter((pvc: any) => pvc.status.phase === "Pending");
+        
+        if (pendingPVCs.length > 0) {
+          console.log(colors.yellow(`\n⚠️  ${pendingPVCs.length} PVCs pending provisioning:`));
+          for (const pvc of pendingPVCs) {
+            const age = this.getResourceAge(pvc.metadata.creationTimestamp);
+            console.log(`  - ${pvc.metadata.namespace}/${pvc.metadata.name} (${age})`);
+          }
+        } else {
+          console.log(colors.green("\n✅ No pending PVCs"));
         }
-      } else {
-        console.log(colors.green("\n✅ No pending PVCs"));
       }
       
       // Check provisioner logs for errors
-      if (this.verbose) {
+      if (this.verbose && !this.jsonOutput) {
         console.log("\nChecking provisioner logs for recent errors...");
         try {
           const logs = await $`kubectl logs -n storage deployment/local-path-provisioner --tail=50 --since=1h`.text();
@@ -490,7 +528,9 @@ class StorageMonitor {
       }
       
     } catch (error) {
-      console.log(colors.red(`Could not check provisioner health: ${error.message}`));
+      if (!this.jsonOutput) {
+        console.log(colors.red(`Could not check provisioner health: ${error.message}`));
+      }
     }
   }
   
@@ -515,6 +555,98 @@ class StorageMonitor {
     // Alert on threshold changes
     // Support webhook notifications
   }
+
+  private async createMonitoringResult(metrics: StorageMetrics[], checkProvisioner: boolean): Promise<MonitoringResult> {
+    const total = metrics.length;
+    const critical = metrics.filter(m => m.status === "critical").length;
+    const warning = metrics.filter(m => m.status === "warning").length;
+    const healthy = metrics.filter(m => m.status === "healthy").length;
+
+    // Collect issues
+    for (const metric of metrics) {
+      if (metric.status === "critical") {
+        this.issues.push(`PVC ${metric.namespace}/${metric.pvcName} is ${metric.usagePercent}% full (critical)`);
+      } else if (metric.status === "warning") {
+        this.issues.push(`PVC ${metric.namespace}/${metric.pvcName} is ${metric.usagePercent}% full (warning)`);
+      }
+      
+      if (metric.growthRatePerDay && metric.daysUntilFull !== null && metric.daysUntilFull < 30) {
+        this.issues.push(`PVC ${metric.namespace}/${metric.pvcName} will be full in ${metric.daysUntilFull} days at current growth rate`);
+      }
+    }
+
+    // Check provisioner if requested
+    let provisionerHealthy = true;
+    if (checkProvisioner) {
+      provisionerHealthy = await this.checkProvisionerHealthJson();
+    }
+
+    const status: MonitoringResult["status"] = 
+      critical > 0 ? "critical" :
+      warning > 0 ? "warning" :
+      provisionerHealthy ? "healthy" : "warning";
+
+    return {
+      status,
+      timestamp: new Date().toISOString(),
+      summary: {
+        total,
+        healthy,
+        warnings: warning,
+        critical,
+      },
+      details: {
+        pvcs: metrics,
+        checkProvisioner,
+        provisionerHealthy,
+        thresholds: {
+          warning: this.warningThreshold,
+          critical: this.criticalThreshold,
+        }
+      },
+      issues: this.issues,
+    };
+  }
+
+  private async checkProvisionerHealthJson(): Promise<boolean> {
+    try {
+      const deployment = await $`kubectl get deployment local-path-provisioner -n storage -o json`.json();
+      const replicas = deployment.status.replicas || 0;
+      const readyReplicas = deployment.status.readyReplicas || 0;
+      
+      if (readyReplicas !== replicas) {
+        this.issues.push(`Local path provisioner unhealthy: ${readyReplicas}/${replicas} replicas ready`);
+        return false;
+      }
+      
+      // Check for pending PVCs
+      const allPVCs = await $`kubectl get pvc -A -o json`.json();
+      const pendingPVCs = (allPVCs.items || []).filter((pvc: any) => pvc.status.phase === "Pending");
+      
+      if (pendingPVCs.length > 0) {
+        this.issues.push(`${pendingPVCs.length} PVCs pending provisioning`);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      this.issues.push(`Could not check provisioner health: ${error.message}`);
+      return false;
+    }
+  }
+
+  private getExitCodeFromResult(result: MonitoringResult): number {
+    switch (result.status) {
+      case "healthy":
+        return ExitCode.SUCCESS;
+      case "warning":
+        return ExitCode.WARNING;
+      case "critical":
+        return ExitCode.CRITICAL;
+      case "error":
+        return ExitCode.ERROR;
+    }
+  }
 }
 
 // CLI setup
@@ -528,6 +660,7 @@ const command = new Command()
   .option("-c, --critical <threshold:number>", "Critical threshold percentage", { default: 90 })
   .option("-g, --growth-analysis", "Include growth rate analysis")
   .option("-p, --check-provisioner", "Check storage provisioner health")
+  .option("--json", "Output results in JSON format")
   // TODO: Future options
   // .option("--watch", "Run continuously and watch for changes")
   // .option("--interval <seconds:number>", "Check interval in seconds", { default: 300 })
@@ -540,6 +673,7 @@ const command = new Command()
       options.warning,
       options.critical,
       options.growthAnalysis,
+      options.json,
     );
     await monitor.run(options.checkProvisioner);
   });

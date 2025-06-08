@@ -1,5 +1,7 @@
 #!/usr/bin/env -S deno run --allow-all
 
+import { MonitoringResult, ExitCode } from "./types/monitoring.ts";
+
 /**
  * Cluster Health Monitor
  *
@@ -119,6 +121,11 @@ class ClusterHealthMonitor {
     "cilium",
     "coredns",
   ];
+  private jsonOutput = false;
+
+  constructor(jsonOutput: boolean = false) {
+    this.jsonOutput = jsonOutput;
+  }
 
   async monitor(options: {
     watch: boolean;
@@ -126,6 +133,11 @@ class ClusterHealthMonitor {
     criticalOnly: boolean;
     includeFlux: boolean;
   }) {
+    if (options.watch && this.jsonOutput) {
+      console.error(colors.red("JSON output is not supported with --watch flag"));
+      Deno.exit(ExitCode.ERROR);
+    }
+
     if (options.watch) {
       console.log(colors.blue("🔍 Starting cluster health monitoring..."));
       console.log(colors.gray(`Refresh interval: ${options.interval}s\n`));
@@ -144,14 +156,15 @@ class ClusterHealthMonitor {
         await this.checkHealth(options);
       }
     } else {
-      await this.checkHealth(options);
+      const exitCode = await this.checkHealth(options);
+      Deno.exit(exitCode);
     }
   }
 
   private async checkHealth(options: {
     criticalOnly: boolean;
     includeFlux: boolean;
-  }) {
+  }): Promise<number> {
     this.status = {
       timestamp: new Date().toISOString(),
       cluster: {
@@ -190,7 +203,20 @@ class ClusterHealthMonitor {
     }
 
     // Display results
-    this.displayStatus(options.criticalOnly);
+    if (this.jsonOutput) {
+      const result = this.createMonitoringResult(options.criticalOnly);
+      console.log(JSON.stringify(result, null, 2));
+      return this.getExitCodeFromResult(result);
+    } else {
+      this.displayStatus(options.criticalOnly);
+      // Return exit code based on alerts
+      const criticalAlerts = this.status!.alerts.filter(a => 
+        a.includes("Critical") || a.includes("etcd") || a.includes("Failed")
+      );
+      if (criticalAlerts.length > 0) return ExitCode.CRITICAL;
+      if (this.status!.alerts.length > 0) return ExitCode.WARNING;
+      return ExitCode.SUCCESS;
+    }
   }
 
   private async checkNodes() {
@@ -227,46 +253,51 @@ class ClusterHealthMonitor {
       }
     } catch (error) {
       this.status!.cluster.healthy = false;
-      this.status!.alerts.push(`Failed to check nodes: ${error.message}`);
+      this.status!.alerts.push(`Failed to check nodes: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   private async checkEtcd() {
     try {
-      const etcdPods =
-        await $`kubectl -n kube-system get pods -l component=etcd -o json`
-          .json();
-
-      this.status!.cluster.etcd.members = etcdPods.items.length;
-
-      for (const pod of etcdPods.items) {
-        const isReady = pod.status.conditions?.find((c: any) =>
-          c.type === "Ready"
-        )?.status === "True";
-        if (isReady) {
-          this.status!.cluster.etcd.healthyMembers++;
+      // For Talos clusters, etcd runs as a system service, not as pods
+      // We'll check etcd health through the kube-apiserver endpoints
+      const endpoints =
+        await $`kubectl -n default get endpoints kubernetes -o json`.json();
+      
+      if (endpoints.subsets && endpoints.subsets.length > 0) {
+        const addresses = endpoints.subsets[0].addresses || [];
+        this.status!.cluster.etcd.members = addresses.length;
+        this.status!.cluster.etcd.healthyMembers = addresses.length;
+        
+        // In Talos, all control plane nodes run etcd
+        // If we have API endpoints, etcd is functioning
+        this.status!.cluster.etcd.healthy = addresses.length >= 1;
+        
+        // Check quorum based on control plane nodes
+        const controlPlaneNodes = await $`kubectl get nodes -l node-role.kubernetes.io/control-plane -o json`.json();
+        const expectedEtcdMembers = controlPlaneNodes.items.length;
+        
+        if (expectedEtcdMembers > 0) {
+          this.status!.cluster.etcd.members = expectedEtcdMembers;
+          const quorum = Math.floor(expectedEtcdMembers / 2) + 1;
+          
+          if (addresses.length < quorum) {
+            this.status!.cluster.etcd.healthy = false;
+            this.status!.cluster.healthy = false;
+            this.status!.alerts.push(
+              `etcd quorum at risk: ${addresses.length}/${expectedEtcdMembers} API endpoints available (need ${quorum} for quorum)`,
+            );
+          }
         }
-
-        // Try to determine leader
-        if (pod.metadata.annotations?.["etcd.kubernetes.io/etcd-leader"]) {
-          this.status!.cluster.etcd.leader = pod.spec.nodeName;
-        }
-      }
-
-      // Check quorum
-      const quorum = Math.floor(this.status!.cluster.etcd.members / 2) + 1;
-      if (this.status!.cluster.etcd.healthyMembers < quorum) {
+      } else {
+        // No API endpoints means etcd is down
         this.status!.cluster.etcd.healthy = false;
         this.status!.cluster.healthy = false;
-        this.status!.alerts.push(
-          `etcd quorum at risk: ${this.status!.cluster.etcd.healthyMembers}/${
-            this.status!.cluster.etcd.members
-          } healthy`,
-        );
+        this.status!.alerts.push("No kubernetes API endpoints found - etcd may be down");
       }
     } catch (error) {
       this.status!.cluster.etcd.healthy = false;
-      this.status!.alerts.push(`Failed to check etcd: ${error.message}`);
+      this.status!.alerts.push(`Failed to check etcd: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -315,12 +346,29 @@ class ClusterHealthMonitor {
             );
           }
 
-          // Check container restarts
+          // Check container restarts with time-based thresholds
           pod.status.containerStatuses?.forEach((container: any) => {
-            if (container.restartCount > 5) {
-              this.status!.alerts.push(
-                `Critical pod ${pod.metadata.namespace}/${pod.metadata.name} has ${container.restartCount} restarts`,
-              );
+            const restartCount = container.restartCount || 0;
+            if (restartCount > 0) {
+              // Calculate pod age in days
+              const podAge = this.getPodAgeInDays(pod.metadata.creationTimestamp);
+              const restartRate = restartCount / Math.max(podAge, 0.1); // Restarts per day
+              
+              // Different thresholds based on pod age and restart rate
+              const isHighRestartRate = restartRate > 5; // More than 5 restarts per day
+              const isRecentPodWithRestarts = podAge < 1 && restartCount > 3; // New pod with multiple restarts
+              const isMatureWithHighRestarts = podAge > 7 && restartCount > 20; // Old pod with many restarts
+              
+              if (isHighRestartRate || isRecentPodWithRestarts) {
+                this.status!.alerts.push(
+                  `Critical pod ${pod.metadata.namespace}/${pod.metadata.name} has ${restartCount} restarts (${restartRate.toFixed(1)}/day, age: ${podAge.toFixed(1)}d)`,
+                );
+              } else if (isMatureWithHighRestarts && restartRate > 1) {
+                // Only alert on mature pods if restart rate is still concerning
+                this.status!.alerts.push(
+                  `Critical pod ${pod.metadata.namespace}/${pod.metadata.name} has ${restartCount} restarts (${restartRate.toFixed(1)}/day over ${podAge.toFixed(0)}d)`,
+                );
+              }
             }
           });
         }
@@ -350,7 +398,7 @@ class ClusterHealthMonitor {
       });
     } catch (error) {
       this.status!.workloads.criticalPodsHealthy = false;
-      this.status!.alerts.push(`Failed to check workloads: ${error.message}`);
+      this.status!.alerts.push(`Failed to check workloads: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -429,7 +477,7 @@ class ClusterHealthMonitor {
             c.type === "Ready" && c.status === "True"
           )
         ) {
-          this.status!.flux.sources.ready++;
+          this.status!.flux!.sources.ready++;
         } else {
           this.status!.alerts.push(
             `Flux source ${source.metadata.namespace}/${source.metadata.name} not ready`,
@@ -447,7 +495,7 @@ class ClusterHealthMonitor {
             c.type === "Ready" && c.status === "True"
           )
         ) {
-          this.status!.flux.kustomizations.ready++;
+          this.status!.flux!.kustomizations.ready++;
         } else {
           this.status!.alerts.push(
             `Flux kustomization ${ks.metadata.namespace}/${ks.metadata.name} not ready`,
@@ -464,7 +512,7 @@ class ClusterHealthMonitor {
             c.type === "Ready" && c.status === "True"
           )
         ) {
-          this.status!.flux.helmreleases.ready++;
+          this.status!.flux!.helmreleases.ready++;
         } else {
           this.status!.alerts.push(
             `Flux helmrelease ${hr.metadata.namespace}/${hr.metadata.name} not ready`,
@@ -496,6 +544,17 @@ class ClusterHealthMonitor {
     } catch {
       return 0;
     }
+  }
+
+  private getPodAgeInDays(creationTimestamp?: string): number {
+    if (!creationTimestamp) return 0;
+    
+    const created = new Date(creationTimestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - created.getTime();
+    const days = diffMs / (1000 * 60 * 60 * 24);
+    
+    return days;
   }
 
   private displayStatus(criticalOnly: boolean) {
@@ -609,6 +668,103 @@ class ClusterHealthMonitor {
 
     console.log("\n" + "═".repeat(55));
   }
+
+  private createMonitoringResult(criticalOnly: boolean): MonitoringResult {
+    const issues: string[] = [];
+    let warnings = 0;
+    let critical = 0;
+    let healthy = 0;
+    let total = 0;
+
+    // Check cluster nodes
+    total += this.status!.cluster.nodes.total;
+    healthy += this.status!.cluster.nodes.ready;
+    if (this.status!.cluster.nodes.ready < this.status!.cluster.nodes.total) {
+      critical++;
+    }
+
+    // Check etcd
+    if (!this.status!.cluster.etcd.healthy) {
+      critical++;
+    } else {
+      healthy++;
+    }
+    total++;
+
+    // Check workloads
+    if (!this.status!.workloads.criticalPodsHealthy) {
+      critical++;
+    } else {
+      healthy++;
+    }
+    total++;
+
+    // Check Flux if enabled
+    if (this.status!.flux) {
+      total += 3; // sources, kustomizations, helmreleases
+      healthy += (this.status!.flux.sources?.ready || 0) + 
+                 (this.status!.flux.kustomizations?.ready || 0) + 
+                 (this.status!.flux.helmreleases?.ready || 0);
+      const notReady = ((this.status!.flux.sources?.total || 0) - (this.status!.flux.sources?.ready || 0)) +
+                       ((this.status!.flux.kustomizations?.total || 0) - (this.status!.flux.kustomizations?.ready || 0)) +
+                       ((this.status!.flux.helmreleases?.total || 0) - (this.status!.flux.helmreleases?.ready || 0));
+      if (notReady > 0) {
+        warnings += notReady;
+      }
+    }
+
+    // Process alerts
+    const displayAlerts = criticalOnly
+      ? this.status!.alerts.filter(a =>
+          a.includes("Critical") || a.includes("etcd") || a.includes("Failed")
+        )
+      : this.status!.alerts;
+
+    issues.push(...displayAlerts);
+
+    // Count critical vs warning alerts
+    for (const alert of displayAlerts) {
+      if (alert.includes("Critical") || alert.includes("etcd") || alert.includes("Failed")) {
+        critical++;
+      } else if (alert.includes("High") || alert.includes("pending") || alert.includes("not ready")) {
+        warnings++;
+      }
+    }
+
+    // Determine overall status
+    let status: MonitoringResult["status"] = "healthy";
+    if (critical > 0) {
+      status = "critical";
+    } else if (warnings > 0) {
+      status = "warning";
+    }
+
+    return {
+      status,
+      timestamp: this.status!.timestamp,
+      summary: {
+        total,
+        healthy,
+        warnings,
+        critical,
+      },
+      details: [this.status!],
+      issues,
+    };
+  }
+
+  private getExitCodeFromResult(result: MonitoringResult): number {
+    switch (result.status) {
+      case "healthy":
+        return ExitCode.SUCCESS;
+      case "warning":
+        return ExitCode.WARNING;
+      case "critical":
+        return ExitCode.CRITICAL;
+      case "error":
+        return ExitCode.ERROR;
+    }
+  }
 }
 
 // CLI setup
@@ -625,6 +781,7 @@ if (import.meta.main) {
       default: false,
     })
     .option("-f, --flux", "Include Flux status monitoring", { default: false })
+    .option("--json", "Output results in JSON format")
     .example("One-time check", "cluster-health-monitor.ts")
     .example("Continuous monitoring", "cluster-health-monitor.ts --watch")
     .example(
@@ -632,13 +789,36 @@ if (import.meta.main) {
       "cluster-health-monitor.ts --watch --critical-only",
     )
     .example("With Flux", "cluster-health-monitor.ts --watch --flux")
+    .example("JSON output", "cluster-health-monitor.ts --json --flux")
     .action(async (options) => {
       try {
-        const monitor = new ClusterHealthMonitor();
-        await monitor.monitor(options);
+        const monitor = new ClusterHealthMonitor(options.json);
+        await monitor.monitor({
+          watch: options.watch || false,
+          interval: options.interval,
+          criticalOnly: options.criticalOnly,
+          includeFlux: options.flux
+        });
       } catch (error) {
-        console.error(colors.red(`\n❌ Error: ${error.message}`));
-        Deno.exit(1);
+        if (options.json) {
+          const result: MonitoringResult = {
+            status: "error",
+            timestamp: new Date().toISOString(),
+            summary: {
+              total: 0,
+              healthy: 0,
+              warnings: 0,
+              critical: 0,
+            },
+            details: [],
+            issues: [`Script execution error: ${error instanceof Error ? error.message : String(error)}`],
+          };
+          console.log(JSON.stringify(result, null, 2));
+          Deno.exit(ExitCode.ERROR);
+        } else {
+          console.error(colors.red(`\n❌ Error: ${error instanceof Error ? error.message : String(error)}`));
+          Deno.exit(ExitCode.ERROR);
+        }
       }
     })
     .parse(Deno.args);

@@ -2,6 +2,7 @@
 
 import { parseArgs } from "@std/cli/parse-args";
 import { delay } from "@std/async/delay";
+import { MonitoringResult, ExitCode } from "./types/monitoring.ts";
 
 interface HealthCheckOptions {
   verbose: boolean;
@@ -10,6 +11,7 @@ interface HealthCheckOptions {
   interval: number;
   help: boolean;
   includeFlux: boolean;
+  json: boolean;
 }
 
 interface NodeInfo {
@@ -57,10 +59,19 @@ interface NamespaceInfo {
 class KubernetesHealthChecker {
   private verbose: boolean;
   private includeFlux: boolean;
+  private jsonOutput: boolean;
+  private issues: string[] = [];
+  private healthSummary = {
+    total: 0,
+    healthy: 0,
+    warnings: 0,
+    critical: 0
+  };
 
-  constructor(verbose = false, includeFlux = true) {
+  constructor(verbose = false, includeFlux = true, jsonOutput = false) {
     this.verbose = verbose;
     this.includeFlux = includeFlux;
+    this.jsonOutput = jsonOutput;
   }
 
   private async runKubectl(
@@ -129,13 +140,22 @@ class KubernetesHealthChecker {
     message: string,
     level: "INFO" | "WARN" | "ERROR" = "INFO",
   ): void {
-    const timestamp = new Date().toISOString();
-    const prefix = level === "ERROR" ? "❌" : level === "WARN" ? "⚠️ " : "ℹ️ ";
-    console.log(`[${timestamp}] ${prefix} ${message}`);
+    if (this.jsonOutput) {
+      // In JSON mode, collect issues
+      if (level === "ERROR") {
+        this.issues.push(message);
+      } else if (level === "WARN" && message.includes("⚠️")) {
+        this.issues.push(message);
+      }
+    } else {
+      const timestamp = new Date().toISOString();
+      const prefix = level === "ERROR" ? "❌" : level === "WARN" ? "⚠️ " : "ℹ️ ";
+      console.log(`[${timestamp}] ${prefix} ${message}`);
+    }
   }
 
   private verboseLog(message: string): void {
-    if (this.verbose) {
+    if (this.verbose && !this.jsonOutput) {
       this.log(message);
     }
   }
@@ -406,6 +426,22 @@ class KubernetesHealthChecker {
     return `${minutes}m`;
   }
 
+  private convertAgeToDays(ageString: string): number {
+    if (ageString === "unknown") return 0;
+    
+    // Parse age string like "25d4h", "4h30m", "45m"
+    const dayMatch = ageString.match(/(\d+)d/);
+    const hourMatch = ageString.match(/(\d+)h/);
+    const minuteMatch = ageString.match(/(\d+)m/);
+    
+    let totalDays = 0;
+    if (dayMatch) totalDays += parseInt(dayMatch[1]);
+    if (hourMatch) totalDays += parseInt(hourMatch[1]) / 24;
+    if (minuteMatch) totalDays += parseInt(minuteMatch[1]) / (24 * 60);
+    
+    return totalDays;
+  }
+
   async checkNodeHealth(): Promise<boolean> {
     this.log("🔍 Checking node health...");
 
@@ -445,6 +481,12 @@ class KubernetesHealthChecker {
         nodes.filter((n) => n.ready).length
       }/${nodes.length} nodes ready`,
     );
+    
+    // Update health summary for JSON output
+    this.healthSummary.total += nodes.length;
+    this.healthSummary.healthy += nodes.filter((n) => n.ready).length;
+    this.healthSummary.critical += nodes.filter((n) => !n.ready).length;
+    
     return allHealthy;
   }
 
@@ -503,6 +545,12 @@ class KubernetesHealthChecker {
         fluxControllers.filter((c) => c.ready).length
       }/${fluxControllers.length} controllers ready`,
     );
+    
+    // Update health summary for JSON output
+    this.healthSummary.total += fluxControllers.length;
+    this.healthSummary.healthy += fluxControllers.filter((c) => c.ready).length;
+    this.healthSummary.critical += fluxControllers.filter((c) => !c.ready).length;
+    
     return allHealthy;
   }
 
@@ -561,15 +609,44 @@ class KubernetesHealthChecker {
         }
       }
 
-      // Check for high restart counts
+      // Check for high restart counts with time-based analysis
       try {
         const pods = await this.getPods(namespace.name);
-        const highRestartPods = pods.filter((pod) => pod.restarts > 10);
+        const concerningPods: Array<{ pod: PodInfo; rate: number; age: number }> = [];
 
-        if (highRestartPods.length > 0) {
-          this.log(`⚠️  High restart count in ${namespace.name}:`, "WARN");
-          for (const pod of highRestartPods.slice(0, 3)) { // Limit to first 3
-            this.log(`   ${pod.name}: ${pod.restarts} restarts`, "WARN");
+        for (const pod of pods) {
+          if (pod.restarts > 0) {
+            // Calculate pod age in days from the age string
+            const ageInDays = this.convertAgeToDays(pod.age);
+            const restartRate = pod.restarts / Math.max(ageInDays, 0.1);
+            
+            // Determine if restart count is concerning based on context
+            const isHighRate = restartRate > 5; // More than 5 restarts per day
+            const isNewPodWithRestarts = ageInDays < 1 && pod.restarts > 3;
+            const isOldPodWithHighRate = ageInDays > 7 && restartRate > 1;
+            
+            if (isHighRate || isNewPodWithRestarts || isOldPodWithHighRate) {
+              concerningPods.push({ pod, rate: restartRate, age: ageInDays });
+            }
+          }
+        }
+
+        if (concerningPods.length > 0) {
+          this.log(`⚠️  Concerning restart patterns in ${namespace.name}:`, "WARN");
+          
+          // Sort by restart rate to show worst offenders first
+          concerningPods.sort((a, b) => b.rate - a.rate);
+          
+          for (const { pod, rate, age } of concerningPods.slice(0, 3)) { // Limit to first 3
+            if (age < 1) {
+              this.log(`   ${pod.name}: ${pod.restarts} restarts in <1 day (new pod)`, "WARN");
+            } else {
+              this.log(`   ${pod.name}: ${pod.restarts} restarts (${rate.toFixed(1)}/day over ${age.toFixed(0)}d)`, "WARN");
+            }
+          }
+          
+          if (concerningPods.length > 3) {
+            this.log(`   ... and ${concerningPods.length - 3} more pods with concerning restart patterns`, "WARN");
           }
         }
       } catch (error) {
@@ -588,7 +665,38 @@ class KubernetesHealthChecker {
     this.log(
       `📊 Overall Pod Summary: ${totalHealthy}/${totalPods} pods healthy across ${namespaces.length} namespaces`,
     );
+    
+    // Update health summary for JSON output
+    this.healthSummary.total += namespaces.length;
+    this.healthSummary.healthy += namespaces.filter(ns => ns.healthyPods === ns.podCount && ns.podCount > 0).length;
+    this.healthSummary.warnings += namespaces.filter(ns => ns.healthyPods < ns.podCount && ns.healthyPods > 0).length;
+    this.healthSummary.critical += namespaces.filter(ns => ns.healthyPods === 0 && ns.podCount > 0).length;
+    
     return allHealthy;
+  }
+
+  getJsonResult(overallHealthy: boolean): MonitoringResult {
+    const status: MonitoringResult["status"] = 
+      this.healthSummary.critical > 0 ? "critical" :
+      this.healthSummary.warnings > 0 ? "warning" :
+      overallHealthy ? "healthy" : "error";
+
+    return {
+      status,
+      timestamp: new Date().toISOString(),
+      summary: this.healthSummary,
+      details: {
+        includeFlux: this.includeFlux,
+        checks: {
+          nodes: this.healthSummary.total > 0,
+          flux: this.includeFlux,
+          namespaces: true,
+          storage: true,
+          networking: true
+        }
+      },
+      issues: this.issues
+    };
   }
 
   async checkStorageClasses(): Promise<void> {
@@ -661,27 +769,43 @@ class KubernetesHealthChecker {
   }
 
   async performFullHealthCheck(): Promise<boolean> {
+    // Reset counters for JSON output
+    this.issues = [];
+    this.healthSummary = {
+      total: 0,
+      healthy: 0,
+      warnings: 0,
+      critical: 0
+    };
+
     this.log("🚀 Starting comprehensive cluster health check...");
 
     // Check cluster access first
     if (!(await this.checkClusterAccess())) {
+      this.healthSummary.critical++;
+      this.healthSummary.total++;
       return false;
     }
 
     let overallHealthy = true;
 
     // Check nodes
-    if (!(await this.checkNodeHealth())) {
+    const nodesHealthy = await this.checkNodeHealth();
+    if (!nodesHealthy) {
       overallHealthy = false;
     }
 
     // Check Flux system health
-    if (this.includeFlux && !(await this.checkFluxHealth())) {
-      overallHealthy = false;
+    if (this.includeFlux) {
+      const fluxHealthy = await this.checkFluxHealth();
+      if (!fluxHealthy) {
+        overallHealthy = false;
+      }
     }
 
     // Check namespace and pod health
-    if (!(await this.checkNamespaceHealth())) {
+    const namespacesHealthy = await this.checkNamespaceHealth();
+    if (!namespacesHealthy) {
       overallHealthy = false;
     }
 
@@ -720,6 +844,7 @@ Options:
   -c, --continuous      Run continuously (use with --interval)
   -i, --interval <sec>  Interval between checks in seconds (default: 30)
   --no-flux            Skip Flux-specific health checks
+  --json               Output results in JSON format
   -h, --help           Show this help message
 
 Examples:
@@ -742,7 +867,7 @@ Key Improvements:
 async function main(): Promise<void> {
   const parsedArgs = parseArgs(Deno.args, {
     string: ["namespace", "interval"],
-    boolean: ["verbose", "continuous", "help", "no-flux"],
+    boolean: ["verbose", "continuous", "help", "no-flux", "json"],
     alias: {
       v: "verbose",
       n: "namespace",
@@ -754,6 +879,7 @@ async function main(): Promise<void> {
       verbose: false,
       continuous: false,
       "no-flux": false,
+      json: false,
       interval: "30",
     },
   });
@@ -764,6 +890,7 @@ async function main(): Promise<void> {
     continuous: Boolean(parsedArgs.continuous),
     help: Boolean(parsedArgs.help),
     includeFlux: !Boolean(parsedArgs["no-flux"]),
+    json: Boolean(parsedArgs.json),
     interval: String(parsedArgs.interval || "30"),
   };
 
@@ -773,9 +900,14 @@ async function main(): Promise<void> {
   }
 
   const interval = parseInt(args.interval) * 1000; // Convert to milliseconds
-  const checker = new KubernetesHealthChecker(args.verbose, args.includeFlux);
+  const checker = new KubernetesHealthChecker(args.verbose, args.includeFlux, args.json);
 
   try {
+    if (args.continuous && args.json) {
+      console.error("JSON output is not supported with continuous monitoring");
+      Deno.exit(ExitCode.ERROR);
+    }
+
     if (args.continuous) {
       console.log(
         `🔄 Starting continuous monitoring (interval: ${args.interval}s, Ctrl+C to stop)...`,
@@ -793,12 +925,51 @@ async function main(): Promise<void> {
       }
     } else {
       const healthy = await checker.performFullHealthCheck();
-      Deno.exit(healthy ? 0 : 1);
+      
+      if (args.json) {
+        const result = checker.getJsonResult(healthy);
+        console.log(JSON.stringify(result, null, 2));
+        
+        // Exit with appropriate code
+        switch (result.status) {
+          case "healthy":
+            Deno.exit(ExitCode.SUCCESS);
+            break;
+          case "warning":
+            Deno.exit(ExitCode.WARNING);
+            break;
+          case "critical":
+            Deno.exit(ExitCode.CRITICAL);
+            break;
+          case "error":
+            Deno.exit(ExitCode.ERROR);
+            break;
+        }
+      } else {
+        Deno.exit(healthy ? ExitCode.SUCCESS : ExitCode.CRITICAL);
+      }
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Health check failed: ${errorMessage}`);
-    Deno.exit(1);
+    if (args.json) {
+      const result: MonitoringResult = {
+        status: "error",
+        timestamp: new Date().toISOString(),
+        summary: {
+          total: 0,
+          healthy: 0,
+          warnings: 0,
+          critical: 0,
+        },
+        details: {},
+        issues: [`Health check failed: ${error instanceof Error ? error.message : String(error)}`],
+      };
+      console.log(JSON.stringify(result, null, 2));
+      Deno.exit(ExitCode.ERROR);
+    } else {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`❌ Health check failed: ${errorMessage}`);
+      Deno.exit(ExitCode.ERROR);
+    }
   }
 }
 

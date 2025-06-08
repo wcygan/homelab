@@ -55,7 +55,9 @@
       "Bash(kubectl auth can-i:*)",
       "Bash(timeout 30 deno task test:*)",
       "Bash(./tests/test-configmap-storage.ts)",
-      "Bash(./tests/simulate-growth-data.ts)"
+      "Bash(./tests/simulate-growth-data.ts)",
+      "Bash(deno check:*)",
+      "Bash(./scripts/test-monitoring-fixes.ts)"
     ],
     "deny": []
   }

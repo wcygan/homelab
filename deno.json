@@ -13,6 +13,7 @@
   },
   "tasks": {
     "check-flux-config": "deno run --allow-read scripts/check-flux-config.ts",
+    "check-flux-config:json": "deno run --allow-read scripts/check-flux-config.ts --json",
     "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts",
     "check-flux-deployment": "deno run --allow-read --allow-net --allow-run scripts/flux-deployment-check.ts",
     "monitor-flux": "deno run --allow-read --allow-net --allow-run scripts/flux-monitor.ts",
@@ -21,9 +22,13 @@
     "node:maintain": "deno run --allow-all scripts/node-maintenance.ts",
     "hw:detect": "deno run --allow-all scripts/detect-hardware-changes.ts",
     "health:monitor": "deno run --allow-all scripts/cluster-health-monitor.ts",
+    "health:monitor:json": "deno run --allow-all scripts/cluster-health-monitor.ts --json",
     "storage:check": "deno run --allow-all scripts/storage-health-check.ts",
+    "storage:check:json": "deno run --allow-all scripts/storage-health-check.ts --json",
     "network:check": "deno run --allow-all scripts/network-monitor.ts",
+    "network:check:json": "deno run --allow-all scripts/network-monitor.ts --json",
     "test:all": "deno run --allow-all scripts/test-all.ts",
+    "test:all:json": "deno run --allow-all scripts/test-all.ts --json",
     "test:quick": "deno run --allow-all scripts/test-all.ts --quick",
     "test:ci": "deno run --allow-all scripts/test-all.ts --ci",
     "test:verbose": "deno run --allow-all scripts/test-all.ts --verbose"

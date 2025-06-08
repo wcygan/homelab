@@ -18,7 +18,10 @@ automated deployment, monitoring, and security.
   `kubectl describe hr {name} -n {namespace}`
 - **Upgrade Cluster**: `task talos:upgrade-node IP={ip}` →
   `task talos:upgrade-k8s`
-- **Monitor Health**: `./scripts/k8s-health-check.ts --verbose`
+- **Monitor Health**: 
+  - Interactive: `./scripts/k8s-health-check.ts --verbose`
+  - Automated/CI: `./scripts/k8s-health-check.ts --json`
+  - Full suite: `deno task test:all:json`
 
 ## Core Architecture
 
@@ -192,14 +195,77 @@ SOPS encryption is only for existing/legacy secrets:
 
 ### Monitoring Tools
 
-All scripts use Deno and require `--allow-all`:
+All scripts use Deno and require `--allow-all`. Each monitoring script supports
+both human-readable and JSON output formats:
 
 - **k8s-health-check.ts**: Comprehensive cluster health monitoring
+  - Human-readable: `deno task health:monitor` or `./scripts/k8s-health-check.ts`
+  - JSON output: `deno task health:monitor:json` or add `--json` flag
 - **flux-deployment-check.ts**: GitOps deployment verification with `--watch`
   for real-time
 - **flux-monitor.ts**: Real-time Flux resource monitoring
 - **check-flux-config.ts**: Configuration best practices analyzer
+  - Human-readable: `deno task check-flux-config`
+  - JSON output: `deno task check-flux-config:json` or add `--json` flag
+- **cluster-health-monitor.ts**: Cluster-wide health monitoring
+  - Human-readable: `deno task health:monitor`
+  - JSON output: `deno task health:monitor:json` (incompatible with `--watch`)
+- **network-monitor.ts**: Network and ingress health monitoring
+  - Human-readable: `deno task network:check`
+  - JSON output: `deno task network:check:json`
+- **storage-health-check.ts**: PVC usage and storage health
+  - Human-readable: `deno task storage:check`
+  - JSON output: `deno task storage:check:json`
+- **test-all.ts**: Unified test suite for all monitoring scripts
+  - Human-readable: `deno task test:all`
+  - JSON output: `deno task test:all:json`
 - **validate-manifests.sh**: Pre-commit manifest validation
+
+### JSON Output Standards
+
+All monitoring scripts that support JSON output follow a standardized schema:
+
+```typescript
+interface MonitoringResult {
+  status: "healthy" | "warning" | "critical" | "error";
+  timestamp: string;
+  summary: {
+    total: number;
+    healthy: number;
+    warnings: number;
+    critical: number;
+  };
+  details: any; // Script-specific data
+  issues: string[]; // Array of human-readable issues
+}
+```
+
+Exit codes are standardized across all scripts:
+- `0`: All checks passed (healthy)
+- `1`: Warnings detected (degraded but functional)
+- `2`: Critical issues detected (requires immediate attention)
+- `3`: Execution error (script/connectivity failure)
+
+### CI/CD Integration with JSON
+
+For automated pipelines and monitoring integration:
+
+```bash
+# Run all tests with JSON output for parsing
+deno task test:all:json > test-results.json
+
+# Check specific component and parse results
+./scripts/network-monitor.ts --json | jq '.status'
+
+# Get only critical issues
+./scripts/k8s-health-check.ts --json | jq '.issues[]'
+
+# Check exit code for CI/CD decisions
+./scripts/storage-health-check.ts --json
+if [ $? -eq 2 ]; then
+  echo "Critical storage issues detected!"
+fi
+```
 
 ### Common Debugging Commands
 
@@ -519,3 +585,39 @@ flux reconcile kustomization cluster-apps
 - Remove `retryInterval` from Kustomization/HelmRelease (not valid in Flux v2)
 - Check HelmRelease values against chart schema
 - Verify all required fields are present
+
+## AI Agent Preferences for Monitoring
+
+When asked to check system health or monitor the cluster:
+
+1. **Use JSON output for automated parsing**:
+   - Prefer `--json` flag on monitoring scripts for structured data
+   - Parse JSON output to provide concise summaries
+   - Example: `./scripts/network-monitor.ts --json | jq '.summary'`
+
+2. **Combine multiple checks efficiently**:
+   ```bash
+   # Run comprehensive test suite with JSON output
+   deno task test:all:json
+   
+   # Or run specific checks for targeted analysis
+   ./scripts/k8s-health-check.ts --json
+   ./scripts/storage-health-check.ts --json --check-provisioner
+   ```
+
+3. **Interpret exit codes correctly**:
+   - Exit code 0: System healthy
+   - Exit code 1: Non-critical warnings
+   - Exit code 2: Critical issues requiring attention
+   - Exit code 3: Script execution errors
+
+4. **Summarize issues concisely**:
+   - Extract critical issues from JSON `.issues` array
+   - Group related problems together
+   - Prioritize actionable items
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
