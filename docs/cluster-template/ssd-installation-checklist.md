@@ -5,14 +5,14 @@ This checklist guides you through adding SSDs to your Talos Linux cluster nodes.
 ## Pre-Installation Phase
 
 ### 1. Verify Cluster Health
-- [ ] Run comprehensive health check: `deno task monitor:all`
-- [ ] Verify all nodes are Ready: `kubectl get nodes`
-- [ ] Check etcd health: `kubectl -n kube-system get pods -l component=etcd`
-- [ ] Ensure no pending Flux reconciliations: `flux get all -A`
-- [ ] Document any existing issues before proceeding
+- [x] Run comprehensive health check: `deno task monitor:all`
+- [x] Verify all nodes are Ready: `kubectl get nodes`
+- [x] Check etcd health: `kubectl -n kube-system get pods -l component=etcd`
+- [x] Ensure no pending Flux reconciliations: `flux get all -A`
+- [x] Document any existing issues before proceeding
 
 ### 2. Backup Current Configuration
-- [ ] Backup Talos config: `cp -r talos/clusterconfig talos/clusterconfig.backup-$(date +%Y%m%d)`
+- [x] Backup Talos config: `cp -r talos/clusterconfig talos/clusterconfig.backup-$(date +%Y%m%d)`
 - [ ] Export current disk configuration:
   ```bash
   for ip in 192.168.1.98 192.168.1.99 192.168.1.100; do
