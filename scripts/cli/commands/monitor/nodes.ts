@@ -43,22 +43,38 @@ export async function nodesQuickCheck(): Promise<MonitoringResult> {
         status.containerd = containerdResult.stdout.includes("Running");
 
         // Check for recent errors
-        const errorsResult = await $`talosctl -n ${ip} dmesg | grep -i "segfault" | tail -3`.quiet();
-        if (errorsResult.stdout.trim()) {
-          status.hasErrors = true;
-          status.errors = errorsResult.stdout.trim().split('\n');
+        try {
+          const dmesgResult = await $`talosctl -n ${ip} dmesg`.quiet();
+          const lines = dmesgResult.stdout.split('\n');
+          const segfaultLines = lines.filter(line => line.toLowerCase().includes('segfault'));
+          if (segfaultLines.length > 0) {
+            status.hasErrors = true;
+            status.errors = segfaultLines.slice(-3); // Last 3 errors
+          }
+        } catch (e) {
+          // Ignore dmesg errors
         }
 
         // Get memory usage
-        const memResult = await $`talosctl -n ${ip} memory`.quiet();
-        const lines = memResult.stdout.split('\n');
-        if (lines[1]) {
-          const parts = lines[1].split(/\s+/);
-          if (parts.length > 3) {
-            const used = parseInt(parts[2]);
-            const total = parseInt(parts[1]);
-            status.memoryPercent = (used / total) * 100;
+        try {
+          const memResult = await $`talosctl -n ${ip} memory`.quiet();
+          const lines = memResult.stdout.split('\n');
+          // Skip header line and find the data line
+          for (const line of lines) {
+            if (line.includes(ip)) {
+              const parts = line.trim().split(/\s+/);
+              if (parts.length >= 7) {
+                const total = parseInt(parts[1]);
+                const used = parseInt(parts[2]);
+                if (total > 0) {
+                  status.memoryPercent = (used / total) * 100;
+                  break;
+                }
+              }
+            }
           }
+        } catch (e) {
+          // Ignore memory check errors
         }
       } catch (error) {
         status.errors.push(`Failed to check node: ${error.message}`);

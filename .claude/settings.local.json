@@ -92,7 +92,8 @@
       "Bash(helm template:*)",
       "Bash(helm get values:*)",
       "WebFetch(domain:developer.1password.com)",
-      "Bash(helm pull:*)"
+      "Bash(helm pull:*)",
+      "Bash(./scripts/cli/homelab.ts monitor:*)"
     ],
     "deny": []
   }
