@@ -1,0 +1,315 @@
+{
+  "initiative": {
+    "name": "Loki + Alloy Centralized Logging Implementation",
+    "description": "Deploy production-grade centralized logging using Grafana Loki and Alloy to replace local file-based logging",
+    "status": "pending",
+    "trigger_conditions": {
+      "description": "Initiative should start when ANY condition is met",
+      "conditions": [
+        "Airflow log PVC exceeds 80Gi usage",
+        "Need for cross-service log correlation",
+        "Ceph S3 storage is operational",
+        "Debugging requires centralized log search"
+      ],
+      "current_state": {
+        "airflow_pvc_usage": "100Gi",
+        "cross_service_needs": true,
+        "ceph_s3_ready": true,
+        "debugging_pain": true,
+        "trigger_met": "all_conditions_met",
+        "analysis_date": "2025-01-10"
+      }
+    }
+  },
+  "phases": [
+    {
+      "id": "phase-0",
+      "name": "Readiness Assessment",
+      "status": "completed",
+      "description": "Validate prerequisites and plan deployment strategy",
+      "objectives": [
+        {
+          "id": "0.1",
+          "name": "Infrastructure Validation",
+          "status": "completed",
+          "deliverables": [
+            "Ceph S3 storage availability confirmed",
+            "Resource capacity validated (288GB RAM available)",
+            "Grafana v11.4.0 already deployed",
+            "Network policies supported by Cilium"
+          ],
+          "validation": "All infrastructure prerequisites met"
+        },
+        {
+          "id": "0.2",
+          "name": "Strategy Selection",
+          "status": "completed",
+          "deliverables": [
+            "Simple Scalable mode selected for production readiness",
+            "Ceph S3 backend chosen over filesystem",
+            "Alloy selected over deprecated Promtail",
+            "Phased rollout approach defined"
+          ],
+          "validation": "Deployment strategy approved"
+        }
+      ]
+    },
+    {
+      "id": "phase-1",
+      "name": "Infrastructure Preparation",
+      "status": "pending",
+      "description": "Prepare S3 storage and repository configurations",
+      "estimated_duration": "2 hours",
+      "objectives": [
+        {
+          "id": "1.1",
+          "name": "S3 Storage Setup",
+          "status": "pending",
+          "deliverables": [
+            "Enable Ceph ObjectStore if disabled",
+            "Create ObjectBucketClaim for Loki",
+            "Configure S3 credentials via External Secrets",
+            "Validate S3 connectivity"
+          ],
+          "validation": "S3 buckets accessible from monitoring namespace"
+        },
+        {
+          "id": "1.2",
+          "name": "Repository Configuration",
+          "status": "pending",
+          "deliverables": [
+            "Add Grafana Helm repository",
+            "Update flux kustomization",
+            "Verify chart availability"
+          ],
+          "validation": "helm search repo grafana/loki shows latest version"
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Loki Deployment",
+      "status": "pending",
+      "description": "Deploy Loki in Simple Scalable mode with S3 backend",
+      "estimated_duration": "4 hours",
+      "prerequisites": ["phase-1"],
+      "objectives": [
+        {
+          "id": "2.1",
+          "name": "Core Deployment",
+          "status": "pending",
+          "deliverables": [
+            "Deploy Loki HelmRelease",
+            "Configure Simple Scalable mode",
+            "Set up S3 storage backend",
+            "Configure resource limits"
+          ],
+          "validation": "All Loki pods Running, gateway accessible"
+        },
+        {
+          "id": "2.2",
+          "name": "Monitoring Integration",
+          "status": "pending",
+          "deliverables": [
+            "Enable ServiceMonitor for metrics",
+            "Import Loki dashboards",
+            "Configure alerting rules",
+            "Set up self-monitoring"
+          ],
+          "validation": "Loki metrics visible in Prometheus"
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Alloy Configuration",
+      "status": "pending",
+      "description": "Deploy and configure Alloy for log collection",
+      "estimated_duration": "3 hours",
+      "prerequisites": ["phase-2"],
+      "objectives": [
+        {
+          "id": "3.1",
+          "name": "Alloy Deployment",
+          "status": "pending",
+          "deliverables": [
+            "Deploy Alloy DaemonSet",
+            "Configure log discovery",
+            "Set up log parsing pipelines",
+            "Implement filtering rules"
+          ],
+          "validation": "Alloy running on all nodes"
+        },
+        {
+          "id": "3.2",
+          "name": "Collection Optimization",
+          "status": "pending",
+          "deliverables": [
+            "Configure namespace filtering",
+            "Set up JSON log parsing",
+            "Implement rate limiting",
+            "Add pod label extraction"
+          ],
+          "validation": "Test logs flowing to Loki"
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Integration & Testing",
+      "status": "pending",
+      "description": "Integrate with Grafana and validate functionality",
+      "estimated_duration": "2 hours",
+      "prerequisites": ["phase-3"],
+      "objectives": [
+        {
+          "id": "4.1",
+          "name": "Grafana Integration",
+          "status": "pending",
+          "deliverables": [
+            "Configure Loki data source",
+            "Import log dashboards",
+            "Create LogQL query library",
+            "Set up explore shortcuts"
+          ],
+          "validation": "Logs queryable in Grafana"
+        },
+        {
+          "id": "4.2",
+          "name": "Functional Testing",
+          "status": "pending",
+          "deliverables": [
+            "Deploy test workloads",
+            "Validate log ingestion",
+            "Test query performance",
+            "Verify retention policies"
+          ],
+          "validation": "All test cases pass"
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "name": "Migration & Optimization",
+      "status": "pending",
+      "description": "Migrate existing logging and optimize performance",
+      "estimated_duration": "3 hours",
+      "prerequisites": ["phase-4"],
+      "objectives": [
+        {
+          "id": "5.1",
+          "name": "Airflow Migration",
+          "status": "pending",
+          "deliverables": [
+            "Reconfigure Airflow for stdout logging",
+            "Validate historical log access",
+            "Plan PVC decommission",
+            "Update documentation"
+          ],
+          "validation": "Airflow logs visible in Loki"
+        },
+        {
+          "id": "5.2",
+          "name": "Performance Tuning",
+          "status": "pending",
+          "deliverables": [
+            "Optimize chunk size",
+            "Configure caching",
+            "Tune query limits",
+            "Set up recording rules"
+          ],
+          "validation": "P95 query latency <1s"
+        }
+      ]
+    },
+    {
+      "id": "phase-6",
+      "name": "Operational Handoff",
+      "status": "pending",
+      "description": "Document procedures and establish operational practices",
+      "estimated_duration": "1 week monitoring",
+      "prerequisites": ["phase-5"],
+      "objectives": [
+        {
+          "id": "6.1",
+          "name": "Documentation",
+          "status": "pending",
+          "deliverables": [
+            "Create operations runbook",
+            "Document common queries",
+            "Write troubleshooting guide",
+            "Update architecture diagrams"
+          ],
+          "validation": "Documentation reviewed and approved"
+        },
+        {
+          "id": "6.2",
+          "name": "Operational Readiness",
+          "status": "pending",
+          "deliverables": [
+            "7-day stability monitoring",
+            "Capacity planning review",
+            "Cost analysis vs PVC storage",
+            "Team training completed"
+          ],
+          "validation": "System stable for 7 days"
+        }
+      ]
+    }
+  ],
+  "success_metrics": {
+    "functional": {
+      "log_coverage": "100% of pods sending logs",
+      "query_performance": "P95 <1s for 24h queries",
+      "availability": "99.9% write path uptime",
+      "retention": "30-day minimum retention"
+    },
+    "operational": {
+      "storage_efficiency": "10:1 compression ratio",
+      "cost_reduction": "50% vs PVC storage",
+      "debugging_time": "80% reduction in log search time",
+      "automation": "100% GitOps managed"
+    }
+  },
+  "risks": [
+    {
+      "description": "S3 configuration complexity",
+      "impact": "high",
+      "probability": "medium",
+      "mitigation": "Test in dev namespace first, use proven configs"
+    },
+    {
+      "description": "Log volume growth",
+      "impact": "medium",
+      "probability": "high",
+      "mitigation": "Implement strict retention, namespace quotas"
+    },
+    {
+      "description": "Query performance degradation",
+      "impact": "medium",
+      "probability": "medium",
+      "mitigation": "Index optimization, query result caching"
+    }
+  ],
+  "dependencies": {
+    "external": [
+      "Ceph S3 storage operational",
+      "Grafana deployment stable",
+      "External Secrets configured"
+    ],
+    "internal": [
+      "Team agreement on logging standards",
+      "Retention policy approval",
+      "Resource allocation approval"
+    ]
+  },
+  "metadata": {
+    "created": "2025-01-10",
+    "last_updated": "2025-01-10",
+    "version": "1.0",
+    "status": "READY_TO_START",
+    "estimated_total_duration": "14 hours + 1 week monitoring",
+    "priority": "HIGH",
+    "business_value": "Critical for production operations and debugging"
+  }
+}
