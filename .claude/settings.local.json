@@ -77,7 +77,10 @@
       "Bash(talosctl read:*)",
       "Bash(talosctl ls:*)",
       "Bash(talosctl logs:*)",
-      "Bash(talosctl dmesg:*)"
+      "Bash(talosctl dmesg:*)",
+      "Bash(talosctl:*)",
+      "Bash(flux get ks:*)",
+      "Bash(echo:*)"
     ],
     "deny": []
   }
