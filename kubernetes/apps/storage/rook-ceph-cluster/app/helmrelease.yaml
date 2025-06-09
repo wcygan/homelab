@@ -60,6 +60,8 @@ spec:
             csi.storage.k8s.io/node-stage-secret-namespace: storage
             csi.storage.k8s.io/fstype: ext4
     cephClusterSpec:
+      external:
+        enable: false
       cephVersion:
         image: quay.io/ceph/ceph:v19.2.0
         allowUnsupported: false
