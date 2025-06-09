@@ -15,7 +15,7 @@ spec:
   wait: true
   dependsOn:
     - name: local-path-provisioner
-      namespace: flux-system
+      namespace: storage
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
