@@ -93,7 +93,13 @@
       "Bash(helm get values:*)",
       "WebFetch(domain:developer.1password.com)",
       "Bash(helm pull:*)",
-      "Bash(./scripts/cli/homelab.ts monitor:*)"
+      "Bash(./scripts/cli/homelab.ts monitor:*)",
+      "Bash(flux resume kustomization:*)",
+      "Bash(jq:*)",
+      "Bash(kustomize build:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:deepwiki.com)",
+      "Bash(claude mcp get kubernetes)"
     ],
     "deny": []
   }

@@ -256,6 +256,20 @@ SOPS encryption is only for existing/legacy secrets:
 
 ## Monitoring & Debugging
 
+### MCP Server for Kubernetes Introspection
+
+**IMPORTANT**: This project has the MCP (Model Context Protocol) Server for Kubernetes configured. When performing Kubernetes introspection, debugging, or monitoring tasks, use the MCP server via `/mcp` command instead of manually running kubectl commands and pasting outputs.
+
+The MCP server provides direct access to:
+- **Resource inspection**: `kubectl_get`, `kubectl_describe`, `kubectl_list`
+- **Debugging**: `kubectl_logs`, `kubectl_rollout`, status checks
+- **Monitoring**: Real-time resource status, events, and metrics
+- **Management**: Scaling, patching, port-forwarding
+
+To use: Type `/mcp` in Claude Code to access Kubernetes tools directly.
+
+For detailed usage, see: [MCP Kubernetes Usage Guide](docs/mcp/kubernetes-usage.md)
+
 ### Talos Linux Troubleshooting
 
 For detailed Talos-specific troubleshooting including node reboots, kubeconfig issues, and storage verification, see:
@@ -336,6 +350,8 @@ fi
 ```
 
 ### Common Debugging Commands
+
+**PREFERRED**: Use `/mcp` command in Claude Code for direct Kubernetes access instead of running these commands manually.
 
 ```bash
 # Check Flux status
@@ -707,12 +723,17 @@ flux reconcile kustomization cluster-apps
 
 When asked to check system health or monitor the cluster:
 
-1. **Use JSON output for automated parsing**:
+1. **Use MCP Server for Real-Time Data**:
+   - **ALWAYS** use `/mcp` command for live Kubernetes introspection
+   - The MCP server provides direct kubectl access without manual command execution
+   - Combine MCP data with monitoring scripts for comprehensive analysis
+
+2. **Use JSON output for automated parsing**:
    - Prefer `--json` flag on monitoring scripts for structured data
    - Parse JSON output to provide concise summaries
    - Example: `./scripts/network-monitor.ts --json | jq '.summary'`
 
-2. **Combine multiple checks efficiently**:
+3. **Combine multiple checks efficiently**:
    ```bash
    # Run comprehensive test suite with JSON output
    deno task test:all:json
@@ -722,16 +743,21 @@ When asked to check system health or monitor the cluster:
    ./scripts/storage-health-check.ts --json --check-provisioner
    ```
 
-3. **Interpret exit codes correctly**:
+4. **Interpret exit codes correctly**:
    - Exit code 0: System healthy
    - Exit code 1: Non-critical warnings
    - Exit code 2: Critical issues requiring attention
    - Exit code 3: Script execution errors
 
-4. **Summarize issues concisely**:
+5. **Summarize issues concisely**:
    - Extract critical issues from JSON `.issues` array
    - Group related problems together
    - Prioritize actionable items
+
+6. **MCP + Scripts Workflow**:
+   - Use MCP for immediate resource inspection and troubleshooting
+   - Run monitoring scripts for aggregated health checks
+   - Cross-reference MCP live data with script outputs for validation
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
