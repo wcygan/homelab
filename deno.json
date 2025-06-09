@@ -19,6 +19,7 @@
     "hw:validate": "deno run --allow-all scripts/validate-talos-config.ts",
     "hw:detect": "deno run --allow-all scripts/detect-hardware-changes.ts",
     "node:maintain": "deno run --allow-all scripts/node-maintenance.ts",
-    "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts"
+    "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts",
+    "talos:install-config": "deno run --allow-all scripts/install-talosconfig.ts"
   }
 }
