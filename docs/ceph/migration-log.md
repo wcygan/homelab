@@ -145,9 +145,69 @@
 3. **Delete and recreate is simplest** when data preservation isn't required
 4. **Fix infrastructure issues first** - Having two default storage classes caused confusion
 
+### 3. Airflow Workloads - Direct Recreation
+
+**Status**: ✅ COMPLETED  
+**Time**: 2025-06-09T18:40:00Z
+
+1. **Update Helm values**
+   - Added PostgreSQL persistence configuration with ceph-block
+   - Added Triggerer persistence configuration with ceph-block
+   
+2. **Delete StatefulSets and PVCs**
+   - Scaled down both StatefulSets to 0 replicas
+   - Deleted PVCs: data-airflow-postgresql-0 and logs-airflow-triggerer-0
+   - Deleted StatefulSets to allow recreation with new storage class
+   
+3. **Recreate with Ceph storage**
+   - Flux reconciliation created new StatefulSets
+   - New PVCs created with ceph-block storage class
+   - Both workloads running successfully on Ceph
+
+### 4. Open WebUI - Direct Recreation
+
+**Status**: ✅ COMPLETED  
+**Time**: 2025-06-09T18:45:00Z
+
+1. **Update KubeAI Helm values**
+   - Added open-webui subchart persistence configuration
+   - Specified ceph-block storage class
+   
+2. **Delete and recreate**
+   - Scaled down StatefulSet to 0 replicas
+   - Deleted PVC: open-webui
+   - Deleted StatefulSet to allow recreation
+   - Flux reconciliation created new resources with Ceph storage
+
+## Final Migration Summary
+
+### All Workloads Migrated (2025-06-09)
+
+| Workload | Namespace | Size | Old Storage | New Storage | Status |
+|----------|-----------|------|-------------|-------------|---------|
+| test-cache (DragonFly) | database | 1Gi | local-path | ceph-block | ✅ COMPLETED |
+| test-postgres-cluster (CNPG) | database | 5Gi | local-path | ceph-block | ✅ COMPLETED |
+| data-airflow-postgresql-0 | airflow | 8Gi | local-path | ceph-block | ✅ COMPLETED |
+| logs-airflow-triggerer-0 | airflow | 100Gi | local-path | ceph-block | ✅ COMPLETED |
+| open-webui | kubeai | 2Gi | local-path | ceph-block | ✅ COMPLETED |
+
+### Storage Distribution
+
+- **Total Storage**: 116Gi
+- **On Ceph**: 116Gi (100%)
+- **On local-path**: 0Gi (0%)
+
+### Key Learnings
+
+1. **StatefulSet storage class is immutable** - Must delete and recreate
+2. **Always update manifests first** - Push changes before reconciliation
+3. **Delete-and-recreate works perfectly** for non-critical workloads
+4. **Helm rollback is automatic** when StatefulSet update fails
+5. **All workloads now on distributed storage** - Migration complete!
+
 ### Next Steps
 
-1. Update Airflow Helm values to specify ceph-block for PostgreSQL and Triggerer
-2. Update Open WebUI Helm values to specify ceph-block
-3. Create automated migration script for remaining workloads
-4. Document this pattern for future migrations
+1. Monitor workload stability on Ceph storage for 30 days
+2. Create operational runbooks for Ceph management
+3. Consider enabling CephFS when RWX is needed
+4. Consider enabling Object Storage when S3 is needed

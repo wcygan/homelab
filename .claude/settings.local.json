@@ -106,7 +106,9 @@
       "mcp__kubernetes__kubectl_logs",
       "mcp__kubernetes__kubectl_scale",
       "mcp__kubernetes__kubectl_apply",
-      "mcp__kubernetes__kubectl_delete"
+      "mcp__kubernetes__kubectl_delete",
+      "Bash(helm dependency list:*)",
+      "Bash(helm show chart:*)"
     ],
     "deny": []
   }
