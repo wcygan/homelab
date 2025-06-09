@@ -19,6 +19,7 @@ spec:
     cleanupOnFail: true
   values:
     connect:
+      create: true
       serviceType: ClusterIP
       credentialsName: onepassword-connect-secret
       credentialsKey: 1password-credentials.json
