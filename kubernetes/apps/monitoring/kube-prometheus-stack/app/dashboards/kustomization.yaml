@@ -1,0 +1,35 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+
+# Generate ConfigMaps from dashboard JSON files
+configMapGenerator:
+  - name: grafana-dashboard-ceph-cluster
+    files:
+      - ceph-cluster.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: "Ceph"
+  - name: grafana-dashboard-ceph-osd
+    files:
+      - ceph-osd.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: "Ceph"
+  - name: grafana-dashboard-ceph-pools
+    files:
+      - ceph-pools.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: "Ceph"
+
+# Disable hash suffix to maintain stable ConfigMap names
+generatorOptions:
+  disableNameSuffixHash: true
