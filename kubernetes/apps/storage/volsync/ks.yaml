@@ -15,7 +15,7 @@ spec:
   wait: true
   dependsOn:
     - name: external-snapshotter
-      namespace: flux-system
+      namespace: storage
     - name: rook-ceph-cluster
       namespace: storage
   healthChecks:
