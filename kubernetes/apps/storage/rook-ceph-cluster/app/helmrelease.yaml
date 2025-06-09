@@ -25,7 +25,7 @@ spec:
     operatorNamespace: storage
     monitoring:
       enabled: true
-      createPrometheusRules: true
+      createPrometheusRules: false  # TODO: Fix external field issue
     toolbox:
       enabled: true
     configOverride: |
