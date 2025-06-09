@@ -37,6 +37,18 @@ spec:
         enabled: true
         storageClass: ceph-block
         size: 50Gi
+      resources:
+        limits:
+          memory: 2Gi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+    backend:
+      replicas: 0
+    read:
+      replicas: 0
+    write:
+      replicas: 0
     monitoring:
       dashboards:
         enabled: true
