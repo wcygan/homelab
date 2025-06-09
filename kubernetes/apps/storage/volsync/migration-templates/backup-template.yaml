@@ -1,0 +1,38 @@
+---
+# Template for creating a backup before migration
+# Replace: <namespace>, <pvc-name>, <app-name>
+apiVersion: v1
+kind: Secret
+metadata:
+  name: <pvc-name>-backup-secret
+  namespace: <namespace>
+type: Opaque
+stringData:
+  RESTIC_REPOSITORY: "s3:http://rook-ceph-rgw-storage.storage.svc.cluster.local/<namespace>-backups/<pvc-name>"
+  RESTIC_PASSWORD: "changeme-use-proper-secret"
+  AWS_ACCESS_KEY_ID: "changeme"
+  AWS_SECRET_ACCESS_KEY: "changeme"
+---
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: backup-<pvc-name>
+  namespace: <namespace>
+spec:
+  sourcePVC: <pvc-name>
+  trigger:
+    manual: backup-$(date +%Y%m%d-%H%M%S)
+  restic:
+    pruneIntervalDays: 7
+    repository: <pvc-name>-backup-secret
+    retain:
+      daily: 7
+      weekly: 4
+      monthly: 3
+    copyMethod: Snapshot
+    volumeSnapshotClassName: csi-ceph-blockpool
+    cacheCapacity: 1Gi
+    cacheStorageClassName: ceph-block
+    cacheAccessModes:
+      - ReadWriteOnce
+  paused: false
