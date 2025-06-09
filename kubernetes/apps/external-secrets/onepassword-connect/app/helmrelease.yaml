@@ -20,6 +20,10 @@ spec:
   values:
     connect:
       serviceType: ClusterIP
+      credentials_base64: "" # We'll use existingSecret instead
+      existingSecret: onepassword-connect-secret
+      api:
+        existingSecret: onepassword-connect-token
       resources:
         requests:
           cpu: 10m
