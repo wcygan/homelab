@@ -35,6 +35,14 @@ spec:
       # Default admin password is "prom-operator"
       # Consider managing this via 1Password/ESO for production
       adminPassword: "prom-operator"
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki-gateway.monitoring.svc.cluster.local
+          jsonData:
+            timeout: 60
+            maxLines: 1000
     prometheus:
       enabled: true
     kubeStateMetrics:
