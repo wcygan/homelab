@@ -19,10 +19,9 @@ spec:
     cleanupOnFail: true
   values:
     connect:
+      create: false
       serviceType: ClusterIP
-      credentials:
-        create: false
-        name: onepassword-connect-secret
+      credentialsName: onepassword-connect-secret
       resources:
         requests:
           cpu: 10m
