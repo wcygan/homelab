@@ -260,9 +260,7 @@
       "prerequisites": [
         "phase-2"
       ],
-      "blockers": [
-        "Volsync requires external-snapshotter installation (see docs/volsync/fixing-volsync-deployment.md)"
-      ],
+      "blockers": [],
       "objectives": [
         {
           "id": "4.1",
@@ -277,7 +275,8 @@
           "validation": "Migration plan reviewed and approved",
           "artifacts": {
             "migration_plan": "docs/ceph/migration-plan.md"
-          }
+          },
+          "notes": "Volsync is now ready for backup/migration operations with CSI snapshots"
         },
         {
           "id": "4.2",
@@ -314,13 +313,13 @@
   ],
   "metadata": {
     "created": "2024-01-09",
-    "last_updated": "2025-06-09T16:20:00Z",
-    "version": "1.2.0",
-    "next_review": "Fix Volsync prerequisites, then proceed with Phase 4 migration planning",
+    "last_updated": "2025-06-09T16:48:00Z",
+    "version": "1.2.1",
+    "next_review": "Phase 4 migration planning - Volsync prerequisites resolved",
     "recent_updates": [
+      "2025-06-09T16:48: Resolved Volsync blocker - external-snapshotter installed and working",
       "2025-06-09T16:20: Phase 2 completed! All monitoring integration done",
-      "2025-06-09T14:30: Fixed Prometheus rules deployment, updated monitoring status",
-      "2025-06-09: Added blocker for Phase 4 - Volsync needs external-snapshotter"
+      "2025-06-09T14:30: Fixed Prometheus rules deployment, updated monitoring status"
     ]
   }
 }
