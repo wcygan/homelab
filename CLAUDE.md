@@ -105,7 +105,7 @@ task talos:reset
    ├── {app-name}/
    │   ├── ks.yaml          # Flux Kustomization
    │   └── app/
-   │       ├── kustomization.yaml
+   │       ├── kustomization.yaml  # MUST specify namespace!
    │       └── helmrelease.yaml (or other resources)
    ```
 
@@ -395,14 +395,19 @@ kubectl -n {namespace} describe {kind} {name}
 
 - Nodes: k8s-1 (192.168.1.98), k8s-2 (.99), k8s-3 (.100)
 - All nodes are control-plane (no dedicated workers)
-- Storage: Local-path provisioner on each node (Note: Additional storage options
-  coming soon - evaluating Rook Ceph, Longhorn, MinIO, Garage, etc.)
+- Storage: 
+  - **Primary**: Rook-Ceph distributed storage (default)
+    - 6x 1TB NVMe drives (2 per node)
+    - Storage class: `ceph-block` (default)
+    - 3-way replication across hosts
+  - **Legacy**: Local-path provisioner (for migration period)
 
 ### Namespace Organization
 
 - `external-secrets`: All secret management (1Password, ESO)
 - `network`: All ingress/DNS (internal/external nginx, cloudflared)
 - `monitoring`: Prometheus stack, Grafana
+- `storage`: Rook-Ceph operator, cluster, and toolbox
 - `kubeai`: AI model serving infrastructure
 
 ## Development Workflow Integration
@@ -429,6 +434,45 @@ kubectl -n {namespace} describe {kind} {name}
 - **Wrong dependency namespace** → Use actual namespace, not flux-system
 - **Git commits required** → Flux only deploys committed changes
 - **Chart version mismatch** → Always verify with `helm search repo`
+- **Missing namespace in kustomization.yaml** → Resources created in wrong namespace
+- **Ceph monitoring disabled** → Set `rulesNamespaceOverride: monitoring` when enabling Prometheus rules
+
+## Rook-Ceph Storage Configuration
+
+### Architecture Overview
+
+- **Operator**: Manages Ceph lifecycle in `storage` namespace
+- **Cluster**: Named "storage" to avoid clusterID mismatches
+- **Block Storage**: Default via `ceph-block` storage class
+- **Dashboard**: Accessible via Tailscale at `ceph-dashboard`
+- **Monitoring**: Prometheus rules in `monitoring` namespace
+
+### Critical Configuration
+
+```yaml
+# HelmRelease values for rook-ceph-cluster
+monitoring:
+  enabled: true
+  createPrometheusRules: true
+  rulesNamespaceOverride: monitoring  # Co-locate with other rules
+cephClusterSpec:
+  external:
+    enable: false  # Required field for template validation
+  clusterName: storage  # Must match for CSI provisioning
+```
+
+### Common Ceph Operations
+
+```bash
+# Check cluster health
+kubectl -n storage exec deploy/rook-ceph-tools -- ceph status
+
+# Monitor OSD status
+kubectl -n storage exec deploy/rook-ceph-tools -- ceph osd status
+
+# View storage usage
+kubectl -n storage exec deploy/rook-ceph-tools -- ceph df
+```
 
 ## Configuration Analysis & Version Management
 
