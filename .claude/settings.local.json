@@ -89,7 +89,8 @@
       "Bash(./scripts/validate-manifests.sh:*)",
       "Bash(flux get sources helm:*)",
       "Bash(flux get helmchart:*)",
-      "Bash(helm template:*)"
+      "Bash(helm template:*)",
+      "Bash(helm get values:*)"
     ],
     "deny": []
   }
