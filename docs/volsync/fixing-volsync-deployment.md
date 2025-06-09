@@ -353,3 +353,48 @@ kubectl get volumesnapshot -n default
 # Namespace correction
 276ce87 fix(storage): correct external-snapshotter namespace in volsync dependencies
 ```
+
+## Next Steps: Configure ReplicationSources
+
+**IMPORTANT**: While Volsync is now successfully deployed, no ReplicationSources have been configured yet. This means no backups are currently being performed.
+
+### To Enable Backups
+
+1. **Create ReplicationSource for each workload** you want to backup
+2. **Configure backup destination** (S3, NFS, or another cluster)
+3. **Set backup schedule** and retention policies
+4. **Test restore procedures** to ensure backups are valid
+
+See the backup templates in:
+- `kubernetes/apps/storage/volsync/migration-templates/backup-template.yaml`
+- `docs/ceph/operations/backup-restore.md` for detailed procedures
+
+### Example ReplicationSource
+
+```yaml
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: <app-name>-backup
+  namespace: <namespace>
+spec:
+  sourcePVC: <pvc-name>
+  trigger:
+    schedule: "0 2 * * *"  # Daily at 2 AM
+  restic:
+    pruneIntervalDays: 7
+    retain:
+      daily: 7
+      weekly: 4
+      monthly: 3
+    repository: <app-name>-backup-secret
+    cacheCapacity: 1Gi
+    cacheStorageClassName: ceph-block
+    storageClassName: ceph-block
+    volumeSnapshotClassName: csi-ceph-blockpool
+```
+
+**Current Status**: 
+- ✅ Volsync operational
+- ❌ No ReplicationSources configured
+- ⏳ Awaiting backup destination configuration
