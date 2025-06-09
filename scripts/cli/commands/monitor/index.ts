@@ -6,6 +6,7 @@ import { fluxQuickCheck } from "./flux.ts";
 import { k8sQuickCheck } from "./k8s.ts";
 import { storageQuickCheck } from "./storage.ts";
 import { networkQuickCheck } from "./network.ts";
+import { nodesQuickCheck } from "./nodes.ts";
 
 /**
  * All task implementations complete
@@ -184,6 +185,11 @@ export async function runQuickMonitor(options: CLIOptions = {}): Promise<QuickCh
       id: "network",
       name: "Network Connectivity",
       task: networkQuickCheck
+    },
+    {
+      id: "nodes",
+      name: "Node Health",
+      task: nodesQuickCheck
     }
   ];
 

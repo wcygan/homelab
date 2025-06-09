@@ -3,6 +3,7 @@
 import { Command } from "@cliffy/command";
 import { colors } from "@cliffy/ansi/colors";
 import { printQuickMonitor } from "./commands/monitor/index.ts";
+import { runNodeHealth, cleanupPods } from "./commands/monitor/nodes.ts";
 
 // Main CLI entry point
 const cli = new Command()
@@ -22,7 +23,10 @@ const cli = new Command()
     console.log(`  ${colors.cyan("monitor k8s")}         Check Kubernetes cluster health and resources`);
     console.log(`  ${colors.cyan("monitor storage")}     Check storage health and PVC usage`);
     console.log(`  ${colors.cyan("monitor network")}     Check network connectivity and ingress health`);
+    console.log(`  ${colors.cyan("monitor nodes")}       Check node health and containerd status`);
     console.log(`  ${colors.cyan("monitor all")}         Run comprehensive health checks (slower)`);
+    console.log();
+    console.log(`  ${colors.cyan("cleanup pods")}        Remove completed pods from cluster`);
     console.log();
     console.log(colors.bold("Examples:"));
     console.log();
@@ -146,6 +150,18 @@ networkCommand
 
 monitorCommand.command("network", networkCommand);
 
+// Nodes subcommands
+const nodesCommand = new Command()
+  .name("nodes")
+  .description("Monitor node health and containerd status")
+  .option("-j, --json", "Output in JSON format")
+  .option("-v, --verbose", "Enable detailed output")
+  .action(async (options) => {
+    await runNodeHealth(options);
+  });
+
+monitorCommand.command("nodes", nodesCommand);
+
 // All command - comprehensive monitoring
 monitorCommand
   .command("all")
@@ -160,6 +176,24 @@ monitorCommand
   });
 
 cli.command("monitor", monitorCommand);
+
+// Cleanup command
+const cleanupCommand = new Command()
+  .name("cleanup")
+  .description("Cleanup cluster resources");
+
+cleanupCommand
+  .command("pods")
+  .description("Remove completed pods from the cluster")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (options) => {
+    const result = await cleanupPods(options);
+    if (options.json) {
+      console.log(JSON.stringify(result, null, 2));
+    }
+  });
+
+cli.command("cleanup", cleanupCommand);
 
 // Parse arguments and execute
 if (import.meta.main) {

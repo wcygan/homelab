@@ -15,6 +15,8 @@
     "monitor": "deno run --allow-all scripts/cli/homelab.ts monitor",
     "monitor:json": "deno run --allow-all scripts/cli/homelab.ts monitor --json",
     "monitor:all": "deno run --allow-all scripts/cli/homelab.ts monitor all",
+    "monitor:nodes": "deno run --allow-all scripts/cli/homelab.ts monitor nodes",
+    "cleanup:pods": "deno run --allow-all scripts/cli/homelab.ts cleanup pods",
     "hw:inventory": "deno run --allow-all scripts/hardware-inventory.ts",
     "hw:validate": "deno run --allow-all scripts/validate-talos-config.ts",
     "hw:detect": "deno run --allow-all scripts/detect-hardware-changes.ts",
