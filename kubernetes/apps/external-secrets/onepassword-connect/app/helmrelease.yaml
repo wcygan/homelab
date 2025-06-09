@@ -19,15 +19,17 @@ spec:
     cleanupOnFail: true
   values:
     connect:
-      create: false
       serviceType: ClusterIP
       credentialsName: onepassword-connect-secret
+      credentialsKey: 1password-credentials.json
       resources:
         requests:
           cpu: 10m
           memory: 16Mi
         limits:
           memory: 64Mi
-    token:
+    operator:
       create: false
-      name: onepassword-connect-token
+      token:
+        name: onepassword-connect-token
+        key: token

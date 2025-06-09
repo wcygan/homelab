@@ -90,7 +90,8 @@
       "Bash(flux get sources helm:*)",
       "Bash(flux get helmchart:*)",
       "Bash(helm template:*)",
-      "Bash(helm get values:*)"
+      "Bash(helm get values:*)",
+      "WebFetch(domain:developer.1password.com)"
     ],
     "deny": []
   }
