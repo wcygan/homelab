@@ -288,3 +288,27 @@ The 1Password Connect credentials cannot be stored in Git. Options:
 - [External Secrets 1Password Provider](https://external-secrets.io/latest/provider/1password-secrets-automation/)
 - [1Password Connect Documentation](https://developer.1password.com/docs/connect/)
 - [1Password Connect Helm Chart](https://github.com/1Password/connect-helm-charts)
+
+## Testing the Setup Script
+
+The setup script supports full lifecycle management of 1Password Connect. To verify your installation or test upgrades:
+
+```bash
+# Test uninstall/reinstall cycle
+deno task 1p:uninstall
+deno task 1p:install
+
+# The script will:
+# - Cleanly remove all 1Password Connect resources
+# - Redeploy using credentials from ~/Downloads/ (or custom paths)
+# - Recreate the ClusterSecretStore
+# - Verify connectivity
+
+# After reinstall, existing ExternalSecrets will automatically resync
+```
+
+This uninstall/reinstall cycle is useful for:
+- Testing the setup script functionality
+- Upgrading to new versions of 1Password Connect
+- Troubleshooting connection issues
+- Disaster recovery scenarios

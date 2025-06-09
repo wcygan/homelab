@@ -17,6 +17,8 @@ const args = parse(Deno.args, {
   boolean: ["help", "uninstall"],
   default: {
     namespace: "external-secrets",
+    credentials: Deno.env.get("ONEPASSWORD_CREDENTIALS") || `${Deno.env.get("HOME")}/Downloads/1password-credentials.json`,
+    token: Deno.env.get("ONEPASSWORD_TOKEN") || `${Deno.env.get("HOME")}/Downloads/1password-api-token.txt`,
   },
 });
 
@@ -26,20 +28,30 @@ Usage: setup-1password-connect.ts [options]
 
 Options:
   --credentials <path>  Path to 1password-credentials.json file
+                       Default: ~/Downloads/1password-credentials.json
+                       Env: ONEPASSWORD_CREDENTIALS
   --token <path>        Path to API token file (or --token=<value> for direct token)
+                       Default: ~/Downloads/1password-api-token.txt
+                       Env: ONEPASSWORD_TOKEN
   --namespace <name>    Kubernetes namespace (default: external-secrets)
   --uninstall          Uninstall 1Password Connect
   --help               Show this help message
 
 Examples:
-  # Install with credential files
-  ./setup-1password-connect.ts --credentials ~/Downloads/1password-credentials.json --token ~/Downloads/1password-api-token.txt
+  # Install with default paths (~/Downloads/...)
+  deno task 1p:install
+
+  # Install with environment variables
+  ONEPASSWORD_CREDENTIALS=/path/to/creds.json deno task 1p:install
+
+  # Install with explicit paths
+  deno task 1p:install -- --credentials /path/to/creds.json --token /path/to/token.txt
 
   # Install with direct token
-  ./setup-1password-connect.ts --credentials ~/Downloads/1password-credentials.json --token="eyJhbGc..."
+  deno task 1p:install -- --token="eyJhbGc..."
   
   # Uninstall
-  ./setup-1password-connect.ts --uninstall
+  deno task 1p:uninstall
 `);
   Deno.exit(0);
 }
@@ -141,16 +153,7 @@ async function uninstall() {
 }
 
 async function install() {
-  // Validate inputs
-  if (!args.credentials) {
-    console.error(colors.red("❌ --credentials flag is required"));
-    Deno.exit(1);
-  }
-
-  if (!args.token) {
-    console.error(colors.red("❌ --token flag is required"));
-    Deno.exit(1);
-  }
+  // No need to validate inputs - we have defaults now
 
   // Check if credentials file exists
   if (!await exists(args.credentials)) {
