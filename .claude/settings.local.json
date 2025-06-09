@@ -80,7 +80,8 @@
       "Bash(talosctl dmesg:*)",
       "Bash(talosctl:*)",
       "Bash(flux get ks:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "WebFetch(domain:www.reddit.com)"
     ],
     "deny": []
   }

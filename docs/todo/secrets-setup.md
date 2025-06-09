@@ -67,7 +67,7 @@ The following components are successfully deployed and running:
 Create `kubernetes/apps/external-secrets/onepassword-connect/app/clustersecretstore.yaml`:
 
 ```yaml
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ClusterSecretStore
 metadata:
   name: onepassword-connect
@@ -143,7 +143,7 @@ spec:
 ### For Complex Secrets with Multiple Keys
 
 ```yaml
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: <secret-name>

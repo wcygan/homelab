@@ -3,6 +3,14 @@
 *** https://www.anthropic.com/engineering/claude-code-best-practices *** Setup
 MCP servers with Claude Code
 
+## Things I should do
+
+- Investigate Ceph in other repos, document it here
+- Invtestigate Rook Ceph Operator installation steps
+- Have the AI reason about my cluster, ceph in other repos, and the rook + ceph installation to create steps for my cluster
+- Get a test secret working through 1Password + External Secret
+- Replace usages of local path storage with Ceph (probably block storage)
+
 ## Stuff to install
 
 - 6 x 1TB WD_BLACK 1TB SN7100 NVMe (2 per node)

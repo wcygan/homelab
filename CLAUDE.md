@@ -183,6 +183,33 @@ For all new applications, use 1Password with External Secrets Operator:
    ```
 3. Reference the synced Kubernetes Secret in your app
 
+#### External Secrets v0.17.0+ Breaking Change
+
+**IMPORTANT**: External Secrets Operator v0.17.0 removed support for `v1beta1` API.
+- **Always use** `apiVersion: external-secrets.io/v1` (not v1beta1)
+- **Applies to**: SecretStore, ClusterSecretStore, ExternalSecret, ClusterExternalSecret
+- **Current version**: v0.17.0 (check with `kubectl get deployment -n external-secrets external-secrets -o jsonpath='{.spec.template.spec.containers[0].image}'`)
+
+Example ClusterSecretStore for 1Password:
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: onepassword-connect
+spec:
+  provider:
+    onepassword:
+      connectHost: http://onepassword-connect.external-secrets.svc.cluster.local:8080
+      vaults:
+        Homelab: 1  # Replace with actual vault ID
+      auth:
+        secretRef:
+          connectTokenSecretRef:
+            name: onepassword-connect-token
+            namespace: external-secrets
+            key: token
+```
+
 ### Legacy: SOPS (Deprecated)
 
 SOPS encryption is only for existing/legacy secrets:
