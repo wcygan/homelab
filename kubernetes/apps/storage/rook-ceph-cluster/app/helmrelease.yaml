@@ -124,24 +124,35 @@ spec:
             memory: "4Gi"
       removeOSDsIfOutAndSafeToRemove: true
       storage:
-        useAllNodes: true
+        useAllNodes: false
         useAllDevices: false
-        deviceFilter: "^nvme[01]n1$"
         config:
           osdsPerDevice: "1"
         nodes:
           - name: "k8s-1"
             devices:
-              - name: "nvme0n1"
-              - name: "nvme1n1"
+              - name: "/dev/nvme0n1"
+                config:
+                  deviceClass: "nvme"
+              - name: "/dev/nvme1n1"
+                config:
+                  deviceClass: "nvme"
           - name: "k8s-2"
             devices:
-              - name: "nvme0n1"
-              - name: "nvme1n1"
+              - name: "/dev/nvme0n1"
+                config:
+                  deviceClass: "nvme"
+              - name: "/dev/nvme1n1"
+                config:
+                  deviceClass: "nvme"
           - name: "k8s-3"
             devices:
-              - name: "nvme0n1"
-              - name: "nvme1n1"
+              - name: "/dev/nvme0n1"
+                config:
+                  deviceClass: "nvme"
+              - name: "/dev/nvme1n1"
+                config:
+                  deviceClass: "nvme"
       disruptionManagement:
         managePodBudgets: true
         osdMaintenanceTimeout: 30
