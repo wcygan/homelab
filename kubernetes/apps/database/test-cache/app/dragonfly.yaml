@@ -26,7 +26,7 @@ spec:
       resources:
         requests:
           storage: "1Gi" # Small storage for testing
-      storageClassName: "local-path" # Use local-path storage class
+      storageClassName: "ceph-block" # Migrated to Ceph storage
 
   # Optional: Configure for testing environment
   env:

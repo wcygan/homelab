@@ -99,7 +99,14 @@
       "Bash(kustomize build:*)",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:deepwiki.com)",
-      "Bash(claude mcp get kubernetes)"
+      "Bash(claude mcp get kubernetes)",
+      "mcp__kubernetes__kubectl_get",
+      "mcp__kubernetes__kubectl_generic",
+      "mcp__kubernetes__kubectl_describe",
+      "mcp__kubernetes__kubectl_logs",
+      "mcp__kubernetes__kubectl_scale",
+      "mcp__kubernetes__kubectl_apply",
+      "mcp__kubernetes__kubectl_delete"
     ],
     "deny": []
   }
