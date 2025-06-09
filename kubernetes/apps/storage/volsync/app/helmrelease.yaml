@@ -25,5 +25,5 @@ spec:
     manageCRDs: true
     metrics:
       disableAuth: true
-    # Enable snapshot support for Ceph
-    snapshotClassName: csi-ceph-blockpool
+    # TODO: Enable snapshot support after installing external-snapshotter
+    # snapshotClassName: csi-ceph-blockpool
