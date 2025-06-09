@@ -1,0 +1,21 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rook-ceph-mgr
+  namespace: storage
+  labels:
+    app: rook-ceph-mgr
+    release: kube-prometheus-stack  # Label for Prometheus to discover
+spec:
+  namespaceSelector:
+    matchNames:
+      - storage
+  selector:
+    matchLabels:
+      app: rook-ceph-mgr
+      rook_cluster: storage
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 30s

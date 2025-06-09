@@ -7,3 +7,4 @@ resources:
   # - ./cluster.yaml  # Cluster is created by HelmRelease
   - ./dashboard
   # - ./storage-classes  # Storage classes created by HelmRelease
+  - ./servicemonitor.yaml
