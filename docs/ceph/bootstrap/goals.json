@@ -1,0 +1,280 @@
+{
+  "initiative": {
+    "name": "Ceph Distributed Storage Implementation",
+    "description": "Transform homelab storage from local-path to production-grade distributed storage using Rook-Ceph",
+    "status": "pending",
+    "trigger_conditions": {
+      "description": "Initiative starts when ANY condition is met",
+      "conditions": [
+        "Production workload requires high availability",
+        "Storage usage exceeds 100Gi",
+        "Multi-pod write access (RWX) needed",
+        "S3-compatible object storage required"
+      ],
+      "current_state": {
+        "storage_usage": "11Gi",
+        "production_workloads": false,
+        "rwx_required": false,
+        "s3_required": false
+      }
+    }
+  },
+  "phases": [
+    {
+      "id": "phase-0",
+      "name": "Pre-Implementation Monitoring",
+      "status": "active",
+      "description": "Monitor for trigger conditions and prepare for deployment",
+      "objectives": [
+        {
+          "id": "0.1",
+          "name": "Continuous Trigger Monitoring",
+          "status": "in_progress",
+          "deliverables": [
+            "Daily storage usage check",
+            "Workload requirement analysis",
+            "Document specific use case when triggered"
+          ],
+          "validation": "One or more trigger conditions met and documented"
+        },
+        {
+          "id": "0.2",
+          "name": "Backup Current State",
+          "status": "pending",
+          "prerequisites": ["0.1"],
+          "deliverables": [
+            "Full backup of all PVCs",
+            "Backup restoration test completed",
+            "Current storage inventory documented"
+          ],
+          "validation": "Successful backup restoration test"
+        }
+      ]
+    },
+    {
+      "id": "phase-1",
+      "name": "Infrastructure Preparation",
+      "status": "pending",
+      "description": "Prepare hardware and validate Talos compatibility",
+      "prerequisites": ["phase-0"],
+      "objectives": [
+        {
+          "id": "1.1",
+          "name": "Hardware Validation",
+          "status": "pending",
+          "deliverables": [
+            "RBD kernel module verified in Talos",
+            "Kernel version ≥4.17 confirmed",
+            "10GbE network connectivity validated"
+          ],
+          "validation": "All hardware checks pass",
+          "artifacts": {
+            "validation_script": "scripts/validate-ceph-readiness.ts"
+          }
+        },
+        {
+          "id": "1.2",
+          "name": "Storage Device Preparation",
+          "status": "pending",
+          "deliverables": [
+            "NVMe devices identified on all nodes",
+            "Talos patches created to unmount devices",
+            "Devices verified as raw/unformatted"
+          ],
+          "validation": "All 6 NVMe devices ready for Ceph",
+          "artifacts": {
+            "device_inventory": "docs/ceph/device-inventory.md",
+            "talos_patches": "talos/patches/storage/"
+          }
+        },
+        {
+          "id": "1.3",
+          "name": "GitOps Structure Creation",
+          "status": "pending",
+          "deliverables": [
+            "Full directory structure created",
+            "Base Kustomizations with .disabled suffixes",
+            "Flux dependencies configured",
+            "Manifests pass validation"
+          ],
+          "validation": "Pre-commit checks pass",
+          "artifacts": {
+            "directory": "kubernetes/apps/storage/",
+            "validation": "scripts/validate-manifests.sh"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Rook-Ceph Deployment",
+      "status": "pending",
+      "description": "Deploy Ceph with block storage only",
+      "prerequisites": ["phase-1"],
+      "objectives": [
+        {
+          "id": "2.1",
+          "name": "Operator Installation",
+          "status": "pending",
+          "deliverables": [
+            "Rook-Ceph operator deployed",
+            "Operator pods healthy",
+            "CRDs installed",
+            "Resource limits configured"
+          ],
+          "validation": "kubectl get pods -n rook-ceph | grep Running",
+          "artifacts": {
+            "helmrelease": "kubernetes/apps/storage/rook-ceph-operator/app/helmrelease.yaml"
+          }
+        },
+        {
+          "id": "2.2",
+          "name": "Cluster Bootstrap",
+          "status": "pending",
+          "deliverables": [
+            "CephCluster CR deployed",
+            "6 OSDs created (2 per node)",
+            "MON quorum established",
+            "Cluster health GREEN"
+          ],
+          "validation": "ceph status shows HEALTH_OK",
+          "artifacts": {
+            "cluster_config": "kubernetes/apps/storage/rook-ceph-cluster/app/cluster.yaml"
+          }
+        },
+        {
+          "id": "2.3",
+          "name": "Block Storage Configuration",
+          "status": "pending",
+          "deliverables": [
+            "RBD storage class created",
+            "Test PVC provisioned successfully",
+            "Performance benchmarks meet targets",
+            "Compression verified active"
+          ],
+          "validation": "Benchmarks show <5ms latency, >1GB/s throughput",
+          "artifacts": {
+            "storage_class": "kubernetes/apps/storage/rook-ceph-cluster/app/storageclass.yaml",
+            "benchmark_results": "docs/ceph/benchmark-results.md"
+          }
+        },
+        {
+          "id": "2.4",
+          "name": "Monitoring Integration",
+          "status": "pending",
+          "deliverables": [
+            "Ceph Prometheus exporters deployed",
+            "Grafana dashboards imported",
+            "Health alerts configured",
+            "Alert routing tested"
+          ],
+          "validation": "Metrics visible in Grafana",
+          "artifacts": {
+            "dashboards": "kubernetes/apps/monitoring/grafana/dashboards/ceph/"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Optional Components",
+      "status": "pending",
+      "description": "Deploy CephFS and/or Object Storage when needed",
+      "prerequisites": ["phase-2"],
+      "objectives": [
+        {
+          "id": "3.1",
+          "name": "CephFS Activation",
+          "status": "pending",
+          "trigger": "RWX storage requirement",
+          "deliverables": [
+            "Filesystem manifests activated",
+            "MDS pods healthy",
+            "CephFS storage class created",
+            "Multi-pod write test successful"
+          ],
+          "validation": "Multiple pods writing to same PVC",
+          "artifacts": {
+            "filesystem_config": "kubernetes/apps/storage/rook-ceph-filesystem/"
+          }
+        },
+        {
+          "id": "3.2",
+          "name": "Object Storage Activation",
+          "status": "pending",
+          "trigger": "S3 storage requirement",
+          "deliverables": [
+            "ObjectStore manifests activated",
+            "RGW pods healthy",
+            "S3 endpoint accessible",
+            "S3 CLI operations successful"
+          ],
+          "validation": "aws s3 ls works against endpoint",
+          "artifacts": {
+            "objectstore_config": "kubernetes/apps/storage/rook-ceph-objectstore/"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Production Migration",
+      "status": "pending",
+      "description": "Migrate workloads from local-path to Ceph",
+      "prerequisites": ["phase-2"],
+      "objectives": [
+        {
+          "id": "4.1",
+          "name": "Migration Planning",
+          "status": "pending",
+          "deliverables": [
+            "Workload inventory completed",
+            "Migration priority list created",
+            "Rollback procedures documented",
+            "Maintenance windows scheduled"
+          ],
+          "validation": "Migration plan reviewed and approved",
+          "artifacts": {
+            "migration_plan": "docs/ceph/migration-plan.md"
+          }
+        },
+        {
+          "id": "4.2",
+          "name": "Workload Migration",
+          "status": "pending",
+          "deliverables": [
+            "Test workloads migrated successfully",
+            "Data integrity verified",
+            "Production workloads migrated",
+            "Application manifests updated"
+          ],
+          "validation": "All workloads using Ceph storage",
+          "artifacts": {
+            "migration_log": "docs/ceph/migration-log.md"
+          }
+        },
+        {
+          "id": "4.3",
+          "name": "Operational Handoff",
+          "status": "pending",
+          "deliverables": [
+            "Runbooks created",
+            "Troubleshooting guide documented",
+            "Backup/restore workflows established",
+            "Team training completed"
+          ],
+          "validation": "30 days stable operation",
+          "artifacts": {
+            "runbooks": "docs/ceph/operations/"
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "created": "2024-01-09",
+    "last_updated": "2024-01-09",
+    "version": "1.0.0",
+    "next_review": "Check trigger conditions daily"
+  }
+}
