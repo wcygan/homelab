@@ -20,3 +20,5 @@ resources:
   - ./rook-release.yaml
   # renovate: datasource=helm depName=volsync lookupName=volsync registryUrl=https://backube.github.io/helm-charts/
   - ./backube.yaml
+  # renovate: datasource=helm depName=loki lookupName=loki registryUrl=https://grafana.github.io/helm-charts
+  - ./grafana.yaml
