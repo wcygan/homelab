@@ -9,3 +9,4 @@ components:
 resources:
   - ./echo/ks.yaml
   - ./echo-2/ks.yaml
+  - ./test-secret/ks.yaml
