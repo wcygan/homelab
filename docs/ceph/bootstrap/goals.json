@@ -194,16 +194,15 @@
           "deliverables": [
             "Ceph Prometheus exporters deployed - ✅ Metrics endpoints available",
             "Grafana dashboards imported - ⏳ TODO: Import dashboards",
-            "Health alerts configured - ❌ Prometheus rules disabled (template error)",
-            "Alert routing tested - ❌ Pending rules fix"
+            "Health alerts configured - ✅ Prometheus rules deployed in monitoring namespace",
+            "Alert routing tested - ⏳ TODO: Verify alert routing"
           ],
-          "validation": "Metrics visible in Grafana - ⏳ Pending dashboard import",
+          "validation": "Metrics visible in Grafana - ⏳ Pending dashboard import and ServiceMonitor creation",
           "artifacts": {
-            "dashboards": "kubernetes/apps/monitoring/grafana/dashboards/ceph/"
+            "dashboards": "kubernetes/apps/monitoring/grafana/dashboards/ceph/",
+            "prometheus_rules": "PrometheusRule prometheus-ceph-rules in monitoring namespace"
           },
-          "blockers": [
-            "HelmRelease template error with external field for Prometheus rules"
-          ]
+          "notes": "Fixed template error by adding namespace to kustomization.yaml and setting rulesNamespaceOverride"
         }
       ]
     },
@@ -309,13 +308,13 @@
   ],
   "metadata": {
     "created": "2024-01-09",
-    "last_updated": "2025-06-09T07:58:00Z",
-    "version": "1.1.0",
-    "next_review": "Phase 2.4 monitoring completion, then Phase 4 migration planning",
+    "last_updated": "2025-06-09T14:30:00Z",
+    "version": "1.1.1",
+    "next_review": "Complete Phase 2.4 (dashboards), then Phase 4 migration planning",
     "recent_updates": [
-      "2025-06-09: Phase 2 objectives 2.1-2.3 completed, 2.4 partial",
-      "2025-06-09: Ceph cluster deployed and operational with block storage",
-      "2025-06-09: Added deployment notes and blockers"
+      "2025-06-09T14:30: Fixed Prometheus rules deployment, updated monitoring status",
+      "2025-06-09T07:58: Phase 2 objectives 2.1-2.3 completed, 2.4 partial",
+      "2025-06-09: Ceph cluster deployed and operational with block storage"
     ]
   }
 }
