@@ -16,6 +16,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: rook-ceph-rgw-ceph-objectstore
+                name: rook-ceph-rgw-storage
                 port:
                   number: 80
