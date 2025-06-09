@@ -256,6 +256,11 @@ SOPS encryption is only for existing/legacy secrets:
 
 ## Monitoring & Debugging
 
+### Talos Linux Troubleshooting
+
+For detailed Talos-specific troubleshooting including node reboots, kubeconfig issues, and storage verification, see:
+- **[Talos Troubleshooting Guide](docs/talos-linux/troubleshooting.md)** - Common issues and resolution steps
+
 ### Monitoring Tools
 
 All scripts use Deno and require `--allow-all`. Each monitoring script supports
@@ -590,6 +595,11 @@ flux logs --follow --tail=50
 ./scripts/validate-manifests.sh
 ./scripts/check-flux-config.ts
 ```
+
+**Talos-Specific Issues**
+
+For Talos Linux specific issues (node access, kubeconfig problems, storage verification):
+- See [Talos Troubleshooting Guide](docs/talos-linux/troubleshooting.md)
 
 ## App Deployment Debugging Workflow
 

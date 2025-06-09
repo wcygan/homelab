@@ -82,7 +82,10 @@
       "Bash(flux get ks:*)",
       "Bash(echo:*)",
       "WebFetch(domain:www.reddit.com)",
-      "WebFetch(domain:rook.io)"
+      "WebFetch(domain:rook.io)",
+      "Bash(./scripts/validate-ceph-readiness.ts)",
+      "Bash(mv:*)",
+      "Bash(task configure)"
     ],
     "deny": []
   }
