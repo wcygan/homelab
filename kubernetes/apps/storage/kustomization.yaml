@@ -4,7 +4,6 @@ namespace: storage
 components:
   - ../../components/common
 resources:
-  - ./namespace.yaml
   - ./local-path-provisioner/ks.yaml
   # Phase 1: Active immediately
   - ./rook-ceph-operator/ks.yaml
