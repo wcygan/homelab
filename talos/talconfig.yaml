@@ -39,6 +39,8 @@ nodes:
         mtu: 1500
         vip:
           ip: "192.168.1.101"
+    patches:
+      - "@./patches/k8s-1/storage.yaml"
   - hostname: "k8s-2"
     ipAddress: "192.168.1.99"
     installDiskSelector:
@@ -59,6 +61,8 @@ nodes:
         mtu: 1500
         vip:
           ip: "192.168.1.101"
+    patches:
+      - "@./patches/k8s-2/storage.yaml"
   - hostname: "k8s-3"
     ipAddress: "192.168.1.100"
     installDiskSelector:

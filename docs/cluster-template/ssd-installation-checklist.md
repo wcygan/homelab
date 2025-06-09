@@ -78,18 +78,18 @@ This checklist guides you through adding SSDs to your Talos Linux cluster nodes.
 #### Verification
 - [x] Node status healthy: `kubectl get node ${NODE_NAME}`
 - [x] Storage accessible: `talosctl ls /var/mnt/fast1,fast2 -n ${NODE_IP}`
-- [ ] No errors in logs: `talosctl logs -n ${NODE_IP} | grep -i error | tail -20`
-- [ ] Flux reconciliations successful: `flux get all -A | grep False`
+- [x] No errors in logs: `talosctl logs -n ${NODE_IP} | grep -i error | tail -20`
+- [x] Flux reconciliations successful: `flux get all -A | grep False`
 
 ### Node: k8s-2 (192.168.1.99)
 *Repeat all steps above with:*
-- [ ] NODE_NAME="k8s-2"
-- [ ] NODE_IP="192.168.1.99"
+- [x] NODE_NAME="k8s-2"
+- [x] NODE_IP="192.168.1.99"
 
 ### Node: k8s-1 (192.168.1.98)
 *Repeat all steps above with:*
-- [ ] NODE_NAME="k8s-1"
-- [ ] NODE_IP="192.168.1.98"
+- [x] NODE_NAME="k8s-1"
+- [x] NODE_IP="192.168.1.98"
 
 ## Post-Installation Tasks
 

@@ -75,7 +75,9 @@
       "Bash(task talos:generate-config:*)",
       "Bash(task talos:apply-node:*)",
       "Bash(talosctl read:*)",
-      "Bash(talosctl ls:*)"
+      "Bash(talosctl ls:*)",
+      "Bash(talosctl logs:*)",
+      "Bash(talosctl dmesg:*)"
     ],
     "deny": []
   }
