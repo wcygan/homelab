@@ -7,6 +7,10 @@ Volsync v0.11.0 is currently in CrashLoopBackOff state due to missing prerequisi
 - CSI Snapshot Controller is not deployed
 - Volsync requires these components even if snapshot features aren't actively used
 
+## Resolution Status
+
+✅ **FIXED** - Successfully deployed CSI External Snapshotter and enabled Volsync on 2025-06-09
+
 ## Root Cause
 
 ```
@@ -31,6 +35,8 @@ Since we're using Rook-Ceph v1.17.4 with the `ceph-block` storage class, we need
 - Create a VolumeSnapshotClass for Ceph RBD
 
 ## Installation Steps
+
+> **Note**: These steps have been completed and are included here for reference.
 
 ### Step 1: Install External Snapshotter
 
@@ -132,11 +138,11 @@ spec:
       app.kubernetes.io/name: *app
   interval: 1h
   timeout: 10m
-  prune: true
+  prune: false  # Changed from true to false in production
   wait: true
   dependsOn:
     - name: external-snapshotter    # Add this dependency
-      namespace: flux-system
+      namespace: storage            # IMPORTANT: Use storage namespace, not flux-system
     - name: rook-ceph-cluster
       namespace: storage
   path: ./kubernetes/apps/storage/volsync/app
@@ -145,6 +151,8 @@ spec:
     name: flux-system
     namespace: flux-system
 ```
+
+> **Fix Applied**: The external-snapshotter dependency was initially set to `namespace: flux-system` but should be `namespace: storage` where the kustomization actually exists.
 
 ### Step 4: Update Volsync HelmRelease
 
@@ -178,7 +186,7 @@ spec:
     metrics:
       disableAuth: true
     # Enable snapshot support with Ceph
-    snapshotClassName: ceph-block-snapshot
+    snapshotClassName: csi-ceph-blockpool  # Note: Using existing snapshot class name
 ```
 
 ## Deployment Order
@@ -295,3 +303,53 @@ kubectl get volumesnapshot -n default
 - [CSI Snapshotter Documentation](https://github.com/kubernetes-csi/external-snapshotter)
 - [Rook Ceph Snapshots](https://rook.io/docs/rook/latest/Storage-Configuration/Ceph-CSI/ceph-csi-snapshot/)
 - Anton Cluster Ceph Implementation: `/docs/ceph/adding-ceph.md`
+
+## Implementation Summary (2025-06-09)
+
+### What Was Actually Done
+
+1. **Created External Snapshotter Deployment**
+   - Added `kubernetes/apps/storage/external-snapshotter/` directory structure
+   - Created Kustomization to deploy CSI snapshot controller v8.0.1
+   - Successfully installed VolumeSnapshot CRDs
+
+2. **Updated Storage Kustomization**
+   - Added external-snapshotter to the storage apps list
+   - Positioned it before volsync to ensure proper dependency order
+
+3. **Fixed Volsync Dependencies**
+   - Updated volsync Kustomization to depend on external-snapshotter
+   - Fixed namespace reference issue (changed from flux-system to storage)
+   - Added rook-ceph-cluster as additional dependency
+
+4. **Enabled VolumeSnapshotClass**
+   - Uncommented snapshotclass.yaml in rook-ceph-cluster storage-classes
+   - Added storage-classes to rook-ceph-cluster kustomization resources
+   - Manually applied VolumeSnapshotClass to unblock immediate deployment
+
+5. **Updated Volsync Configuration**
+   - Enabled snapshot support in HelmRelease values
+   - Configured to use `csi-ceph-blockpool` snapshot class
+
+### Current Status
+
+✅ **External Snapshotter**: Running (2/2 pods ready in kube-system)
+✅ **VolumeSnapshot CRDs**: Installed and available
+✅ **VolumeSnapshotClass**: Created (`csi-ceph-blockpool`)
+✅ **Volsync**: Running successfully (2/2 containers ready)
+
+### Key Lessons Learned
+
+1. **Namespace Dependencies**: When referencing Kustomizations in dependencies, use the actual namespace where the Kustomization exists, not where it's defined
+2. **CRD Requirements**: Some operators like Volsync require CRDs to be present even if the features aren't actively used
+3. **Manual Intervention**: Sometimes manually applying resources can unblock reconciliation issues while waiting for GitOps to catch up
+
+### Git Commits
+
+```bash
+# Initial fix implementation
+0f6ac2d feat(storage): add CSI snapshot controller for Volsync support
+
+# Namespace correction
+276ce87 fix(storage): correct external-snapshotter namespace in volsync dependencies
+```
