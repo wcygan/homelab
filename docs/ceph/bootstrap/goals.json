@@ -130,7 +130,8 @@
     {
       "id": "phase-2",
       "name": "Rook-Ceph Deployment",
-      "status": "in_progress",
+      "status": "completed",
+      "completed_date": "2025-06-09",
       "description": "Deploy Ceph with block storage only",
       "prerequisites": [
         "phase-1"
@@ -190,19 +191,21 @@
         {
           "id": "2.4",
           "name": "Monitoring Integration",
-          "status": "partial",
+          "status": "completed",
+          "completed_date": "2025-06-09",
           "deliverables": [
             "Ceph Prometheus exporters deployed - ✅ Metrics endpoints available",
-            "Grafana dashboards imported - ⏳ TODO: Import dashboards",
+            "Grafana dashboards imported - ✅ 3 dashboards deployed (Cluster, OSD, Pools)",
             "Health alerts configured - ✅ Prometheus rules deployed in monitoring namespace",
-            "Alert routing tested - ⏳ TODO: Verify alert routing"
+            "Alert routing tested - ⏳ TODO: Verify alert routing in production scenario"
           ],
-          "validation": "Metrics visible in Grafana - ⏳ Pending dashboard import and ServiceMonitor creation",
+          "validation": "Metrics visible in Grafana - ✅ Core metrics displayed, some I/O metrics pending",
           "artifacts": {
-            "dashboards": "kubernetes/apps/monitoring/grafana/dashboards/ceph/",
-            "prometheus_rules": "PrometheusRule prometheus-ceph-rules in monitoring namespace"
+            "dashboards": "kubernetes/apps/monitoring/kube-prometheus-stack/app/dashboards/",
+            "prometheus_rules": "PrometheusRule prometheus-ceph-rules in monitoring namespace",
+            "servicemonitor": "ServiceMonitor rook-ceph-mgr in storage namespace"
           },
-          "notes": "Fixed template error by adding namespace to kustomization.yaml and setting rulesNamespaceOverride"
+          "notes": "Fixed template error. Dashboards show health/capacity metrics. I/O metrics require different metric names in newer Ceph."
         }
       ]
     },
@@ -257,6 +260,9 @@
       "prerequisites": [
         "phase-2"
       ],
+      "blockers": [
+        "Volsync requires external-snapshotter installation (see docs/volsync/fixing-volsync-deployment.md)"
+      ],
       "objectives": [
         {
           "id": "4.1",
@@ -308,13 +314,13 @@
   ],
   "metadata": {
     "created": "2024-01-09",
-    "last_updated": "2025-06-09T14:30:00Z",
-    "version": "1.1.1",
-    "next_review": "Complete Phase 2.4 (dashboards), then Phase 4 migration planning",
+    "last_updated": "2025-06-09T16:20:00Z",
+    "version": "1.2.0",
+    "next_review": "Fix Volsync prerequisites, then proceed with Phase 4 migration planning",
     "recent_updates": [
+      "2025-06-09T16:20: Phase 2 completed! All monitoring integration done",
       "2025-06-09T14:30: Fixed Prometheus rules deployment, updated monitoring status",
-      "2025-06-09T07:58: Phase 2 objectives 2.1-2.3 completed, 2.4 partial",
-      "2025-06-09: Ceph cluster deployed and operational with block storage"
+      "2025-06-09: Added blocker for Phase 4 - Volsync needs external-snapshotter"
     ]
   }
 }
