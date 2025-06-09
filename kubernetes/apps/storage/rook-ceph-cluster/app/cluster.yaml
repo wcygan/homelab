@@ -111,7 +111,7 @@ metadata:
   namespace: storage
 data:
   current_phase: "1"
-  phases_enabled:
+  phases_enabled: |
     block: "true"
     filesystem: "false"
     object: "false"
