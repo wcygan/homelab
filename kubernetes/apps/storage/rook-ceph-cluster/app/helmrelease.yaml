@@ -62,6 +62,7 @@ spec:
     cephClusterSpec:
       external:
         enable: false
+      clusterName: storage
       cephVersion:
         image: quay.io/ceph/ceph:v19.2.0
         allowUnsupported: false

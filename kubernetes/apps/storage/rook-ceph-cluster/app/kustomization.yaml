@@ -5,4 +5,4 @@ resources:
   - ./helmrelease.yaml
   # - ./cluster.yaml  # Cluster is created by HelmRelease
   - ./dashboard
-  - ./storage-classes
+  # - ./storage-classes  # Storage classes created by HelmRelease
