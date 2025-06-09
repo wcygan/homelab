@@ -9,6 +9,8 @@ serviceMonitor:
 spegel:
   containerdSock: /run/containerd/containerd.sock
   containerdRegistryConfigPath: /etc/cri/conf.d/hosts
+  # Reduce log verbosity to minimize 404 error noise
+  logLevel: "warn"
   resources:
     requests:
       cpu: 50m
