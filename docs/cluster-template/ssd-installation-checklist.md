@@ -13,47 +13,48 @@ This checklist guides you through adding SSDs to your Talos Linux cluster nodes.
 
 ### 2. Backup Current Configuration
 - [x] Backup Talos config: `cp -r talos/clusterconfig talos/clusterconfig.backup-$(date +%Y%m%d)`
-- [ ] Export current disk configuration:
+- [x] Export current disk configuration:
   ```bash
+  mkdir -p progress/ssd-installation
   for ip in 192.168.1.98 192.168.1.99 192.168.1.100; do
-    echo "=== Node $ip ===" >> pre-ssd-disk-inventory.txt
-    talosctl get disks -n $ip >> pre-ssd-disk-inventory.txt
+    echo "=== Node $ip ===" >> progress/ssd-installation/pre-ssd-disk-inventory.txt
+    talosctl get disks -n $ip >> progress/ssd-installation/pre-ssd-disk-inventory.txt
   done
   ```
-- [ ] Save cluster state: `kubectl cluster-info dump --output-directory=/tmp/cluster-state-$(date +%Y%m%d)`
-- [ ] Document current storage usage: `./scripts/storage-health-check.ts --json > pre-ssd-storage-state.json`
+- [x] Save cluster state: `kubectl cluster-info dump --output-directory=progress/ssd-installation/cluster-state-$(date +%Y%m%d)`
+- [x] Document current storage usage: `./scripts/storage-health-check.ts --json > progress/ssd-installation/pre-ssd-storage-state.json`
 
 ### 3. Prepare Node-Specific Information
-- [ ] Node order: k8s-3 → k8s-2 → k8s-1 (start with least critical)
-- [ ] Create tracking sheet with columns: Node Name | IP | Current Serial | New SSD Serial | Status
+- [x] Node order: k8s-3 → k8s-2 → k8s-1 (start with least critical)
+- [x] Create tracking sheet with columns: Node Name | IP | Current Serial | New SSD Serial | Status
 
 ## Per-Node Installation Process
 
 ### Node: k8s-3 (192.168.1.100)
 
 #### Pre-Installation
-- [ ] Set node variables:
+- [x] Set node variables:
   ```bash
   export NODE_NAME="k8s-3"
   export NODE_IP="192.168.1.100"
   ```
-- [ ] Verify node health: `kubectl describe node ${NODE_NAME}`
-- [ ] Check workloads on node: `kubectl get pods --field-selector spec.nodeName=${NODE_NAME} -A`
-- [ ] Cordon node: `kubectl cordon ${NODE_NAME}`
-- [ ] Drain node: `kubectl drain ${NODE_NAME} --ignore-daemonsets --delete-emptydir-data --force --timeout=600s`
-- [ ] Verify drain completed: `kubectl get pods --field-selector spec.nodeName=${NODE_NAME} -A`
+- [x] Verify node health: `kubectl describe node ${NODE_NAME}`
+- [x] Check workloads on node: `kubectl get pods --field-selector spec.nodeName=${NODE_NAME} -A`
+- [x] Cordon node: `kubectl cordon ${NODE_NAME}`
+- [x] Drain node: `kubectl drain ${NODE_NAME} --ignore-daemonsets --delete-emptydir-data --force --timeout=600s`
+- [x] Verify drain completed: `kubectl get pods --field-selector spec.nodeName=${NODE_NAME} -A`
 
 #### Physical Installation
-- [ ] Power down node via Talos: `talosctl shutdown -n ${NODE_IP}`
-- [ ] Wait for complete shutdown (verify no ping response)
-- [ ] Physically install SSD in available slot
-- [ ] Power on node
-- [ ] Wait for node to boot: `talosctl health -n ${NODE_IP} --wait-timeout 10m`
+- [x] Power down node via Talos: `talosctl shutdown -n ${NODE_IP}`
+- [x] Wait for complete shutdown (verify no ping response)
+- [x] Physically install SSD in available slot
+- [x] Power on node
+- [x] Wait for node to boot: `talosctl health -n ${NODE_IP} --wait-timeout 10m`
 
 #### Post-Installation Configuration
-- [ ] Get new disk information: `talosctl get disks -n ${NODE_IP}`
-- [ ] Record new SSD serial number: ________________
-- [ ] Create storage patch file:
+- [x] Get new disk information: `talosctl get disks -n ${NODE_IP}`
+- [x] Record new SSD serial number: 251021801882 (nvme0n1), 251021800405 (nvme2n1)
+- [x] Create storage patch file:
   ```bash
   cat > talos/patches/${NODE_NAME}/storage.yaml << EOF
   machine:
@@ -66,17 +67,17 @@ This checklist guides you through adding SSDs to your Talos Linux cluster nodes.
           type: xfs
   EOF
   ```
-- [ ] Update serial in patch file with actual value
-- [ ] Generate new config: `task talos:generate-config`
-- [ ] Apply configuration: `task talos:apply-node IP=${NODE_IP} MODE=auto`
-- [ ] Wait for node ready: `kubectl wait --for=condition=Ready node/${NODE_NAME} --timeout=300s`
-- [ ] Verify SSD mounted: `talosctl read /proc/mounts -n ${NODE_IP} | grep fast`
-- [ ] Uncordon node: `kubectl uncordon ${NODE_NAME}`
-- [ ] Verify workloads scheduled back: `kubectl get pods --field-selector spec.nodeName=${NODE_NAME} -A`
+- [x] Update serial in patch file with actual value
+- [x] Generate new config: `task talos:generate-config`
+- [x] Apply configuration: `task talos:apply-node IP=${NODE_IP} MODE=auto`
+- [x] Wait for node ready: `kubectl wait --for=condition=Ready node/${NODE_NAME} --timeout=300s`
+- [x] Verify SSD mounted: `talosctl read /proc/mounts -n ${NODE_IP} | grep fast`
+- [x] Uncordon node: `kubectl uncordon ${NODE_NAME}`
+- [x] Verify workloads scheduled back: `kubectl get pods --field-selector spec.nodeName=${NODE_NAME} -A`
 
 #### Verification
-- [ ] Node status healthy: `kubectl get node ${NODE_NAME}`
-- [ ] Storage accessible: `talosctl ls /var/mnt/fast -n ${NODE_IP}`
+- [x] Node status healthy: `kubectl get node ${NODE_NAME}`
+- [x] Storage accessible: `talosctl ls /var/mnt/fast1,fast2 -n ${NODE_IP}`
 - [ ] No errors in logs: `talosctl logs -n ${NODE_IP} | grep -i error | tail -20`
 - [ ] Flux reconciliations successful: `flux get all -A | grep False`
 
@@ -95,7 +96,7 @@ This checklist guides you through adding SSDs to your Talos Linux cluster nodes.
 ### 1. Verify Cluster Health
 - [ ] All nodes Ready: `kubectl get nodes`
 - [ ] Run full health check: `deno task monitor:all`
-- [ ] Compare storage state: `./scripts/storage-health-check.ts --json | diff pre-ssd-storage-state.json -`
+- [ ] Compare storage state: `./scripts/storage-health-check.ts --json | diff progress/ssd-installation/pre-ssd-storage-state.json -`
 - [ ] Check etcd cluster health: `kubectl -n kube-system exec -it etcd-k8s-1 -- etcdctl member list`
 
 ### 2. Configure Kubernetes Storage

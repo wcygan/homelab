@@ -63,7 +63,19 @@
       "Bash(time deno run:*)",
       "Bash(time deno task:*)",
       "Bash(task health:monitor:json)",
-      "Bash(timeout 3s deno run:*)"
+      "Bash(timeout 3s deno run:*)",
+      "Bash(export NODE_NAME=\"k8s-3\")",
+      "Bash(export:*)",
+      "Bash(echo \"NODE_NAME=$NODE_NAME\")",
+      "Bash(echo \"NODE_IP=$NODE_IP\")",
+      "Bash(kubectl:*)",
+      "Bash(cp:*)",
+      "Bash(talosctl version:*)",
+      "Bash(ping:*)",
+      "Bash(task talos:generate-config:*)",
+      "Bash(task talos:apply-node:*)",
+      "Bash(talosctl read:*)",
+      "Bash(talosctl ls:*)"
     ],
     "deny": []
   }

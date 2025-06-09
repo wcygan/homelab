@@ -1,0 +1,8 @@
+machine:
+  disks:
+    - device: /dev/disk/by-id/nvme-WD_BLACK_SN7100_1TB_251021801882
+      partitions:
+        - mountpoint: /var/mnt/fast1
+    - device: /dev/disk/by-id/nvme-WD_BLACK_SN7100_1TB_251021800405
+      partitions:
+        - mountpoint: /var/mnt/fast2

@@ -79,6 +79,8 @@ nodes:
         mtu: 1500
         vip:
           ip: "192.168.1.101"
+    patches:
+      - "@./patches/k8s-3/storage.yaml"
 
 # Global patches
 patches:
