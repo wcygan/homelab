@@ -72,6 +72,9 @@ spec:
         username: "airflow"
         password: airflow-db-password-changeme # TODO: Move to 1Password/ESO - must match data.metadataConnection.pass
         database: "airflow"
+      primary:
+        persistence:
+          storageClass: "ceph-block"
 
     # Redis configuration (if using CeleryExecutor)
     redis:
@@ -168,3 +171,11 @@ spec:
 
     # Extra secrets/configmaps without Helm hooks
     extraConfigMaps: {}
+
+    # Triggerer configuration with Ceph storage
+    triggerer:
+      enabled: true
+      persistence:
+        enabled: true
+        storageClassName: "ceph-block"
+        size: 100Gi

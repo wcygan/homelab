@@ -50,3 +50,11 @@ spec:
             requests:
               cpu: "2"
               memory: 16Gi
+
+    # Configure Open WebUI subchart with Ceph storage
+    open-webui:
+      enabled: true
+      persistence:
+        enabled: true
+        storageClass: "ceph-block"
+        size: 2Gi
