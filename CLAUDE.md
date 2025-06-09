@@ -490,6 +490,14 @@ kubectl -n storage exec deploy/rook-ceph-tools -- ceph osd status
 kubectl -n storage exec deploy/rook-ceph-tools -- ceph df
 ```
 
+### Ceph Operations TLDR
+
+- **Daily Health Check**: `./scripts/storage-health-check.ts --detailed` or see `docs/ceph/operations/daily-health-check.md`
+- **OSD Replacement**: Mark out → Wait rebalance → Remove → Replace disk → Auto-provision (see `docs/ceph/operations/osd-replacement.md`)
+- **Troubleshooting**: Check `ceph health detail` → Review logs → Follow `docs/ceph/operations/troubleshooting.md`
+- **Capacity**: Monitor at 50% (plan), 70% (order), 80% (expand) - currently using 116Gi of 2TB usable
+- **Backups**: Volsync configured for automated backups - see `docs/ceph/operations/backup-restore.md`
+
 ## Configuration Analysis & Version Management
 
 ### AI Agent Guidelines for Chart Updates
