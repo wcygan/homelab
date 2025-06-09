@@ -6,5 +6,5 @@ resources:
   - ./helmrelease.yaml
   # - ./cluster.yaml  # Cluster is created by HelmRelease
   - ./dashboard
-  # - ./storage-classes  # Storage classes created by HelmRelease
+  - ./storage-classes  # VolumeSnapshotClass for Volsync
   - ./servicemonitor.yaml

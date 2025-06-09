@@ -8,6 +8,7 @@ resources:
   # Phase 1: Active immediately
   - ./rook-ceph-operator/ks.yaml
   - ./rook-ceph-cluster/ks.yaml
+  - ./external-snapshotter/ks.yaml  # Required for Volsync
   - ./volsync/ks.yaml
   # Phase 2: Uncomment when RWX needed
   # - ./rook-ceph-filesystem/ks.yaml
