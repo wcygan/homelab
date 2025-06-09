@@ -4,6 +4,30 @@
 
 This guide provides step-by-step instructions for deploying the Loki + Alloy logging stack on the Kubernetes homelab. Follow these steps in order to ensure a successful deployment.
 
+## Pre-Implementation: S3 Validation (REQUIRED)
+
+Before starting the implementation, ensure S3 is operational:
+
+```bash
+# 1. Verify ObjectStore is enabled
+ls kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml
+# Should exist (not ks.yaml.disabled)
+
+# 2. Check RGW pods are running
+kubectl get pods -n storage -l app=rook-ceph-rgw
+# All pods should show Ready 1/1 or 2/2
+
+# 3. Verify S3 endpoint
+kubectl get svc -n storage rook-ceph-rgw-storage
+# Should show ClusterIP and port 80
+
+# 4. Test S3 connectivity
+kubectl run -it --rm s3-test --image=minio/mc:latest --restart=Never -- \
+  mc alias set test http://rook-ceph-rgw-storage.storage.svc.cluster.local test test
+```
+
+**If any of these checks fail**, see [S3 Prerequisites Guide](00-s3-prerequisites.md)
+
 ## Phase 1: Infrastructure Preparation
 
 ### Step 1.1: Create Grafana Helm Repository
@@ -32,23 +56,16 @@ cd kubernetes/flux/meta/repos/
 
 ### Step 1.2: Create S3 Buckets in Ceph
 
-Enable the Ceph Object Store if not already active:
+**Note**: This assumes Ceph ObjectStore is already enabled per the pre-implementation checks.
+
+Verify the Object Store is healthy:
 
 ```bash
-# Check if object store is disabled
-ls kubernetes/apps/storage/rook-ceph-objectstore/
+# Check Ceph status
+kubectl -n storage exec deploy/rook-ceph-tools -- ceph status
 
-# If ks.yaml.disabled exists, enable it
-mv kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml.disabled \
-   kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml
-
-# Commit and push
-git add -A
-git commit -m "feat: enable Ceph object store for Loki"
-git push
-
-# Wait for reconciliation
-flux reconcile kustomization cluster-apps --with-source
+# Verify RGW is operational
+kubectl -n storage exec deploy/rook-ceph-tools -- ceph osd pool ls | grep rgw
 ```
 
 ### Step 1.3: Create Object Bucket Claim

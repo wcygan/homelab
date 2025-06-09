@@ -65,11 +65,16 @@
           "id": "1.1",
           "name": "S3 Storage Setup",
           "status": "pending",
+          "prerequisites": [
+            "Ceph ObjectStore must be enabled and healthy (see 00-s3-prerequisites.md)",
+            "RGW pods must be running",
+            "S3 endpoint must respond to health checks"
+          ],
           "deliverables": [
-            "Enable Ceph ObjectStore if disabled",
             "Create ObjectBucketClaim for Loki",
             "Configure S3 credentials via External Secrets",
-            "Validate S3 connectivity"
+            "Validate S3 bucket operations",
+            "Document S3 endpoint and credentials"
           ],
           "validation": "S3 buckets accessible from monitoring namespace"
         },

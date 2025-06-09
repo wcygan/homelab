@@ -89,8 +89,15 @@ graph TB
 
 ## Implementation Phases
 
+### Phase 0: S3 Prerequisites (1 hour) - REQUIRED FIRST
+1. Enable Ceph ObjectStore (rename ks.yaml.disabled)
+2. Wait for RGW pods to be operational
+3. Validate S3 endpoint connectivity
+4. Create test bucket to verify functionality
+5. See detailed guide: [S3 Prerequisites](00-s3-prerequisites.md)
+
 ### Phase 1: Infrastructure Preparation (2 hours)
-1. Create Ceph S3 buckets
+1. Create Ceph S3 buckets via ObjectBucketClaim
 2. Configure S3 credentials via External Secrets
 3. Add Grafana Helm repository
 4. Create namespace configurations

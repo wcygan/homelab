@@ -25,7 +25,7 @@ This document provides a comprehensive readiness assessment for deploying Grafan
 | Requirement | Status | Details |
 |-------------|--------|---------|
 | Kubernetes 1.24+ | ✅ | Running latest Talos Linux |
-| Object Storage | ✅ | Ceph S3 available (not activated) |
+| Object Storage | ❌ | Ceph S3 available but **MUST BE ENABLED FIRST** |
 | Monitoring Stack | ✅ | Grafana v11.4.0 deployed |
 | Network Policies | ✅ | Cilium CNI supports policies |
 | Resource Capacity | ✅ | 288GB RAM, ample CPU available |
@@ -34,17 +34,19 @@ This document provides a comprehensive readiness assessment for deploying Grafan
 
 | Storage Type | Available | Recommended | Notes |
 |--------------|-----------|-------------|-------|
-| Ceph S3 | ✅ | Yes | Production-grade, already deployed |
-| Local Filesystem | ✅ | No | Not recommended for production |
+| Ceph S3 | ❌ | **Required** | Must be enabled before deployment (see [S3 Prerequisites](00-s3-prerequisites.md)) |
+| Local Filesystem | ✅ | Testing only | Use Quick Start guide for non-production |
 | MinIO | ❌ | No | Redundant with Ceph S3 |
 
-### ⚠️ Missing Components
+### ⚠️ Prerequisites Before Deployment
 
-| Component | Required | Action Needed |
-|-----------|----------|---------------|
-| Grafana Helm Repo | Yes | Add to `kubernetes/flux/meta/repos/` |
-| S3 Bucket | Yes | Create via ObjectBucketClaim |
-| S3 Credentials | Yes | Configure via External Secrets |
+| Component | Required | Action Needed | Priority |
+|-----------|----------|---------------|----------|
+| Ceph ObjectStore | **Critical** | Enable by renaming `ks.yaml.disabled` | **Do First** |
+| S3 Validation | **Critical** | Verify RGW pods and connectivity | **Do Second** |
+| Grafana Helm Repo | Yes | Add to `kubernetes/flux/meta/repos/` | After S3 |
+| S3 Bucket | Yes | Create via ObjectBucketClaim | After S3 |
+| S3 Credentials | Yes | Configure via External Secrets | After S3 |
 
 ## Deployment Strategy Options
 

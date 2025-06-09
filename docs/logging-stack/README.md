@@ -6,15 +6,17 @@ This documentation provides comprehensive guidance for deploying and operating a
 
 ## Current Status
 
-**Status**: READY FOR DEPLOYMENT  
+**Status**: PENDING S3 PREREQUISITES  
 **Last Updated**: January 2025  
-**Version**: 1.0
+**Version**: 1.1
+**Deployment Approach**: S3-First (Production)
 
 ### Key Highlights
-- **Trigger Met**: All deployment conditions satisfied (100Gi Airflow logs, Ceph S3 ready)
+- **Trigger Met**: All deployment conditions satisfied (100Gi Airflow logs)
 - **Architecture**: Simple Scalable mode selected for production readiness
-- **Storage**: Will leverage existing Ceph S3 for cost-effective log storage
+- **Storage**: S3-First approach - Ceph S3 must be enabled before deployment
 - **Migration Path**: Clear path to migrate from 100Gi Airflow PVC to centralized logging
+- **Decision**: S3-First deployment chosen to avoid migration complexity
 
 ## Documentation Structure
 
@@ -88,15 +90,22 @@ This documentation provides comprehensive guidance for deploying and operating a
 
 ### Prerequisites
 - [x] Kubernetes 1.24+ (Talos Linux)
-- [x] Ceph cluster with S3 gateway
+- [x] **Ceph cluster with S3 gateway enabled and operational** (see [S3 Prerequisites Guide](bootstrap/00-s3-prerequisites.md))
 - [x] Grafana via kube-prometheus-stack
 - [x] External Secrets Operator
 - [x] Resource capacity (15.5Gi RAM needed)
 
 ### Implementation Steps
-- [ ] Enable Ceph ObjectStore
+
+#### Step 0: S3 Prerequisites (Required for Production)
+- [ ] Enable Ceph ObjectStore (rename `ks.yaml.disabled` to `ks.yaml`)
+- [ ] Verify S3 gateway is operational
+- [ ] Validate S3 connectivity and create test bucket
+- [ ] Configure S3 credentials in External Secrets
+
+#### Production Deployment (S3-First Approach)
 - [ ] Add Grafana Helm repository
-- [ ] Deploy Loki (Simple Scalable mode)
+- [ ] Deploy Loki (Simple Scalable mode with S3 backend)
 - [ ] Deploy Alloy (DaemonSet)
 - [ ] Configure Grafana data source
 - [ ] Import dashboards
@@ -104,6 +113,8 @@ This documentation provides comprehensive guidance for deploying and operating a
 - [ ] Migrate Airflow logs
 - [ ] Implement retention policies
 - [ ] Document operations
+
+**Note**: For immediate testing without S3, see [Quick Start Guide](bootstrap/04-quickstart.md) - not suitable for production
 
 ## Resource Requirements
 

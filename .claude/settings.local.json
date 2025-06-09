@@ -108,7 +108,11 @@
       "mcp__kubernetes__kubectl_apply",
       "mcp__kubernetes__kubectl_delete",
       "Bash(helm dependency list:*)",
-      "Bash(helm show chart:*)"
+      "Bash(helm show chart:*)",
+      "Bash(./scripts/test-all.ts --json)",
+      "Bash(./scripts/network-monitor.ts --json)",
+      "Bash(./scripts/cleanup-completed-pods.ts)",
+      "mcp__kubernetes__kubectl_list"
     ],
     "deny": []
   }

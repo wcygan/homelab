@@ -4,29 +4,38 @@
 
 This guide provides the fastest path to getting Loki and Alloy running in your cluster. For detailed explanations, refer to the full implementation guide.
 
+**⚠️ IMPORTANT**: This Quick Start deploys Loki with filesystem storage and is NOT suitable for production. For production deployments, use the [S3-First approach](02-implementation-guide.md) with proper Ceph ObjectStore configuration.
+
+## When to Use This Guide
+
+✅ **Use Quick Start when**:
+- Testing Loki functionality
+- Learning LogQL queries
+- Temporary log aggregation
+- S3 is not yet available
+
+❌ **DO NOT use Quick Start for**:
+- Production deployments
+- Long-term log retention
+- High-volume logging (>10GB/day)
+- When S3 is available
+
 ## Prerequisites Checklist
 
 - [ ] Kubernetes cluster running (version 1.24+)
-- [ ] Ceph cluster operational with S3 endpoint
 - [ ] Grafana deployed (via kube-prometheus-stack)
-- [ ] External Secrets Operator configured
-- [ ] 1Password Connect configured
+- [ ] At least 50Gi available storage for PVC
+- [ ] Basic understanding this is temporary
 
 ## Quick Deployment Steps
 
-### 1. Enable Ceph Object Store (if needed)
+### 1. Skip S3 Setup (Using Filesystem Instead)
 
 ```bash
-# Check if disabled
-ls kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml*
-
-# Enable if needed
-mv kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml.disabled \
-   kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml
-
-# Commit and sync
-git add -A && git commit -m "feat: enable Ceph object store"
-git push && flux reconcile ks cluster-apps --with-source
+# This Quick Start uses filesystem storage
+# No S3 configuration needed
+# For production with S3, see the main implementation guide
+echo "Using filesystem storage for quick testing"
 ```
 
 ### 2. Create Directory Structure
