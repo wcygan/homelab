@@ -1,0 +1,21 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ceph-dashboard
+  namespace: storage
+  # Optional: Add Tailscale Funnel annotation if public exposure via Tailscale Funnel is desired
+  # annotations:
+  #   tailscale.com/funnel: "true"
+spec:
+  ingressClassName: tailscale
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rook-ceph-mgr-dashboard
+                port:
+                  number: 7000

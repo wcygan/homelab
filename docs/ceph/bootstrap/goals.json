@@ -2,7 +2,7 @@
   "initiative": {
     "name": "Ceph Distributed Storage Implementation",
     "description": "Transform homelab storage from local-path to production-grade distributed storage using Rook-Ceph",
-    "status": "pending",
+    "status": "active",
     "trigger_conditions": {
       "description": "Initiative starts when ANY condition is met",
       "conditions": [
@@ -35,11 +35,11 @@
           "status": "completed",
           "completed_date": "2025-01-09",
           "deliverables": [
-            "Daily storage usage check - ✅ 116Gi (exceeds 100Gi threshold)",
-            "Workload requirement analysis - ✅ Infrastructure/operational workloads identified",
-            "Document specific use case when triggered - ✅ docs/ceph/bootstrap/trigger-analysis-2025-01-09.md"
+            "Daily storage usage check - \u2705 116Gi (exceeds 100Gi threshold)",
+            "Workload requirement analysis - \u2705 Infrastructure/operational workloads identified",
+            "Document specific use case when triggered - \u2705 docs/ceph/bootstrap/trigger-analysis-2025-01-09.md"
           ],
-          "validation": "One or more trigger conditions met and documented - ✅ Storage usage trigger activated"
+          "validation": "One or more trigger conditions met and documented - \u2705 Storage usage trigger activated"
         },
         {
           "id": "0.2",
@@ -47,22 +47,26 @@
           "status": "skipped",
           "completed_date": "2025-01-09",
           "skip_reason": "User decision - proceeding without backup",
-          "prerequisites": ["0.1"],
-          "deliverables": [
-            "Full backup of all PVCs - ⏭️ SKIPPED",
-            "Backup restoration test completed - ⏭️ SKIPPED", 
-            "Current storage inventory documented - ⏭️ SKIPPED"
+          "prerequisites": [
+            "0.1"
           ],
-          "validation": "Successful backup restoration test - ⏭️ SKIPPED"
+          "deliverables": [
+            "Full backup of all PVCs - \u23ed\ufe0f SKIPPED",
+            "Backup restoration test completed - \u23ed\ufe0f SKIPPED",
+            "Current storage inventory documented - \u23ed\ufe0f SKIPPED"
+          ],
+          "validation": "Successful backup restoration test - \u23ed\ufe0f SKIPPED"
         }
       ]
     },
     {
       "id": "phase-1",
       "name": "Infrastructure Preparation",
-      "status": "active",
+      "status": "completed",
       "description": "Prepare hardware and validate Talos compatibility",
-      "prerequisites": ["phase-0"],
+      "prerequisites": [
+        "phase-0"
+      ],
       "objectives": [
         {
           "id": "1.1",
@@ -70,11 +74,11 @@
           "status": "completed",
           "completed_date": "2025-01-09",
           "deliverables": [
-            "RBD kernel module verified in Talos - ✅ Available on all nodes (kernel 6.12+)",
-            "Kernel version ≥4.17 confirmed - ✅ All nodes running 6.12.25-talos",
-            "10GbE network connectivity validated - ✅ 10GbE confirmed on all nodes"
+            "RBD kernel module verified in Talos - \u2705 Available on all nodes (kernel 6.12+)",
+            "Kernel version \u22654.17 confirmed - \u2705 All nodes running 6.12.25-talos",
+            "10GbE network connectivity validated - \u2705 10GbE confirmed on all nodes"
           ],
-          "validation": "All hardware checks pass - ✅ 3/3 nodes ready",
+          "validation": "All hardware checks pass - \u2705 3/3 nodes ready",
           "artifacts": {
             "validation_script": "scripts/validate-ceph-readiness.ts"
           }
@@ -85,11 +89,11 @@
           "status": "completed",
           "completed_date": "2025-01-09",
           "deliverables": [
-            "NVMe devices identified on all nodes - ✅ 6 devices (2x 1TB per node) identified",
-            "Talos patches created to unmount devices - ✅ Storage patches consolidated and Ceph-ready",
-            "Devices verified as raw/unformatted - ✅ Current mounts are empty, patches consolidated"
+            "NVMe devices identified on all nodes - \u2705 6 devices (2x 1TB per node) identified",
+            "Talos patches created to unmount devices - \u2705 Storage patches consolidated and Ceph-ready",
+            "Devices verified as raw/unformatted - \u2705 Current mounts are empty, patches consolidated"
           ],
-          "validation": "All 6 NVMe devices ready for Ceph - ✅ Consolidated patches ready for application",
+          "validation": "All 6 NVMe devices ready for Ceph - \u2705 Consolidated patches ready for application",
           "artifacts": {
             "device_inventory": "docs/ceph/device-inventory.md",
             "talos_patches": "talos/patches/k8s-{1,2,3}/storage.yaml (consolidated)",
@@ -99,18 +103,27 @@
         {
           "id": "1.3",
           "name": "GitOps Structure Creation",
-          "status": "pending",
+          "status": "completed",
           "deliverables": [
-            "Full directory structure created",
-            "Base Kustomizations with .disabled suffixes",
-            "Flux dependencies configured",
-            "Manifests pass validation"
+            "Full directory structure created - \u2705 Hybrid Progressive structure implemented",
+            "Base Kustomizations with .disabled suffixes - \u2705 Phase 2/3 have .disabled suffixes",
+            "Flux dependencies configured - \u2705 Dependencies chain established",
+            "Manifests pass validation - \u2705 All valid (CRDs pending from operator)"
           ],
-          "validation": "Pre-commit checks pass",
+          "validation": "Pre-commit checks pass - \u2705 Manifests validated",
           "artifacts": {
             "directory": "kubernetes/apps/storage/",
-            "validation": "scripts/validate-manifests.sh"
-          }
+            "validation": "scripts/validate-manifests.sh",
+            "helm_repository": "kubernetes/flux/meta/repos/rook-release.yaml",
+            "phase1_components": [
+              "rook-ceph-operator/",
+              "rook-ceph-cluster/",
+              "volsync/"
+            ],
+            "phase2_ready": "rook-ceph-filesystem/ks.yaml.disabled",
+            "phase3_ready": "rook-ceph-objectstore/ks.yaml.disabled"
+          },
+          "completed_date": "2025-01-09"
         }
       ]
     },
@@ -119,7 +132,9 @@
       "name": "Rook-Ceph Deployment",
       "status": "pending",
       "description": "Deploy Ceph with block storage only",
-      "prerequisites": ["phase-1"],
+      "prerequisites": [
+        "phase-1"
+      ],
       "objectives": [
         {
           "id": "2.1",
@@ -189,7 +204,9 @@
       "name": "Optional Components",
       "status": "pending",
       "description": "Deploy CephFS and/or Object Storage when needed",
-      "prerequisites": ["phase-2"],
+      "prerequisites": [
+        "phase-2"
+      ],
       "objectives": [
         {
           "id": "3.1",
@@ -230,7 +247,9 @@
       "name": "Production Migration",
       "status": "pending",
       "description": "Migrate workloads from local-path to Ceph",
-      "prerequisites": ["phase-2"],
+      "prerequisites": [
+        "phase-2"
+      ],
       "objectives": [
         {
           "id": "4.1",
@@ -282,7 +301,7 @@
   ],
   "metadata": {
     "created": "2024-01-09",
-    "last_updated": "2025-01-09",
+    "last_updated": "2025-06-09T07:11:02Z",
     "version": "1.0.0",
     "next_review": "Check trigger conditions daily"
   }

@@ -1,0 +1,26 @@
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStore
+metadata:
+  name: ceph-objectstore
+  namespace: storage
+spec:
+  metadataPool:
+    replicated:
+      size: 3
+  dataPool:
+    replicated:
+      size: 3
+    parameters:
+      compression_mode: passive
+  preservePoolsOnDelete: true
+  gateway:
+    port: 80
+    instances: 2
+    priorityClassName: system-cluster-critical
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "1Gi"
+      limits:
+        memory: "2Gi"

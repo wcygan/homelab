@@ -1,0 +1,24 @@
+---
+# This is a template ReplicationSource for VolSync with Restic backend
+# To use: copy to your namespace and customize the fields
+#
+# apiVersion: volsync.backube/v1alpha1
+# kind: ReplicationSource
+# metadata:
+#   name: volsync-replication
+# spec:
+#   sourcePVC: source-pvc
+#   trigger:
+#     schedule: "0 */1 * * *"  # Hourly
+#   restic:
+#     pruneIntervalDays: 1
+#     repository: volsync-restic-secret
+#     retain:
+#       hourly: 24
+#       daily: 7
+#       weekly: 4
+#       monthly: 3
+#     cacheCapacity: 2Gi
+#     cacheStorageClassName: local-path
+#     storageClassName: ceph-block
+#     volumeSnapshotClassName: csi-ceph-blockpool

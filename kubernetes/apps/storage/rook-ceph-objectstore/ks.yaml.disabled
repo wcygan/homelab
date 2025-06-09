@@ -1,0 +1,23 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app rook-ceph-objectstore
+  namespace: flux-system
+spec:
+  targetNamespace: storage
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  interval: 1h
+  timeout: 10m
+  prune: false
+  wait: true
+  dependsOn:
+    - name: rook-ceph-cluster
+      namespace: flux-system
+  path: ./kubernetes/apps/storage/rook-ceph-objectstore/app
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system

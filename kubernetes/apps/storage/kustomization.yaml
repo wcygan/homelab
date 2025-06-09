@@ -4,4 +4,13 @@ namespace: storage
 components:
   - ../../components/common
 resources:
+  - ./namespace.yaml
   - ./local-path-provisioner/ks.yaml
+  # Phase 1: Active immediately
+  - ./rook-ceph-operator/ks.yaml
+  - ./rook-ceph-cluster/ks.yaml
+  - ./volsync/ks.yaml
+  # Phase 2: Uncomment when RWX needed
+  # - ./rook-ceph-filesystem/ks.yaml
+  # Phase 3: Uncomment when S3 needed
+  # - ./rook-ceph-objectstore/ks.yaml

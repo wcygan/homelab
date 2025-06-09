@@ -16,3 +16,7 @@ resources:
   - ./cloudnative-pg.yaml
   # renovate: datasource=helm depName=node-problem-detector lookupName=node-problem-detector registryUrl=https://charts.deliveryhero.io/
   - ./deliveryhero.yaml
+  # renovate: datasource=helm depName=rook-ceph lookupName=rook-ceph registryUrl=https://charts.rook.io/release
+  - ./rook-release.yaml
+  # renovate: datasource=helm depName=volsync lookupName=volsync registryUrl=https://backube.github.io/helm-charts/
+  - ./backube.yaml

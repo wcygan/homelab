@@ -1,0 +1,29 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: volsync
+spec:
+  interval: 1h
+  releaseName: volsync
+  chart:
+    spec:
+      chart: volsync
+      version: 0.11.1
+      sourceRef:
+        kind: HelmRepository
+        name: backube
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+    cleanupOnFail: true
+  values:
+    manageCRDs: true
+    metrics:
+      disableAuth: true
+    # Enable snapshot support for Ceph
+    snapshotClassName: csi-ceph-blockpool

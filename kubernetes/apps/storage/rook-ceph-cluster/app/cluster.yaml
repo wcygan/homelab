@@ -1,0 +1,117 @@
+---
+apiVersion: ceph.rook.io/v1
+kind: CephCluster
+metadata:
+  name: rook-ceph
+  namespace: storage
+spec:
+  cephVersion:
+    image: quay.io/ceph/ceph:v19.2.0  # Reef stable
+    allowUnsupported: false
+  dataDirHostPath: /var/lib/rook
+  skipUpgradeChecks: false
+  continueUpgradeAfterChecksEvenIfNotHealthy: false
+  mon:
+    count: 3
+    allowMultiplePerNode: false
+  mgr:
+    count: 2
+    allowMultiplePerNode: false
+    modules:
+      - name: diskprediction_local
+        enabled: true
+      - name: pg_autoscaler
+        enabled: true
+      - name: rook
+        enabled: true
+  dashboard:
+    enabled: true
+    ssl: false
+  network:
+    provider: host
+  crashCollector:
+    disable: false
+  logCollector:
+    enabled: true
+    periodicity: daily
+    maxLogSize: 500M
+  cleanupPolicy:
+    confirmation: ""
+    sanitizeDisks:
+      method: quick
+      dataSource: zero
+      iteration: 1
+    allowUninstallWithVolumes: false
+  priorityClassNames:
+    mon: system-node-critical
+    osd: system-node-critical
+    mgr: system-cluster-critical
+  resources:
+    mgr:
+      requests:
+        cpu: "100m"
+        memory: "512Mi"
+      limits:
+        memory: "1Gi"
+    mon:
+      requests:
+        cpu: "100m"
+        memory: "512Mi"
+      limits:
+        memory: "2Gi"
+    osd:
+      requests:
+        cpu: "500m"
+        memory: "2Gi"
+      limits:
+        memory: "4Gi"
+  removeOSDsIfOutAndSafeToRemove: true
+  storage:
+    useAllNodes: true
+    useAllDevices: false
+    deviceFilter: "^nvme[01]n1$"  # Only use the 1TB NVMe drives
+    config:
+      osdsPerDevice: "1"
+    nodes:
+      - name: "k8s-1"
+        devices:
+          - name: "nvme0n1"
+          - name: "nvme1n1"
+      - name: "k8s-2"
+        devices:
+          - name: "nvme0n1"
+          - name: "nvme1n1"
+      - name: "k8s-3"
+        devices:
+          - name: "nvme0n1"
+          - name: "nvme1n1"
+  disruptionManagement:
+    managePodBudgets: true
+    osdMaintenanceTimeout: 30
+    pgHealthCheckTimeout: 0
+---
+apiVersion: ceph.rook.io/v1
+kind: CephBlockPool
+metadata:
+  name: replicapool
+  namespace: storage
+spec:
+  failureDomain: host
+  replicated:
+    size: 3
+    requireSafeReplicaSize: true
+  parameters:
+    compression_mode: aggressive
+    compression_algorithm: zstd
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-deployment-phase
+  namespace: storage
+data:
+  current_phase: "1"
+  phases_enabled:
+    block: "true"
+    filesystem: "false"
+    object: "false"
