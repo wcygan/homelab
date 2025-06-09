@@ -85,7 +85,10 @@
       "WebFetch(domain:rook.io)",
       "Bash(./scripts/validate-ceph-readiness.ts)",
       "Bash(mv:*)",
-      "Bash(task configure)"
+      "Bash(task configure)",
+      "Bash(./scripts/validate-manifests.sh:*)",
+      "Bash(flux get sources helm:*)",
+      "Bash(flux get helmchart:*)"
     ],
     "deny": []
   }

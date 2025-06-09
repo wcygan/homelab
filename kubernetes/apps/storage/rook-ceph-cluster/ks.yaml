@@ -16,8 +16,8 @@ spec:
   dependsOn:
     - name: rook-ceph-operator
       namespace: storage
-    - name: volsync
-      namespace: storage
+    # - name: volsync  # TODO: Fix volsync chart version
+    #   namespace: storage
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
