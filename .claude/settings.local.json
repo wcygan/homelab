@@ -81,7 +81,8 @@
       "Bash(talosctl:*)",
       "Bash(flux get ks:*)",
       "Bash(echo:*)",
-      "WebFetch(domain:www.reddit.com)"
+      "WebFetch(domain:www.reddit.com)",
+      "WebFetch(domain:rook.io)"
     ],
     "deny": []
   }

@@ -190,6 +190,42 @@ For all new applications, use 1Password with External Secrets Operator:
 - **Applies to**: SecretStore, ClusterSecretStore, ExternalSecret, ClusterExternalSecret
 - **Current version**: v0.17.0 (check with `kubectl get deployment -n external-secrets external-secrets -o jsonpath='{.spec.template.spec.containers[0].image}'`)
 
+#### 1Password Integration
+
+For 1Password secrets, use `ExternalSecret` resources with explicit field mapping:
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: app-secrets
+  namespace: default
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword-connect
+    kind: ClusterSecretStore
+  target:
+    name: app-secrets
+    creationPolicy: Owner
+  data:
+    # Map each field individually - field names must match exactly
+    - secretKey: database-url      # Key in K8s secret
+      remoteRef:
+        key: app-config           # Item name in 1Password
+        property: database_url    # Field name in 1Password (case-sensitive!)
+    - secretKey: api-key
+      remoteRef:
+        key: app-config
+        property: api_key
+```
+
+**Important Notes:**
+- **Do NOT use** `OnePasswordItem` CRD unless you have 1Password Operator installed
+- **Field names are case-sensitive** - must match exactly as defined in 1Password
+- **Use setup script** for deployment: `./scripts/setup-1password-connect.ts`
+- **Cannot store credentials in Git** - use manual deployment for Connect server
+
 Example ClusterSecretStore for 1Password:
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -201,7 +237,7 @@ spec:
     onepassword:
       connectHost: http://onepassword-connect.external-secrets.svc.cluster.local:8080
       vaults:
-        Homelab: 1  # Replace with actual vault ID
+        anton: 1  # Use your vault name
       auth:
         secretRef:
           connectTokenSecretRef:

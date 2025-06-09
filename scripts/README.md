@@ -172,6 +172,138 @@ Potential improvements for these scripts:
 - Resource usage analysis
 - Historical trend tracking
 
+## Deno and Dax Patterns
+
+### Cross-Platform Command Execution
+
+All scripts use [Dax](https://github.com/dsherret/dax) for cross-platform shell command execution. Key patterns:
+
+#### Basic Command Execution
+
+```typescript
+import { $ } from "https://deno.land/x/dax@0.35.0/mod.ts";
+
+// Simple command
+await $`kubectl get pods`;
+
+// Capture output
+const result = await $`kubectl get nodes -o json`.text();
+
+// Quiet execution (suppress output)
+await $`helm repo update`.quiet();
+```
+
+#### Handling Pipes and Complex Commands
+
+Dax doesn't support shell pipes directly. Instead, use these patterns:
+
+```typescript
+// ❌ This won't work
+await $`kubectl get pods | grep Running`;
+
+// ✅ Use Dax chaining
+const pods = await $`kubectl get pods`.text();
+const runningPods = pods.split('\n').filter(line => line.includes('Running'));
+
+// ✅ Or use .lines() for line processing
+const lines = await $`kubectl get pods`.lines();
+
+// ✅ For stdin redirection
+const yaml = await $`kubectl create secret generic test --dry-run=client -o yaml`.text();
+await $`kubectl apply -f -`.stdinText(yaml);
+```
+
+#### Error Handling
+
+```typescript
+try {
+  await $`kubectl version --client -o json`.quiet();
+} catch (error) {
+  console.error("kubectl not found");
+  Deno.exit(1);
+}
+```
+
+#### Environment Variables
+
+```typescript
+// Dax inherits Deno's environment
+Deno.env.set("KUBECONFIG", "/path/to/config");
+
+// Or use command-specific env
+await $`kubectl get pods`.env({ NAMESPACE: "default" });
+```
+
+### Common Pitfalls and Solutions
+
+1. **PATH Issues**: Dax uses Deno's environment. If commands aren't found:
+   ```typescript
+   // Check current PATH
+   console.log(Deno.env.get("PATH"));
+   
+   // Ensure command is available
+   const kubectlPath = await $`which kubectl`.text();
+   ```
+
+2. **Command Flags**: Some kubectl flags have changed:
+   ```typescript
+   // ❌ Old flag that doesn't exist
+   await $`kubectl version --client --short`;
+   
+   // ✅ Use supported flags
+   await $`kubectl version --client -o json`;
+   ```
+
+3. **JSON Parsing**: Use built-in JSON support:
+   ```typescript
+   const nodes = await $`kubectl get nodes -o json`.json();
+   console.log(nodes.items.length);
+   ```
+
+4. **Parallel Execution**: Run commands concurrently:
+   ```typescript
+   const [pods, nodes, namespaces] = await Promise.all([
+     $`kubectl get pods -o json`.json(),
+     $`kubectl get nodes -o json`.json(),
+     $`kubectl get namespaces -o json`.json(),
+   ]);
+   ```
+
+### Script Structure Template
+
+```typescript
+#!/usr/bin/env deno run --allow-all
+
+import { $ } from "https://deno.land/x/dax@0.35.0/mod.ts";
+import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts";
+
+// Parse command line arguments
+const args = parse(Deno.args, {
+  boolean: ["verbose", "help"],
+  string: ["namespace"],
+  default: { verbose: false },
+});
+
+// ANSI colors for output
+const colors = {
+  green: (text: string) => `\x1b[32m${text}\x1b[0m`,
+  red: (text: string) => `\x1b[31m${text}\x1b[0m`,
+  yellow: (text: string) => `\x1b[33m${text}\x1b[0m`,
+};
+
+// Main execution
+if (import.meta.main) {
+  try {
+    // Your script logic here
+    const result = await $`kubectl get pods -n ${args.namespace || "default"}`.text();
+    console.log(colors.green("✅ Success"));
+  } catch (error) {
+    console.error(colors.red(`❌ Error: ${error.message}`));
+    Deno.exit(1);
+  }
+}
+```
+
 ---
 
 These scripts follow the [deno-utilities](../.cursor/rules/deno-utilities.mdc)
