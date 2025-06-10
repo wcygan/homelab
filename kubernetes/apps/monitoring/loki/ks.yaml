@@ -21,7 +21,7 @@ spec:
   dependsOn:
     - name: kube-prometheus-stack
       namespace: monitoring
-    - name: external-secrets
-      namespace: external-secrets
-    - name: rook-ceph-cluster
-      namespace: storage
+    # - name: external-secrets
+    #   namespace: external-secrets
+    # - name: rook-ceph-cluster
+    #   namespace: storage
