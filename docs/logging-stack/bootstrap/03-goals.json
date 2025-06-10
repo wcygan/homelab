@@ -135,6 +135,21 @@
             "Set up self-monitoring"
           ],
           "validation": "Loki metrics visible in Prometheus"
+        },
+        {
+          "id": "2.3",
+          "name": "Integration Testing",
+          "status": "completed",
+          "completion_date": "2025-06-10",
+          "notes": "Comprehensive integration test suite validates Loki API, S3 backend, ingestion pipeline, and Ceph storage integration",
+          "deliverables": [
+            "Create logging stack integration tests",
+            "Validate Loki API connectivity and readiness",
+            "Test S3 backend configuration with Ceph",
+            "Verify log ingestion pipeline functionality",
+            "Confirm Ceph S3 storage backend integration"
+          ],
+          "validation": "All 4 integration tests pass - locks down critical functionality against regressions"
         }
       ]
     },
@@ -197,14 +212,16 @@
         {
           "id": "4.2",
           "name": "Functional Testing",
-          "status": "pending",
+          "status": "in_progress",
+          "notes": "Infrastructure integration tests completed. End-to-end application log testing pending Alloy deployment",
           "deliverables": [
-            "Deploy test workloads",
-            "Validate log ingestion",
-            "Test query performance",
-            "Verify retention policies"
+            "Deploy test workloads ✅ (test fixtures created)",
+            "Validate log ingestion ✅ (canary logs verified)",
+            "Test query performance (pending Alloy)",
+            "Verify retention policies (pending)",
+            "Create integration test suite ✅"
           ],
-          "validation": "All test cases pass"
+          "validation": "Infrastructure tests pass, E2E tests pending log collection"
         }
       ]
     },
@@ -325,11 +342,12 @@
   },
   "metadata": {
     "created": "2025-01-10",
-    "last_updated": "2025-01-10",
-    "version": "1.1",
+    "last_updated": "2025-06-10",
+    "version": "1.2",
     "status": "IN_PROGRESS",
     "estimated_total_duration": "14 hours + 1 week monitoring",
     "priority": "HIGH",
-    "business_value": "Critical for production operations and debugging"
+    "business_value": "Critical for production operations and debugging",
+    "recent_progress": "Integration testing completed - Loki + Ceph S3 infrastructure validated and locked down"
   }
 }
