@@ -60,17 +60,18 @@
     {
       "id": "phase-1",
       "name": "Infrastructure Preparation",
-      "status": "in_progress",
+      "status": "completed",
       "started_date": "2025-01-10",
+      "completion_date": "2025-01-10",
       "description": "Prepare S3 storage and repository configurations",
       "estimated_duration": "2 hours",
       "objectives": [
         {
           "id": "1.1",
           "name": "S3 Storage Setup",
-          "status": "mostly_complete",
+          "status": "completed",
           "completion_date": "2025-01-10",
-          "notes": "ObjectStore deployed, credentials created, bucket creation pending",
+          "notes": "ObjectStore deployed, credentials created, bucket created, Loki user configured",
           "prerequisites": [
             "Ceph ObjectStore must be enabled and healthy (see 00-s3-prerequisites.md)",
             "RGW pods must be running",
@@ -88,20 +89,23 @@
         {
           "id": "1.2",
           "name": "Repository Configuration",
-          "status": "pending",
+          "status": "completed",
+          "completion_date": "2025-01-10",
           "deliverables": [
             "Add Grafana Helm repository",
             "Update flux kustomization",
             "Verify chart availability"
           ],
-          "validation": "helm search repo grafana/loki shows latest version"
+          "validation": "helm search repo grafana/loki shows latest version",
+          "notes": "Grafana Helm repository already configured in flux"
         }
       ]
     },
     {
       "id": "phase-2",
       "name": "Loki Deployment",
-      "status": "pending",
+      "status": "in_progress",
+      "started_date": "2025-01-10",
       "description": "Deploy Loki in Simple Scalable mode with S3 backend",
       "estimated_duration": "4 hours",
       "prerequisites": ["phase-1"],
@@ -109,7 +113,8 @@
         {
           "id": "2.1",
           "name": "Core Deployment",
-          "status": "pending",
+          "status": "in_progress",
+          "notes": "HelmRelease created but experiencing deployment issues with v6.23.0 chart template",
           "deliverables": [
             "Deploy Loki HelmRelease",
             "Configure Simple Scalable mode",
