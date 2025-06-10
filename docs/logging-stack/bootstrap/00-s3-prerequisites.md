@@ -14,22 +14,71 @@ This guide ensures Ceph ObjectStore (S3) is fully operational before deploying L
 
 ## Prerequisites Checklist
 
-### 1. Enable Ceph ObjectStore
+### 0. Clean Up Previous Failed Attempts (if applicable)
+
+If you had previous ObjectStore deployment issues:
 
 ```bash
-# Navigate to the ObjectStore configuration
-cd kubernetes/apps/storage/rook-ceph-objectstore/
+# Run cleanup script to remove stuck resources
+./scripts/fix-stuck-ceph-resources.ts
 
-# Enable the ObjectStore (currently disabled)
-mv ks.yaml.disabled ks.yaml
+# Verify cleanup
+kubectl get cephobjectstore -A
+kubectl get cephcluster -A
+# Should only show healthy 'rook-ceph' cluster
+```
 
-# Commit and push the change
-git add ks.yaml
-git commit -m "feat(storage): enable Ceph ObjectStore for Loki S3 backend"
+### 1. Fix and Enable Ceph ObjectStore
+
+First, ensure the ObjectStore configuration is correct to avoid multisite issues:
+
+```bash
+# Update the objectstore.yaml to use simplified configuration
+cat > kubernetes/apps/storage/rook-ceph-objectstore/app/objectstore.yaml << 'EOF'
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStore
+metadata:
+  name: storage
+  namespace: storage
+spec:
+  metadataPool:
+    replicated:
+      size: 3
+  dataPool:
+    replicated:
+      size: 3
+    parameters:
+      compression_mode: passive
+  preservePoolsOnDelete: false
+  gateway:
+    port: 80
+    instances: 2
+    priorityClassName: system-cluster-critical
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "1Gi"
+      limits:
+        memory: "2Gi"
+EOF
+
+# Ensure all references use 'storage' as the ObjectStore name
+sed -i '' 's/objectStoreName: .*/objectStoreName: storage/' kubernetes/apps/storage/rook-ceph-objectstore/app/storageclass.yaml
+sed -i '' 's/name: rook-ceph-rgw-.*/name: rook-ceph-rgw-storage/' kubernetes/apps/storage/rook-ceph-objectstore/app/ingress.yaml
+
+# Enable the ObjectStore if disabled
+if [ -f kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml.disabled ]; then
+  mv kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml.disabled kubernetes/apps/storage/rook-ceph-objectstore/ks.yaml
+fi
+
+# Commit and push the changes
+git add -A
+git commit -m "feat(storage): enable Ceph ObjectStore with simplified config for S3"
 git push
 
 # Force reconciliation
-flux reconcile kustomization cluster-apps
+flux reconcile kustomization cluster-apps --with-source
 ```
 
 ### 2. Monitor ObjectStore Deployment

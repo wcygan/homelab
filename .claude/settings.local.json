@@ -113,7 +113,10 @@
       "Bash(./scripts/network-monitor.ts --json)",
       "Bash(./scripts/cleanup-completed-pods.ts)",
       "mcp__kubernetes__kubectl_list",
-      "Bash(flux get helmrepository:*)"
+      "Bash(flux get helmrepository:*)",
+      "Bash(./scripts/test-logging-stack.ts)",
+      "Bash(./scripts/verify-logging-quickstart.sh:*)",
+      "Bash(./scripts/fix-stuck-ceph-resources.ts)"
     ],
     "deny": []
   }

@@ -329,9 +329,11 @@ spec:
       namespace: storage
 ```
 
-## Phase 3: Alloy Configuration
+## Phase 3: Alloy Configuration (Modern Log Agent)
 
 ### Step 3.1: Create Alloy HelmRelease
+
+**Note**: Alloy is the modern replacement for Promtail, offering better performance and features.
 
 ```yaml
 # kubernetes/apps/monitoring/alloy/app/helmrelease.yaml
@@ -346,7 +348,7 @@ spec:
   chart:
     spec:
       chart: alloy
-      version: 0.10.0  # Check for latest version
+      version: 1.1.1  # Latest stable version
       sourceRef:
         kind: HelmRepository
         name: grafana

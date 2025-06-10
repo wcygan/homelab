@@ -5,5 +5,3 @@ components:
   - ../../components/common
 resources:
   - ./kube-prometheus-stack/ks.yaml
-  - ./loki/ks.yaml
-  - ./promtail/ks.yaml

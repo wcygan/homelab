@@ -6,26 +6,26 @@ This documentation provides comprehensive guidance for deploying and operating a
 
 ## Current Status
 
-**Status**: PENDING S3 PREREQUISITES  
+**Status**: PENDING - CLEAN SLATE IMPLEMENTATION  
 **Last Updated**: January 2025  
-**Version**: 1.1
-**Deployment Approach**: S3-First (Production)
+**Version**: 2.0
+**Deployment Approach**: S3-First with Loki + Alloy (Production)
 
 ### Key Highlights
 - **Trigger Met**: All deployment conditions satisfied (100Gi Airflow logs)
 - **Architecture**: Simple Scalable mode selected for production readiness
 - **Storage**: S3-First approach - Ceph S3 must be enabled before deployment
-- **Migration Path**: Clear path to migrate from 100Gi Airflow PVC to centralized logging
-- **Decision**: S3-First deployment chosen to avoid migration complexity
+- **Log Agent**: Alloy (modern Grafana agent) instead of deprecated Promtail
+- **Clean Slate**: Previous quickstart deployment removed for proper implementation
 
 ## Documentation Structure
 
 ### Bootstrap Guides
-1. **[00-readiness.md](bootstrap/00-readiness.md)** - Infrastructure validation and requirements
-2. **[01-planning.md](bootstrap/01-planning.md)** - Architecture design and deployment strategy
-3. **[02-implementation-guide.md](bootstrap/02-implementation-guide.md)** - Step-by-step deployment instructions
-4. **[03-goals.json](bootstrap/03-goals.json)** - Structured objectives and success metrics
-5. **[04-quickstart.md](bootstrap/04-quickstart.md)** - Fast deployment with minimal configuration
+1. **[00-s3-prerequisites.md](bootstrap/00-s3-prerequisites.md)** - S3 setup guide (MUST complete first)
+2. **[00-readiness.md](bootstrap/00-readiness.md)** - Infrastructure validation and requirements
+3. **[01-planning.md](bootstrap/01-planning.md)** - Architecture design and deployment strategy
+4. **[02-implementation-guide.md](bootstrap/02-implementation-guide.md)** - Step-by-step deployment instructions
+5. **[03-goals.json](bootstrap/03-goals.json)** - Structured objectives and success metrics
 
 ### Operations Guides (To Be Created)
 - `operations/daily-health-check.md` - Daily operational tasks
