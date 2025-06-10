@@ -15,7 +15,7 @@ spec:
   wait: true
   dependsOn:
     - name: rook-ceph-cluster
-      namespace: flux-system
+      namespace: storage
   path: ./kubernetes/apps/storage/rook-ceph-objectstore/app
   sourceRef:
     kind: GitRepository
