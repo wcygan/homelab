@@ -4,6 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with
 code in this repository. It automatically loads into conversations to provide
 project-specific context and instructions.
 
+## MCP Server Usage for Informed Decision Making
+
+**CRITICAL**: When working with this Kubernetes homelab, leverage MCP servers for accurate, documentation-based decisions:
+
+### Context7 MCP Server
+
+Use the Context7 MCP server to access official documentation for any technology used in this project:
+
+1. **Resolve Library IDs First**: 
+   ```
+   /mcp context7:resolve-library-id <library-name>
+   ```
+   Example: For Rook documentation, use `rook` to get `/rook/rook`
+
+2. **Fetch Documentation**: 
+   ```
+   /mcp context7:get-library-docs <library-id> [topic] [tokens]
+   ```
+   Example: `/mcp context7:get-library-docs /kubernetes/website "persistent volumes" 5000`
+
+**Common Libraries for this Homelab**:
+- `/kubernetes/website` - Kubernetes core concepts and resources
+- `/rook/rook` - Rook Ceph storage orchestration
+- `/fluxcd/flux2` - Flux GitOps toolkit
+- `/cilium/cilium` - Cilium CNI and networking
+- `/prometheus-operator/prometheus-operator` - Monitoring stack
+
+### Sequential Thinking MCP Server
+
+Use the Sequential Thinking server for complex problem-solving and decision-making:
+
+```
+/mcp sequential-thinking:sequential_thinking <prompt>
+```
+
+**Use Cases**:
+- Analyzing upgrade paths and breaking changes
+- Debugging complex multi-component issues
+- Planning architectural changes
+- Evaluating security implications
+
+### Decision-Making Process
+
+When making technical decisions or troubleshooting:
+
+1. **Gather Facts**: Use Context7 to fetch relevant official documentation
+2. **Analyze**: Use Sequential Thinking for complex reasoning about the facts
+3. **Verify**: Cross-reference with existing cluster configuration via Kubernetes MCP
+4. **Implement**: Make changes based on documented best practices, not assumptions
+
+**Example Workflow**:
+```bash
+# 1. Research storage options
+/mcp context7:get-library-docs /rook/rook "ceph cluster configuration" 5000
+
+# 2. Analyze implications
+/mcp sequential-thinking:sequential_thinking "Given a 3-node cluster with 2 NVMe drives per node, analyze the optimal Ceph replication strategy considering performance, resilience, and capacity"
+
+# 3. Verify current state
+/mcp kubernetes:kubectl_get "cephcluster" "storage" "storage"
+
+# 4. Implement based on findings
+```
+
+This approach ensures all decisions are grounded in official documentation and well-reasoned analysis, not guesswork or outdated information.
+
 ## Repository Overview
 
 This is "Anton" - a production-grade Kubernetes homelab running on 3 MS-01 mini
