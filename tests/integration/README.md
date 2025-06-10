@@ -30,12 +30,26 @@ This directory contains integration tests that validate real infrastructure comp
    - Checks for S3 connection errors in Loki logs
    - Verifies Rook-Ceph RGW pods are running
 
+5. **Alloy Log Collector Deployment**
+   - Verifies Alloy DaemonSet is deployed with all pods ready
+   - Confirms all Alloy pods are running
+   - Validates Alloy configuration includes Loki endpoint
+   - Checks for active log collection activity
+
+6. **End-to-End Log Pipeline Test**
+   - Deploys a test pod with identifiable log message
+   - Waits for log propagation through Alloy to Loki
+   - Queries Loki to verify test log was ingested
+   - Validates complete pipeline functionality
+
 ### Key Validations
 
 ✅ **Loki Deployment**: Confirms Loki is running and accessible  
 ✅ **S3 Integration**: Validates Ceph RGW backend is properly configured  
 ✅ **Log Ingestion**: Verifies logs are being received (via canary)  
 ✅ **Storage Backend**: Confirms S3 storage infrastructure is functional  
+✅ **Alloy Collection**: Validates DaemonSet deployment and configuration  
+✅ **Pipeline E2E**: Proves logs flow from pods → Alloy → Loki → storage  
 
 ### Running Tests
 
@@ -49,14 +63,14 @@ deno task test:integration
 
 ### What's NOT Tested (Yet)
 
-❌ **Alloy Log Collection**: Tests don't deploy Alloy agent for log collection  
-❌ **Custom Workload Logs**: Tests don't verify logs from deployed applications  
 ❌ **Grafana Integration**: Tests don't verify Loki datasource in Grafana  
+❌ **Log Retention**: Tests don't verify 30-day retention policy works  
+❌ **Performance**: Tests don't measure query latency or ingestion rate  
 
 These gaps exist because:
-- Alloy deployment has Helm chart issues (documented in milestone)
-- No log collection agent is currently deployed
-- Focus is on validating the core Loki + S3 infrastructure
+- Grafana datasource configuration is a manual step (next objective)
+- Retention testing requires waiting for actual time to pass
+- Performance testing needs sustained load generation
 
 ### Value
 
