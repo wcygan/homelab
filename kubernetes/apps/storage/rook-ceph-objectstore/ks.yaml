@@ -13,9 +13,9 @@ spec:
   timeout: 10m
   prune: false
   wait: true
-  dependsOn:
-    - name: rook-ceph-cluster
-      namespace: storage
+  # dependsOn:
+  #   - name: rook-ceph-cluster
+  #     namespace: storage
   path: ./kubernetes/apps/storage/rook-ceph-objectstore/app
   sourceRef:
     kind: GitRepository
