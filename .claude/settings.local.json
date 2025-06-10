@@ -122,7 +122,8 @@
       "mcp__context7__get-library-docs",
       "Bash(mc ls:*)",
       "Bash(./scripts/test-s3-integration.ts)",
-      "Bash(helm list:*)"
+      "Bash(helm list:*)",
+      "Bash(deno test:*)"
     ],
     "deny": []
   }
