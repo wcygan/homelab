@@ -56,33 +56,33 @@ Successfully completed Phase 1 (Infrastructure Preparation) and implemented the 
 - **Alloy**: Manifests created, awaiting deployment
 - **Grafana Integration**: Loki datasource already configured in kube-prometheus-stack
 
+## Current Issues
+
+### Loki Deployment Failed
+- **Error**: Helm template error with bucketNames configuration
+- **Root Cause**: Loki v6.23.0 chart expects different storage configuration structure
+- **Issue**: `nil pointer evaluating interface {}.chunks` in commonStorageConfig
+
+### Blocked Dependencies
+- **onepassword-connect**: ClusterSecretStore failing (status 500)
+- **rook-ceph-cluster**: Kustomization blocked by ExternalSecret dependency
+- **Impact**: Multiple deployments waiting on these dependencies
+
 ## Next Steps
 
-1. **Commit and Deploy**:
-   ```bash
-   git commit -m "feat(monitoring): add Loki + Alloy centralized logging stack"
-   git push
-   flux reconcile source git flux-system
-   ```
+1. **Fix Loki Chart Configuration**:
+   - Research correct v6.23.0 values structure
+   - Consider downgrading to stable version if needed
+   - Update storage configuration to match chart expectations
 
-2. **Monitor Deployment**:
-   ```bash
-   # Watch Flux reconciliation
-   flux get kustomization -A --watch
-   
-   # Check pod status
-   kubectl get pods -n monitoring -l app.kubernetes.io/name=loki
-   kubectl get pods -n monitoring -l app.kubernetes.io/name=alloy
-   ```
+2. **Resolve Dependency Issues**:
+   - Fix onepassword-connect service
+   - Or remove ExternalSecret dependencies temporarily
 
-3. **Verify S3 Bucket Creation**:
-   - Check if ObjectBucketClaim binds and creates bucket
-   - May need to manually create bucket if OBC doesn't work
-
-4. **Test Log Ingestion**:
-   - Deploy test pod
-   - Query logs in Grafana
-   - Verify all nodes are shipping logs
+3. **Test with Simplified Config**:
+   - Use minimal Loki configuration
+   - Focus on getting basic deployment working
+   - Add features incrementally
 
 ## Risks & Mitigations
 

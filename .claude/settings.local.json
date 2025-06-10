@@ -121,7 +121,8 @@
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
       "Bash(mc ls:*)",
-      "Bash(./scripts/test-s3-integration.ts)"
+      "Bash(./scripts/test-s3-integration.ts)",
+      "Bash(helm list:*)"
     ],
     "deny": []
   }

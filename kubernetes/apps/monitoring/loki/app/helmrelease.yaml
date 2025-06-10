@@ -31,6 +31,10 @@ spec:
     loki:
       auth_enabled: false
       
+      # Common configuration for replication
+      commonConfig:
+        replication_factor: 3
+      
       schemaConfig:
         configs:
           - from: "2024-04-01"
@@ -144,6 +148,10 @@ spec:
         enabled: true
         grafanaAgent:
           installOperator: false
+    
+    # Disable MinIO since we're using Ceph S3
+    minio:
+      enabled: false
     
     # Test
     test:
