@@ -5,3 +5,4 @@ resources:
   - ./objectstore.yaml
   - ./storageclass.yaml
   - ./ingress.yaml
+  - ./user.yaml

@@ -1,0 +1,13 @@
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: loki
+  namespace: storage
+spec:
+  store: storage
+  displayName: "Loki S3 User"
+  # Grant full access to the user
+  capabilities:
+    user: "*"
+    bucket: "*"

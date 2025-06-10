@@ -24,6 +24,7 @@
     "list-models": "deno run --allow-read --allow-run --allow-net scripts/list-models.ts",
     "talos:install-config": "deno run --allow-all scripts/install-talosconfig.ts",
     "1p:install": "deno run --allow-all scripts/setup-1password-connect.ts",
-    "1p:uninstall": "deno run --allow-all scripts/setup-1password-connect.ts --uninstall"
+    "1p:uninstall": "deno run --allow-all scripts/setup-1password-connect.ts --uninstall",
+    "test:s3": "deno run --allow-all scripts/test-s3-integration.ts"
   }
 }

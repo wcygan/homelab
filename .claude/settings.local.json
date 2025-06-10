@@ -117,7 +117,9 @@
       "Bash(./scripts/test-logging-stack.ts)",
       "Bash(./scripts/verify-logging-quickstart.sh:*)",
       "Bash(./scripts/fix-stuck-ceph-resources.ts)",
-      "WebFetch(domain:www.anthropic.com)"
+      "WebFetch(domain:www.anthropic.com)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
     ],
     "deny": []
   }
