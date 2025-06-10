@@ -26,14 +26,11 @@ spec:
       strategy: rollback
       retries: 3
   values:
-    # Simple scalable deployment mode
     deploymentMode: SimpleScalable
     
     loki:
-      # Disable multi-tenancy for homelab
       auth_enabled: false
       
-      # Use TSDB for index storage
       schemaConfig:
         configs:
           - from: "2024-04-01"
@@ -44,50 +41,26 @@ spec:
               prefix: loki_index_
               period: 24h
       
-      # S3 storage configuration using existing credentials
       storage:
         type: s3
-        s3:
-          endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
-          region: us-east-1  # Required but ignored by Ceph
-          s3ForcePathStyle: true
-          insecure: true
-          accessKeyId: ${AWS_ACCESS_KEY_ID}
-          secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
         bucketNames:
           chunks: loki-logs
           ruler: loki-logs
           admin: loki-logs
-      
-      # Storage config for chunks and ruler
-      storage_config:
-        aws:
+        s3:
           endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
           region: us-east-1
-          bucketnames: loki-logs
-          s3forcepathstyle: true
+          s3ForcePathStyle: true
           insecure: true
-          access_key_id: ${AWS_ACCESS_KEY_ID}
-          secret_access_key: ${AWS_SECRET_ACCESS_KEY}
-      
-      # Common storage config
-      commonConfig:
-        replication_factor: 3
-      
-      # Querier configuration
+          accessKeyId: ${AWS_ACCESS_KEY_ID}
+          secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+          
       querier:
         multi_tenant_queries_enabled: false
         max_concurrent: 20
       
-      # Query frontend configuration
-      frontend:
-        compress_responses: true
-        max_outstanding_per_tenant: 200
-      
-      # Limits configuration
       limits_config:
-        retention_period: 720h  # 30 days
-        retention_stream: []
+        retention_period: 720h
         enforce_metric_name: false
         reject_old_samples: true
         reject_old_samples_max_age: 168h
@@ -99,79 +72,62 @@ spec:
         max_streams_per_user: 10000
         max_global_streams_per_user: 10000
     
-    # Global configuration  
-    global:
-      extraEnvFrom:
-        - secretRef:
-            name: loki-s3-credentials
-    
-    # Write component
-    write:
-      replicas: 2
-      persistence:
-        enabled: true
-        storageClass: ceph-block
-        size: 10Gi
-      resources:
-        requests:
-          cpu: 1
-          memory: 2Gi
-        limits:
-          cpu: 2
-          memory: 4Gi
-      extraEnvFrom:
-        - secretRef:
-            name: loki-s3-credentials
-    
-    # Read component
-    read:
-      replicas: 2
-      persistence:
-        enabled: true
-        storageClass: ceph-block
-        size: 5Gi
-      resources:
-        requests:
-          cpu: 1
-          memory: 2Gi
-        limits:
-          cpu: 2
-          memory: 4Gi
-      extraEnvFrom:
-        - secretRef:
-            name: loki-s3-credentials
-    
-    # Backend component
+    # Backend configuration
     backend:
       replicas: 1
       persistence:
         enabled: true
-        storageClass: ceph-block
         size: 5Gi
+        storageClass: ceph-block
       resources:
         requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
           cpu: 500m
           memory: 1Gi
+    
+    # Write configuration
+    write:
+      replicas: 2
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: ceph-block
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
         limits:
           cpu: 1
           memory: 2Gi
-      extraEnvFrom:
-        - secretRef:
-            name: loki-s3-credentials
+    
+    # Read configuration
+    read:
+      replicas: 2
+      persistence:
+        enabled: true
+        size: 5Gi
+        storageClass: ceph-block
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 2Gi
     
     # Gateway configuration
     gateway:
       enabled: true
       replicas: 2
-      ingress:
-        enabled: false  # We'll use internal access only
       resources:
         requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
           cpu: 500m
           memory: 512Mi
-        limits:
-          cpu: 1
-          memory: 1Gi
     
     # Monitoring
     monitoring:
@@ -192,3 +148,9 @@ spec:
     # Test
     test:
       enabled: false
+      
+    # Environment variables for all components
+    global:
+      extraEnvFrom:
+        - secretRef:
+            name: loki-s3-credentials
