@@ -2,7 +2,7 @@
   "initiative": {
     "name": "Loki + Alloy Centralized Logging Implementation",
     "description": "Deploy production-grade centralized logging using Grafana Loki and Alloy to replace local file-based logging",
-    "status": "pending",
+    "status": "active",
     "trigger_conditions": {
       "description": "Initiative should start when ANY condition is met",
       "conditions": [
@@ -113,8 +113,9 @@
         {
           "id": "2.1",
           "name": "Core Deployment",
-          "status": "in_progress",
-          "notes": "HelmRelease created but experiencing deployment issues with v6.23.0 chart template",
+          "status": "completed",
+          "completion_date": "2025-01-10",
+          "notes": "Successfully deployed Loki v6.30.1 in SingleBinary mode with S3 backend after fixing configuration issues",
           "deliverables": [
             "Deploy Loki HelmRelease",
             "Configure Simple Scalable mode",
@@ -140,7 +141,8 @@
     {
       "id": "phase-3",
       "name": "Alloy Configuration",
-      "status": "pending",
+      "status": "in_progress",
+      "started_date": "2025-01-10",
       "description": "Deploy and configure Alloy for log collection",
       "estimated_duration": "3 hours",
       "prerequisites": ["phase-2"],
@@ -148,7 +150,8 @@
         {
           "id": "3.1",
           "name": "Alloy Deployment",
-          "status": "pending",
+          "status": "in_progress",
+          "notes": "Deployment attempted but encountering Helm chart template issues with volume configuration",
           "deliverables": [
             "Deploy Alloy DaemonSet",
             "Configure log discovery",
@@ -323,8 +326,8 @@
   "metadata": {
     "created": "2025-01-10",
     "last_updated": "2025-01-10",
-    "version": "1.0",
-    "status": "READY_TO_START",
+    "version": "1.1",
+    "status": "IN_PROGRESS",
     "estimated_total_duration": "14 hours + 1 week monitoring",
     "priority": "HIGH",
     "business_value": "Critical for production operations and debugging"
