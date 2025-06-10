@@ -86,7 +86,7 @@
       "Bash(./scripts/validate-ceph-readiness.ts)",
       "Bash(mv:*)",
       "Bash(task configure)",
-      "Bash(./scripts/validate-manifests.sh:*)",
+      "Bash(deno task validate)",
       "Bash(flux get sources helm:*)",
       "Bash(flux get helmchart:*)",
       "Bash(helm template:*)",

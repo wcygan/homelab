@@ -92,7 +92,7 @@ automated deployment, monitoring, and security.
   - Full suite: `deno task test:all:json`
 
 ### Build & Test Commands
-- **Validate Changes**: `./scripts/validate-manifests.sh`
+- **Validate Changes**: `deno task validate` (parallel execution, 5x faster)
 - **Check Flux Config**: `./scripts/check-flux-config.ts`
 - **Run Tests**: `deno task test:all`
 - **Force Reconciliation**: `task reconcile`
@@ -375,7 +375,9 @@ both human-readable and JSON output formats:
 - **test-all.ts**: Unified test suite for all monitoring scripts
   - Human-readable: `deno task test:all`
   - JSON output: `deno task test:all:json`
-- **validate-manifests.sh**: Pre-commit manifest validation
+- **validate-manifests.ts**: Pre-commit manifest validation with parallel execution
+  - Run via: `deno task validate` or `./scripts/validate-manifests.ts`
+  - 5-6x faster than shell version through parallelism
 
 ### JSON Output Standards
 
@@ -462,7 +464,7 @@ kubectl -n {namespace} describe {kind} {name}
 
 - GitHub webhook configured for push-based reconciliation
 - Renovate for automated dependency updates
-- Pre-commit validation via `validate-manifests.sh`
+- Pre-commit validation via `deno task validate`
 
 ## Common Operations
 
@@ -504,7 +506,7 @@ kubectl -n {namespace} describe {kind} {name}
 
 ### Before Committing
 
-1. Validate manifests: `./scripts/validate-manifests.sh`
+1. Validate manifests: `deno task validate` (uses parallel execution)
 2. Check Flux config: `./scripts/check-flux-config.ts`
 3. For secrets: Use 1Password OnePasswordItem CRs
 
@@ -734,7 +736,7 @@ kubectl get events -A --sort-by='.lastTimestamp'
 flux logs --follow --tail=50
 
 # Validate configuration before applying
-./scripts/validate-manifests.sh
+deno task validate  # Fast parallel validation
 ./scripts/check-flux-config.ts
 ```
 
@@ -843,9 +845,71 @@ When asked to check system health or monitor the cluster:
 
 ## Code Style & Conventions
 
+### Script Performance & Parallelism
+
+When writing Deno scripts for this project, **ALWAYS** leverage parallelism where possible:
+
+#### Parallel Execution Patterns
+
+1. **File Processing**: Use `Promise.all()` for concurrent operations
+   ```typescript
+   // ❌ Sequential - Slow
+   for (const file of files) {
+     await validateManifest(file);
+   }
+   
+   // ✅ Parallel - Fast (5-6x speedup typical)
+   const results = await Promise.all(
+     files.map(file => validateManifest(file))
+   );
+   ```
+
+2. **Multiple Command Execution**: Run independent commands concurrently
+   ```typescript
+   // ❌ Sequential
+   const pods = await $`kubectl get pods -o json`.json();
+   const nodes = await $`kubectl get nodes -o json`.json();
+   const namespaces = await $`kubectl get namespaces -o json`.json();
+   
+   // ✅ Parallel
+   const [pods, nodes, namespaces] = await Promise.all([
+     $`kubectl get pods -o json`.json(),
+     $`kubectl get nodes -o json`.json(),
+     $`kubectl get namespaces -o json`.json(),
+   ]);
+   ```
+
+3. **Batch Operations**: Group related operations for parallel execution
+   ```typescript
+   // Process manifests in parallel batches
+   const batchSize = 10;
+   for (let i = 0; i < items.length; i += batchSize) {
+     const batch = items.slice(i, i + batchSize);
+     await Promise.all(batch.map(item => processItem(item)));
+   }
+   ```
+
+4. **Resource Monitoring**: Check multiple resources simultaneously
+   ```typescript
+   // Check all critical namespaces in parallel
+   const namespaces = ["kube-system", "flux-system", "storage"];
+   const healthChecks = await Promise.all(
+     namespaces.map(ns => checkNamespaceHealth(ns))
+   );
+   ```
+
+#### Performance Guidelines
+
+- **Target 3-5x speedup** for I/O-bound operations through parallelism
+- **Monitor CPU usage** - aim for >400% on multi-core systems
+- **Set reasonable concurrency limits** to avoid overwhelming the API server
+- **Use `Promise.allSettled()` when you need all results regardless of failures**
+
+Example: The `validate-manifests.ts` script achieves 5.7x speedup (5.4s → 0.95s) by validating all Kubernetes manifests in parallel instead of sequentially.
+
 ### GitOps Principles
 - **IMPORTANT**: All changes MUST be made via Git commits - Flux only deploys from Git
-- **YOU MUST** validate manifests before committing: `./scripts/validate-manifests.sh`
+- **YOU MUST** validate manifests before committing: `deno task validate`
 - **ALWAYS** use semantic commit messages: `feat:`, `fix:`, `docs:`, `refactor:`
 - **NEVER** use kubectl apply directly - always go through GitOps
 

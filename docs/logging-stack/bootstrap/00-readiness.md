@@ -4,6 +4,46 @@
 
 This document provides a comprehensive readiness assessment for deploying Grafana Loki and Alloy (formerly Grafana Agent) as a centralized logging solution for the Kubernetes homelab. The logging stack will address current pain points with Airflow pod logs and provide cluster-wide log aggregation.
 
+## MCP Server Usage for Readiness Validation
+
+Use MCP servers to validate readiness and make informed decisions:
+
+### Infrastructure Validation
+```bash
+# Check Kubernetes version and capabilities
+/mcp kubernetes:kubectl_generic "version" "--short=true"
+/mcp kubernetes:list_api_resources --namespaced=true | grep "objectbuckets"
+
+# Verify storage resources
+/mcp kubernetes:kubectl_get "storageclass" 
+/mcp kubernetes:kubectl_describe "cephcluster" "storage" "storage"
+
+# Check existing monitoring stack
+/mcp kubernetes:kubectl_get "helmrelease" "monitoring" 
+/mcp kubernetes:kubectl_get "pods" "monitoring" "-l app.kubernetes.io/name=grafana"
+```
+
+### Documentation-Based Planning
+```bash
+# Research Loki deployment modes
+/mcp context7:get-library-docs /grafana/loki "deployment modes comparison" 5000
+
+# Understand Alloy vs Promtail migration
+/mcp context7:get-library-docs /grafana/alloy "migrate from promtail" 3000
+
+# Check S3 storage requirements
+/mcp context7:get-library-docs /rook/rook "object storage setup" 4000
+```
+
+### Resource Capacity Analysis
+```bash
+# Analyze current resource usage
+/mcp sequential-thinking:sequential_thinking "Given cluster metrics showing 288GB total RAM with current usage at 45GB, analyze if we can safely deploy Loki Simple Scalable mode requiring 15.5GB RAM while maintaining 30% headroom"
+
+# Check node capacity
+/mcp kubernetes:kubectl_generic "top" "nodes"
+```
+
 ## Current State Analysis
 
 ### Pain Points

@@ -15,7 +15,13 @@
 import $ from "@david/dax";
 import { walk } from "@std/fs";
 import { join, relative } from "@std/path";
-import { colors } from "@cliffy/ansi";
+
+// Simple color functions using ANSI escape codes
+const colors = {
+  red: (text: string) => `\x1b[31m${text}\x1b[0m`,
+  green: (text: string) => `\x1b[32m${text}\x1b[0m`,
+  yellow: (text: string) => `\x1b[33m${text}\x1b[0m`,
+};
 
 // Template variable substitutions
 const TEMPLATE_SUBSTITUTIONS = [
@@ -42,7 +48,7 @@ interface DragonflyValidationResult {
  */
 async function isKubectlAvailable(): Promise<boolean> {
   try {
-    await $`kubectl version --client --short`.quiet();
+    await $`kubectl version --client`.quiet();
     return true;
   } catch {
     return false;

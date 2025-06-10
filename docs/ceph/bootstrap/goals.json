@@ -113,7 +113,7 @@
           "validation": "Pre-commit checks pass - \u2705 Manifests validated",
           "artifacts": {
             "directory": "kubernetes/apps/storage/",
-            "validation": "scripts/validate-manifests.sh",
+            "validation": "deno task validate",
             "helm_repository": "kubernetes/flux/meta/repos/rook-release.yaml",
             "phase1_components": [
               "rook-ceph-operator/",

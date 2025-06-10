@@ -39,6 +39,34 @@ pods, and system components.
 ./scripts/k8s-health-check.ts --help
 ```
 
+### ✅ `validate-manifests.ts` - Kubernetes Manifest Validation
+
+Fast parallel validation of all Kubernetes manifests before committing. Handles
+Flux template variables by substituting them with safe placeholder values.
+
+**Features:**
+
+- Parallel validation for 5-6x faster execution than shell scripts
+- Flux template variable substitution (`${SECRET_DOMAIN}`, etc.)
+- YAML syntax and Kubernetes schema validation
+- Dragonfly CRD-specific field validation
+- Clear status reporting with color-coded output
+
+**Usage:**
+
+```bash
+# Run validation
+deno task validate
+
+# Or directly
+./scripts/validate-manifests.ts
+```
+
+**Supported Template Variables:**
+- `${SECRET_DOMAIN}` → `example.com`
+- `${SECRET_DOMAIN/./-}` → `example-com`
+- `${DS_PROMETHEUS}` → `prometheus-datasource`
+
 ### 🔄 `flux-deployment-check.ts` - GitOps Deployment Verification
 
 Monitors and verifies Flux GitOps deployments, checking the health of

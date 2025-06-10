@@ -4,6 +4,44 @@
 
 This guide provides step-by-step instructions for deploying the Loki + Alloy logging stack on the Kubernetes homelab. Follow these steps in order to ensure a successful deployment.
 
+## MCP Server Usage During Implementation
+
+Use MCP servers throughout the implementation for real-time validation and troubleshooting:
+
+### Pre-Implementation Checks
+```bash
+# Verify cluster readiness
+/mcp kubernetes:kubectl_get "nodes" 
+/mcp kubernetes:kubectl_generic "top" "nodes"
+
+# Check existing resources
+/mcp kubernetes:kubectl_get "helmrelease" "monitoring"
+/mcp kubernetes:kubectl_get "helmrepository" "flux-system" 
+```
+
+### During Deployment
+```bash
+# Monitor Flux reconciliation
+/mcp kubernetes:kubectl_get "kustomization" "flux-system" "--watch"
+/mcp kubernetes:kubectl_get "helmrelease" "monitoring" "--watch"
+
+# Check pod status
+/mcp kubernetes:kubectl_get "pods" "monitoring" "-l app.kubernetes.io/name=loki"
+/mcp kubernetes:kubectl_describe "pod" "monitoring" "loki-write-0"
+
+# View logs for troubleshooting
+/mcp kubernetes:kubectl_logs "monitoring" "loki-write-0" "--tail=100"
+```
+
+### Configuration Validation
+```bash
+# Get Helm chart values documentation
+/mcp context7:get-library-docs /grafana/loki "helm values configuration" 5000
+
+# Validate S3 configuration
+/mcp sequential-thinking:sequential_thinking "Review this Loki S3 configuration for Ceph compatibility: endpoint: rook-ceph-rgw-storage.storage.svc.cluster.local, s3ForcePathStyle: true, region: us-east-1"
+```
+
 ## Pre-Implementation: S3 Validation (REQUIRED)
 
 Before starting the implementation, ensure S3 is operational:
@@ -29,6 +67,16 @@ kubectl run -it --rm s3-test --image=minio/mc:latest --restart=Never -- \
 **If any of these checks fail**, see [S3 Prerequisites Guide](00-s3-prerequisites.md)
 
 ## Phase 1: Infrastructure Preparation
+
+### MCP Commands for Phase 1
+```bash
+# Verify S3 is ready
+/mcp kubernetes:kubectl_get "cephobjectstore" "storage" 
+/mcp kubernetes:kubectl_get "pods" "storage" "-l app=rook-ceph-rgw"
+
+# Check existing Helm repositories
+/mcp kubernetes:kubectl_get "helmrepository" "flux-system"
+```
 
 ### Step 1.1: Create Grafana Helm Repository
 
@@ -118,6 +166,20 @@ spec:
 ```
 
 ## Phase 2: Loki Deployment
+
+### MCP Commands for Phase 2
+```bash
+# Monitor deployment progress
+/mcp kubernetes:kubectl_get "helmrelease" "monitoring" "loki" "--watch"
+/mcp kubernetes:kubectl_get "pods" "monitoring" "-l app.kubernetes.io/name=loki" "--watch"
+
+# Check for errors
+/mcp kubernetes:kubectl_describe "helmrelease" "monitoring" "loki"
+/mcp kubernetes:kubectl_logs "monitoring" "-l app.kubernetes.io/name=loki" "--tail=50"
+
+# Verify S3 connectivity from Loki
+/mcp kubernetes:kubectl_exec "monitoring" "loki-write-0" "--" "curl" "-I" "http://rook-ceph-rgw-storage.storage.svc.cluster.local"
+```
 
 ### Step 2.1: Create Loki HelmRelease
 
@@ -330,6 +392,22 @@ spec:
 ```
 
 ## Phase 3: Alloy Configuration (Modern Log Agent)
+
+### MCP Commands for Phase 3
+```bash
+# Research Alloy configuration options
+/mcp context7:get-library-docs /grafana/alloy "kubernetes discovery" 3000
+
+# Monitor Alloy deployment
+/mcp kubernetes:kubectl_get "daemonset" "monitoring" "alloy" "--watch"
+/mcp kubernetes:kubectl_get "pods" "monitoring" "-l app.kubernetes.io/name=alloy"
+
+# Verify log collection
+/mcp kubernetes:kubectl_logs "monitoring" "-l app.kubernetes.io/name=alloy" "--tail=50" | grep "level=info"
+
+# Check Alloy metrics
+/mcp kubernetes:kubectl_exec "monitoring" "alloy-xxxxx" "--" "curl" "localhost:12345/metrics" | grep "alloy_"
+```
 
 ### Step 3.1: Create Alloy HelmRelease
 
@@ -573,6 +651,22 @@ spec:
 
 ## Phase 4: Integration & Testing
 
+### MCP Commands for Phase 4
+```bash
+# Verify all components are running
+/mcp kubernetes:kubectl_get "pods" "monitoring" "-l app.kubernetes.io/part-of=loki"
+/mcp kubernetes:kubectl_get "pods" "monitoring" "-l app.kubernetes.io/name=alloy"
+
+# Test log ingestion with a test pod
+/mcp kubernetes:kubectl_generic "run" "test-logger" "--image=busybox" "--restart=Never" "--" "sh" "-c" "while true; do echo 'Test log message $(date)'; sleep 5; done"
+
+# Query logs via Loki API
+/mcp kubernetes:kubectl_exec "monitoring" "loki-read-0" "--" "curl" "-s" "http://localhost:3100/loki/api/v1/query" "--data-urlencode" "query={pod=\"test-logger\"}"
+
+# Check Grafana datasource connectivity
+/mcp kubernetes:kubectl_exec "monitoring" "-l app.kubernetes.io/name=grafana" "--" "curl" "-s" "http://loki-gateway:80/ready"
+```
+
 ### Step 4.1: Configure Grafana Data Source
 
 Add Loki data source to Grafana:
@@ -678,6 +772,22 @@ stage.match {
 - [ ] Alerts are configured
 
 ## Troubleshooting
+
+### MCP-Powered Troubleshooting
+```bash
+# Get comprehensive deployment status
+/mcp kubernetes:kubectl_get "all" "monitoring" "-l app.kubernetes.io/part-of=loki"
+
+# Check Flux reconciliation status
+/mcp kubernetes:kubectl_describe "kustomization" "flux-system" "loki"
+/mcp kubernetes:kubectl_describe "helmrelease" "monitoring" "loki"
+
+# Analyze configuration issues
+/mcp sequential-thinking:sequential_thinking "Loki pods are in CrashLoopBackOff with error 'failed to create S3 client'. The S3 endpoint is configured as http://rook-ceph-rgw-storage.storage.svc.cluster.local. What are the most likely causes and how to debug?"
+
+# Get expert guidance on specific errors
+/mcp context7:get-library-docs /grafana/loki "troubleshooting s3 connection" 3000
+```
 
 ### Common Issues
 

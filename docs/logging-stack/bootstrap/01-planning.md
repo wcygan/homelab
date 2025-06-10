@@ -4,6 +4,42 @@
 
 This document outlines the detailed implementation plan for deploying Grafana Loki 3.x with Alloy as a centralized logging solution. The deployment will use Simple Scalable mode with Ceph S3 backend storage to provide production-grade log aggregation for the Kubernetes homelab.
 
+## MCP Server Usage for Planning
+
+Leverage MCP servers for informed architectural decisions:
+
+### Architecture Research
+```bash
+# Get latest Loki architecture best practices
+/mcp context7:get-library-docs /grafana/loki "simple scalable architecture" 5000
+
+# Research storage backend options
+/mcp context7:get-library-docs /grafana/loki "storage backends s3 vs filesystem" 4000
+
+# Understand Alloy collection patterns
+/mcp context7:get-library-docs /grafana/alloy "kubernetes log collection" 3000
+```
+
+### Design Validation
+```bash
+# Validate architecture design
+/mcp sequential-thinking:sequential_thinking "Analyze the proposed Loki Simple Scalable architecture with 3 write replicas, 3 read replicas, 1 backend, and 2 gateways for a 100GB/day log volume. Consider failure scenarios, query performance, and operational complexity"
+
+# Plan resource allocation
+/mcp sequential-thinking:sequential_thinking "Given 3 nodes with 96GB RAM each, design optimal resource allocation for Loki components considering node failure tolerance and leaving 40% headroom for other workloads"
+```
+
+### Current State Analysis
+```bash
+# Check existing Ceph configuration
+/mcp kubernetes:kubectl_get "cephobjectstore" "storage"
+/mcp kubernetes:kubectl_describe "storageclass" "ceph-bucket"
+
+# Verify namespace setup
+/mcp kubernetes:kubectl_get "namespace" "monitoring"
+/mcp kubernetes:kubectl_get "kustomization" "flux-system" "-l app.kubernetes.io/part-of=monitoring"
+```
+
 ## Architecture Design
 
 ### Component Overview

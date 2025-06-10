@@ -4,6 +4,44 @@
 
 This documentation provides comprehensive guidance for deploying and operating a centralized logging solution using Grafana Loki and Alloy (formerly Grafana Agent) in the Kubernetes homelab environment.
 
+## MCP Server Usage for Development
+
+When working with the logging stack, leverage MCP servers for accurate, documentation-based implementation:
+
+### Fetching Official Documentation
+```bash
+# Get Loki documentation
+/mcp context7:resolve-library-id loki
+/mcp context7:get-library-docs /grafana/loki "simple scalable mode" 5000
+
+# Get Alloy documentation
+/mcp context7:resolve-library-id alloy
+/mcp context7:get-library-docs /grafana/alloy "kubernetes logs" 5000
+
+# Get S3 configuration examples
+/mcp context7:get-library-docs /grafana/loki "s3 storage configuration" 3000
+```
+
+### Complex Decision Making
+```bash
+# Analyze deployment mode selection
+/mcp sequential-thinking:sequential_thinking "Given a 3-node cluster with 100GB daily log volume, compare Loki deployment modes (monolithic vs simple scalable vs microservices) considering performance, operational complexity, and resource usage"
+
+# Design retention strategy
+/mcp sequential-thinking:sequential_thinking "Design a log retention policy for Airflow logs (high value, 100GB/day) vs system logs (low value, 10GB/day) optimizing for cost and compliance"
+```
+
+### Real-time Cluster Inspection
+```bash
+# Check current storage status before deployment
+/mcp kubernetes:kubectl_get "cephobjectstore" "storage" "storage"
+/mcp kubernetes:kubectl_get "pods" "storage" "-l app=rook-ceph-rgw"
+
+# Monitor deployment progress
+/mcp kubernetes:kubectl_get "helmrelease" "monitoring" "-l app.kubernetes.io/name=loki"
+/mcp kubernetes:kubectl_logs "monitoring" "loki-read-0" "--tail=50"
+```
+
 ## Current Status
 
 **Status**: PENDING - CLEAN SLATE IMPLEMENTATION  

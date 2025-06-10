@@ -2,6 +2,48 @@
 
 Here's how to integrate Loki with Grafana Alloy in your `kube-prometheus-stack`:
 
+## MCP Server Usage for Setup
+
+Use MCP servers to ensure correct implementation:
+
+### Pre-Setup Research
+```bash
+# Get latest Helm chart versions
+/mcp context7:get-library-docs /grafana/loki "helm chart installation" 3000
+/mcp context7:get-library-docs /grafana/alloy "helm chart deployment" 3000
+
+# Understand configuration options
+/mcp context7:get-library-docs /grafana/loki "simple scalable vs monolithic" 4000
+
+# Check for breaking changes
+/mcp sequential-thinking:sequential_thinking "Analyze the migration path from Loki chart v5.x to v6.x, highlighting breaking changes in values.yaml structure"
+```
+
+### During Setup
+```bash
+# Verify Helm repository addition
+/mcp kubernetes:kubectl_get "helmrepository" "flux-system" "grafana-charts"
+
+# Monitor Flux Kustomization
+/mcp kubernetes:kubectl_get "kustomization" "flux-system" "--watch"
+
+# Check deployment status
+/mcp kubernetes:kubectl_get "statefulset" "monitoring" "loki"
+/mcp kubernetes:kubectl_get "daemonset" "monitoring" "alloy"
+
+# Debug configuration issues
+/mcp kubernetes:kubectl_logs "monitoring" "-l app.kubernetes.io/name=loki" "--tail=100"
+```
+
+### Configuration Validation
+```bash
+# Validate Alloy River configuration
+/mcp sequential-thinking:sequential_thinking "Review this Alloy River configuration for best practices: loki.source.kubernetes with discovery.kubernetes pods role, filtering kube-system namespace"
+
+# Check Loki schema configuration
+/mcp context7:get-library-docs /grafana/loki "tsdb index schema v13" 3000
+```
+
 **1. Add Grafana Helm Repository (if not already done)**
 
 This step remains the same, as both Loki and Alloy charts can be found here or
