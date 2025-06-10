@@ -50,22 +50,26 @@ Use the Sequential Thinking server for complex problem-solving and decision-maki
 When making technical decisions or troubleshooting:
 
 1. **Gather Facts**: Use Context7 to fetch relevant official documentation
-2. **Analyze**: Use Sequential Thinking for complex reasoning about the facts
-3. **Verify**: Cross-reference with existing cluster configuration via Kubernetes MCP
-4. **Implement**: Make changes based on documented best practices, not assumptions
+2. **Check History**: Review milestones for similar deployments and past lessons
+3. **Analyze**: Use Sequential Thinking for complex reasoning about the facts
+4. **Verify**: Cross-reference with existing cluster configuration via Kubernetes MCP
+5. **Implement**: Make changes based on documented best practices and proven patterns
 
 **Example Workflow**:
 ```bash
 # 1. Research storage options
 /mcp context7:get-library-docs /rook/rook "ceph cluster configuration" 5000
 
-# 2. Analyze implications
+# 2. Check project history for similar implementations
+grep -l "storage" docs/milestones/*.md | xargs head -50
+
+# 3. Analyze implications
 /mcp sequential-thinking:sequential_thinking "Given a 3-node cluster with 2 NVMe drives per node, analyze the optimal Ceph replication strategy considering performance, resilience, and capacity"
 
-# 3. Verify current state
+# 4. Verify current state
 /mcp kubernetes:kubectl_get "cephcluster" "storage" "storage"
 
-# 4. Implement based on findings
+# 5. Implement based on findings and past successes
 ```
 
 This approach ensures all decisions are grounded in official documentation and well-reasoned analysis, not guesswork or outdated information.
@@ -76,9 +80,54 @@ This is "Anton" - a production-grade Kubernetes homelab running on 3 MS-01 mini
 PCs using Talos Linux and Flux GitOps. The cluster implements patterns for
 automated deployment, monitoring, and security.
 
+## Project History & Milestones
+
+### Understanding Past Deployments
+
+Before implementing new features or troubleshooting issues, check the milestone documentation for relevant historical context:
+
+**Location**: `docs/milestones/`
+**Format**: `YYYY-MM-DD-milestone-name.md`
+
+### When to Reference Milestones
+
+**ALWAYS** check milestones when:
+- Deploying similar technology (e.g., check Loki milestone before deploying other logging tools)
+- Troubleshooting persistent issues (past challenges often resurface)
+- Planning major changes (learn from previous migrations)
+- Onboarding to understand cluster evolution
+
+### Quick Milestone Search
+
+```bash
+# Find all storage-related milestones
+ls docs/milestones/*storage*.md
+
+# Search for specific technology deployments
+grep -l "Loki" docs/milestones/*.md
+
+# Find milestones with specific challenges
+grep -l "Challenges" docs/milestones/*.md | xargs grep -A5 "Challenges"
+```
+
+### Learning from Past Deployments
+
+Each milestone contains:
+- **Implementation Details**: Exact configurations that worked
+- **Challenges & Resolutions**: Problems encountered and how they were solved
+- **Lessons Learned**: Key takeaways to apply to future work
+- **Validation Methods**: How success was measured
+
+**Example Usage**:
+Before deploying a new monitoring tool, check:
+1. `docs/milestones/2025-06-10-loki-deployment.md` - Logging implementation patterns
+2. Look for "Challenges" section - Common Helm chart issues and fixes
+3. Review "Configuration Changes" - Proven configuration patterns
+
 ## Quick Reference
 
 ### Essential Commands
+- **Check History**: Review `docs/milestones/` for past deployment patterns and lessons learned
 - **Initial Setup**: `task init` → `task configure` → `task bootstrap:talos` →
   `task bootstrap:apps`
 - **Deploy App**: Add to `kubernetes/apps/{namespace}/` → `task reconcile`
