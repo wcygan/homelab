@@ -26,17 +26,23 @@ spec:
       strategy: rollback
       retries: 3
   values:
-    # Use SingleBinary mode - simplest for starting
+    # Use SingleBinary mode for simplicity
     deploymentMode: SingleBinary
+    
+    # Disable caches
+    chunksCache:
+      enabled: false
+    resultsCache:
+      enabled: false
     
     loki:
       auth_enabled: false
       
-      # Basic common config
+      # Common configuration
       commonConfig:
         replication_factor: 1
       
-      # Schema configuration - required
+      # Schema configuration
       schemaConfig:
         configs:
           - from: "2024-04-01"
@@ -47,7 +53,7 @@ spec:
               prefix: index_
               period: 24h
       
-      # Storage configuration for S3
+      # Storage configuration
       storage:
         type: s3
         bucketNames:
@@ -60,7 +66,7 @@ spec:
           s3ForcePathStyle: true
           insecure: true
       
-      # Additional S3 config required by Loki
+      # Additional storage config
       storage_config:
         aws:
           endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
@@ -68,8 +74,36 @@ spec:
           bucketnames: loki-logs
           s3forcepathstyle: true
           insecure: true
+      
+      # Limits configuration - properly structured
+      limits_config:
+        allow_structured_metadata: true
+        volume_enabled: true
+        retention_period: 720h
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+        max_cache_freshness_per_query: 10m
+        split_queries_by_interval: 15m
+        ingestion_rate_mb: 50
+        ingestion_burst_size_mb: 100
+      
+      # Pattern ingester for better performance
+      pattern_ingester:
+        enabled: true
+      
+      # Ruler configuration
+      ruler:
+        enable_api: true
+        storage:
+          type: s3
+          s3:
+            endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
+            region: us-east-1
+            bucketnames: loki-logs
+            s3forcepathstyle: true
+            insecure: true
     
-    # Single Binary specific config
+    # Single Binary configuration
     singleBinary:
       replicas: 1
       persistence:
@@ -88,12 +122,32 @@ spec:
         - secretRef:
             name: loki-s3-credentials
     
-    # Disable all scalable components
+    # Disable all other deployment modes
     backend:
       replicas: 0
     read:
       replicas: 0
     write:
+      replicas: 0
+    
+    # Zero out other component replicas
+    ingester:
+      replicas: 0
+    querier:
+      replicas: 0
+    queryFrontend:
+      replicas: 0
+    queryScheduler:
+      replicas: 0
+    distributor:
+      replicas: 0
+    compactor:
+      replicas: 0
+    indexGateway:
+      replicas: 0
+    bloomCompactor:
+      replicas: 0
+    bloomGateway:
       replicas: 0
     
     # Gateway for API access
@@ -107,12 +161,6 @@ spec:
         limits:
           cpu: 200m
           memory: 256Mi
-    
-    # Disable caches
-    chunksCache:
-      enabled: false
-    resultsCache:
-      enabled: false
     
     # Disable MinIO
     minio:
