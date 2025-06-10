@@ -119,7 +119,9 @@
       "Bash(./scripts/fix-stuck-ceph-resources.ts)",
       "WebFetch(domain:www.anthropic.com)",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "Bash(mc ls:*)",
+      "Bash(./scripts/test-s3-integration.ts)"
     ],
     "deny": []
   }

@@ -1,0 +1,184 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: loki
+      version: 6.23.0
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  install:
+    crds: Skip
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    crds: Skip
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    # Simple scalable deployment mode
+    deploymentMode: SimpleScalable
+    
+    loki:
+      # Disable multi-tenancy for homelab
+      auth_enabled: false
+      
+      # Use TSDB for index storage
+      schemaConfig:
+        configs:
+          - from: "2024-04-01"
+            store: tsdb
+            object_store: s3
+            schema: v13
+            index:
+              prefix: loki_index_
+              period: 24h
+      
+      # S3 storage configuration using existing credentials
+      storage:
+        type: s3
+        s3:
+          endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
+          region: us-east-1  # Required but ignored by Ceph
+          bucketnames: loki-logs
+          s3ForcePathStyle: true
+          insecure: true
+      
+      # Storage config for chunks and ruler
+      storage_config:
+        aws:
+          endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
+          region: us-east-1
+          bucketnames: loki-logs
+          s3forcepathstyle: true
+          insecure: true
+      
+      # Querier configuration
+      querier:
+        multi_tenant_queries_enabled: false
+        max_concurrent: 20
+      
+      # Query frontend configuration
+      frontend:
+        compress_responses: true
+        max_outstanding_per_tenant: 200
+      
+      # Limits configuration
+      limits_config:
+        retention_period: 720h  # 30 days
+        retention_stream: []
+        enforce_metric_name: false
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+        max_cache_freshness_per_query: 10m
+        creation_grace_period: 10m
+        ingestion_rate_mb: 50
+        ingestion_burst_size_mb: 100
+        max_query_parallelism: 100
+        max_streams_per_user: 10000
+        max_global_streams_per_user: 10000
+    
+    # Global configuration
+    global:
+      # Reference existing S3 credentials
+      extraEnvFrom:
+        - secretRef:
+            name: loki-s3-credentials
+    
+    # Write component
+    write:
+      replicas: 2
+      persistence:
+        enabled: true
+        storageClass: ceph-block
+        size: 10Gi
+      resources:
+        requests:
+          cpu: 1
+          memory: 2Gi
+        limits:
+          cpu: 2
+          memory: 4Gi
+      extraEnvFrom:
+        - secretRef:
+            name: loki-s3-credentials
+    
+    # Read component
+    read:
+      replicas: 2
+      persistence:
+        enabled: true
+        storageClass: ceph-block
+        size: 5Gi
+      resources:
+        requests:
+          cpu: 1
+          memory: 2Gi
+        limits:
+          cpu: 2
+          memory: 4Gi
+      extraEnvFrom:
+        - secretRef:
+            name: loki-s3-credentials
+    
+    # Backend component
+    backend:
+      replicas: 1
+      persistence:
+        enabled: true
+        storageClass: ceph-block
+        size: 5Gi
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 1
+          memory: 2Gi
+      extraEnvFrom:
+        - secretRef:
+            name: loki-s3-credentials
+    
+    # Gateway configuration
+    gateway:
+      enabled: true
+      replicas: 2
+      ingress:
+        enabled: false  # We'll use internal access only
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 1Gi
+    
+    # Monitoring
+    monitoring:
+      dashboards:
+        enabled: true
+        namespace: monitoring
+      rules:
+        enabled: true
+        namespace: monitoring
+      serviceMonitor:
+        enabled: true
+        namespace: monitoring
+      selfMonitoring:
+        enabled: true
+        grafanaAgent:
+          installOperator: false
+    
+    # Test
+    test:
+      enabled: false
