@@ -58,9 +58,9 @@ spec:
       app.kubernetes.io/name: *app
   dependsOn:
     - name: local-path-provisioner
-      namespace: flux-system
+      namespace: storage
     - name: kube-prometheus-stack
-      namespace: flux-system
+      namespace: monitoring
   interval: 15m
   path: ./kubernetes/apps/monitoring/loki/app
   prune: true
@@ -196,7 +196,7 @@ spec:
       app.kubernetes.io/name: *app
   dependsOn:
     - name: loki # Alloy needs Loki to be available to send logs
-      namespace: flux-system
+      namespace: monitoring
   interval: 15m
   path: ./kubernetes/apps/monitoring/alloy/app
   prune: true

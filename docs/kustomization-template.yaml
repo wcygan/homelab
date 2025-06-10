@@ -46,7 +46,7 @@ spec:
   # Optional: Dependencies on other Kustomizations
   # dependsOn:
   #   - name: <dependency-name>
-  #     namespace: flux-system  # Usually flux-system
+  #     namespace: <actual-namespace>  # Use the actual namespace where the dependency Kustomization exists
 
   # Health checks ensure resources are actually running
   # Add for critical services and deployments

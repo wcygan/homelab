@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with
-code in this repository.
+code in this repository. It automatically loads into conversations to provide
+project-specific context and instructions.
 
 ## Repository Overview
 
@@ -11,6 +12,7 @@ automated deployment, monitoring, and security.
 
 ## Quick Reference
 
+### Essential Commands
 - **Initial Setup**: `task init` → `task configure` → `task bootstrap:talos` →
   `task bootstrap:apps`
 - **Deploy App**: Add to `kubernetes/apps/{namespace}/` → `task reconcile`
@@ -22,6 +24,12 @@ automated deployment, monitoring, and security.
   - Interactive: `./scripts/k8s-health-check.ts --verbose`
   - Automated/CI: `./scripts/k8s-health-check.ts --json`
   - Full suite: `deno task test:all:json`
+
+### Build & Test Commands
+- **Validate Changes**: `./scripts/validate-manifests.sh`
+- **Check Flux Config**: `./scripts/check-flux-config.ts`
+- **Run Tests**: `deno task test:all`
+- **Force Reconciliation**: `task reconcile`
 
 ## Core Architecture
 
@@ -767,8 +775,28 @@ When asked to check system health or monitor the cluster:
    - Run monitoring scripts for aggregated health checks
    - Cross-reference MCP live data with script outputs for validation
 
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+## Code Style & Conventions
+
+### GitOps Principles
+- **IMPORTANT**: All changes MUST be made via Git commits - Flux only deploys from Git
+- **YOU MUST** validate manifests before committing: `./scripts/validate-manifests.sh`
+- **ALWAYS** use semantic commit messages: `feat:`, `fix:`, `docs:`, `refactor:`
+- **NEVER** use kubectl apply directly - always go through GitOps
+
+### YAML Best Practices
+- **ALWAYS** specify namespace in kustomization.yaml files
+- **NEVER** use `retryInterval` in Flux v2 resources (removed from schema)
+- **ALWAYS** pin chart versions for predictable deployments
+- **YOU MUST** check dependency namespaces match actual deployment namespaces
+
+### Security Guidelines
+- **NEVER** commit secrets directly - use 1Password + External Secrets Operator
+- **ALWAYS** use ExternalSecret with `apiVersion: external-secrets.io/v1` (not v1beta1)
+- **NEVER** log or expose sensitive information
+- **YOU MUST** follow least privilege principles for RBAC
+
+## Important Reminders
+- Do what has been asked; nothing more, nothing less
+- NEVER create files unless they're absolutely necessary for achieving your goal
+- ALWAYS prefer editing an existing file to creating a new one
+- NEVER proactively create documentation files (*.md) or README files unless explicitly requested
