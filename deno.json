@@ -25,6 +25,8 @@
     "talos:install-config": "deno run --allow-all scripts/install-talosconfig.ts",
     "1p:install": "deno run --allow-all scripts/setup-1password-connect.ts",
     "1p:uninstall": "deno run --allow-all scripts/setup-1password-connect.ts --uninstall",
-    "test:s3": "deno run --allow-all scripts/test-s3-integration.ts"
+    "test:s3": "deno run --allow-all scripts/test-s3-integration.ts",
+    "validate": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts",
+    "validate:manifests": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts"
   }
 }

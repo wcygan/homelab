@@ -192,8 +192,10 @@ kubectl rollout restart deployment/loki-read -n monitoring
 ## Support and References
 
 ### Internal Documentation
-- Existing guide: `docs/logging/how-to-add.md`
-- Airflow logging: `docs/airflow/airflow-persistent-logging.md`
+- [Why Loki + Alloy](why-loki-alloy.md) - Problem statement and solution benefits
+- [Setup Guide](setup/how-to-add-loki-alloy.md) - Detailed deployment instructions
+- [Recovery Plan](recovery-plan.md) - Disaster recovery procedures
+- Airflow Examples: [examples/airflow-logql-queries.md](examples/airflow-logql-queries.md)
 - PLAN.md: Phase 4 includes Loki deployment
 
 ### External Resources
