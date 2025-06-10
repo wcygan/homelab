@@ -50,9 +50,14 @@ spec:
         s3:
           endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
           region: us-east-1  # Required but ignored by Ceph
-          bucketnames: loki-logs
           s3ForcePathStyle: true
           insecure: true
+          accessKeyId: ${AWS_ACCESS_KEY_ID}
+          secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+        bucketNames:
+          chunks: loki-logs
+          ruler: loki-logs
+          admin: loki-logs
       
       # Storage config for chunks and ruler
       storage_config:
@@ -62,6 +67,12 @@ spec:
           bucketnames: loki-logs
           s3forcepathstyle: true
           insecure: true
+          access_key_id: ${AWS_ACCESS_KEY_ID}
+          secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+      
+      # Common storage config
+      commonConfig:
+        replication_factor: 3
       
       # Querier configuration
       querier:
@@ -88,9 +99,8 @@ spec:
         max_streams_per_user: 10000
         max_global_streams_per_user: 10000
     
-    # Global configuration
+    # Global configuration  
     global:
-      # Reference existing S3 credentials
       extraEnvFrom:
         - secretRef:
             name: loki-s3-credentials
