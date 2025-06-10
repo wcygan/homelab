@@ -20,4 +20,4 @@ spec:
     namespace: flux-system
   dependsOn:
     - name: loki
-      namespace: monitoring
+      namespace: flux-system
