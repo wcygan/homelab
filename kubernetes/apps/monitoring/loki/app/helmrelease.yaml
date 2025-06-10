@@ -26,14 +26,15 @@ spec:
       strategy: rollback
       retries: 3
   values:
-    deploymentMode: SimpleScalable
+    # Start with SingleBinary mode for simplicity
+    deploymentMode: SingleBinary
     
     loki:
       auth_enabled: false
       
-      # Common configuration for replication
+      # Common configuration
       commonConfig:
-        replication_factor: 3
+        replication_factor: 1
       
       schemaConfig:
         configs:
@@ -56,75 +57,54 @@ spec:
           region: us-east-1
           s3ForcePathStyle: true
           insecure: true
-          accessKeyId: ${AWS_ACCESS_KEY_ID}
-          secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
-          
-      querier:
-        multi_tenant_queries_enabled: false
-        max_concurrent: 20
+          # Don't use template variables here - they will come from env vars
       
+      storage_config:
+        aws:
+          endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
+          region: us-east-1
+          bucketnames: loki-logs
+          s3forcepathstyle: true
+          insecure: true
+          
       limits_config:
         retention_period: 720h
         enforce_metric_name: false
         reject_old_samples: true
         reject_old_samples_max_age: 168h
-        max_cache_freshness_per_query: 10m
-        creation_grace_period: 10m
         ingestion_rate_mb: 50
         ingestion_burst_size_mb: 100
-        max_query_parallelism: 100
-        max_streams_per_user: 10000
-        max_global_streams_per_user: 10000
     
-    # Backend configuration
-    backend:
+    # SingleBinary configuration
+    singleBinary:
       replicas: 1
-      persistence:
-        enabled: true
-        size: 5Gi
-        storageClass: ceph-block
-      resources:
-        requests:
-          cpu: 100m
-          memory: 256Mi
-        limits:
-          cpu: 500m
-          memory: 1Gi
-    
-    # Write configuration
-    write:
-      replicas: 2
       persistence:
         enabled: true
         size: 10Gi
         storageClass: ceph-block
       resources:
         requests:
-          cpu: 200m
-          memory: 512Mi
+          cpu: 500m
+          memory: 1Gi
         limits:
-          cpu: 1
-          memory: 2Gi
+          cpu: 2
+          memory: 4Gi
+      extraEnvFrom:
+        - secretRef:
+            name: loki-s3-credentials
     
-    # Read configuration
+    # Disable all other deployment modes
+    backend:
+      replicas: 0
     read:
-      replicas: 2
-      persistence:
-        enabled: true
-        size: 5Gi
-        storageClass: ceph-block
-      resources:
-        requests:
-          cpu: 200m
-          memory: 512Mi
-        limits:
-          cpu: 1
-          memory: 2Gi
+      replicas: 0
+    write:
+      replicas: 0
     
     # Gateway configuration
     gateway:
       enabled: true
-      replicas: 2
+      replicas: 1
       resources:
         requests:
           cpu: 100m
@@ -136,18 +116,13 @@ spec:
     # Monitoring
     monitoring:
       dashboards:
-        enabled: true
-        namespace: monitoring
+        enabled: false  # Disable for initial deployment
       rules:
-        enabled: true
-        namespace: monitoring
+        enabled: false
       serviceMonitor:
-        enabled: true
-        namespace: monitoring
+        enabled: false
       selfMonitoring:
-        enabled: true
-        grafanaAgent:
-          installOperator: false
+        enabled: false
     
     # Disable MinIO since we're using Ceph S3
     minio:
@@ -156,9 +131,3 @@ spec:
     # Test
     test:
       enabled: false
-      
-    # Environment variables for all components
-    global:
-      extraEnvFrom:
-        - secretRef:
-            name: loki-s3-credentials
