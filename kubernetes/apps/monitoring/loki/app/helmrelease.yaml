@@ -26,16 +26,17 @@ spec:
       strategy: rollback
       retries: 3
   values:
-    # Start with SingleBinary mode for simplicity
+    # Use SingleBinary mode - simplest for starting
     deploymentMode: SingleBinary
     
     loki:
       auth_enabled: false
       
-      # Common configuration
+      # Basic common config
       commonConfig:
         replication_factor: 1
       
+      # Schema configuration - required
       schemaConfig:
         configs:
           - from: "2024-04-01"
@@ -43,9 +44,10 @@ spec:
             object_store: s3
             schema: v13
             index:
-              prefix: loki_index_
+              prefix: index_
               period: 24h
       
+      # Storage configuration for S3
       storage:
         type: s3
         bucketNames:
@@ -57,8 +59,8 @@ spec:
           region: us-east-1
           s3ForcePathStyle: true
           insecure: true
-          # Don't use template variables here - they will come from env vars
       
+      # Additional S3 config required by Loki
       storage_config:
         aws:
           endpoint: http://rook-ceph-rgw-storage.storage.svc.cluster.local
@@ -66,10 +68,8 @@ spec:
           bucketnames: loki-logs
           s3forcepathstyle: true
           insecure: true
-          
-      # Keep limits_config minimal for now
     
-    # SingleBinary configuration
+    # Single Binary specific config
     singleBinary:
       replicas: 1
       persistence:
@@ -78,16 +78,17 @@ spec:
         storageClass: ceph-block
       resources:
         requests:
-          cpu: 500m
-          memory: 1Gi
+          cpu: 100m
+          memory: 256Mi
         limits:
-          cpu: 2
-          memory: 4Gi
+          cpu: 1
+          memory: 1Gi
+      # S3 credentials from secret
       extraEnvFrom:
         - secretRef:
             name: loki-s3-credentials
     
-    # Disable all other deployment modes
+    # Disable all scalable components
     backend:
       replicas: 0
     read:
@@ -95,22 +96,32 @@ spec:
     write:
       replicas: 0
     
-    # Gateway configuration
+    # Gateway for API access
     gateway:
       enabled: true
       replicas: 1
       resources:
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 50m
+          memory: 128Mi
         limits:
-          cpu: 500m
-          memory: 512Mi
+          cpu: 200m
+          memory: 256Mi
     
-    # Monitoring
+    # Disable caches
+    chunksCache:
+      enabled: false
+    resultsCache:
+      enabled: false
+    
+    # Disable MinIO
+    minio:
+      enabled: false
+    
+    # Disable monitoring initially
     monitoring:
       dashboards:
-        enabled: false  # Disable for initial deployment
+        enabled: false
       rules:
         enabled: false
       serviceMonitor:
@@ -118,16 +129,6 @@ spec:
       selfMonitoring:
         enabled: false
     
-    # Disable MinIO since we're using Ceph S3
-    minio:
-      enabled: false
-    
-    # Disable default caches for SingleBinary mode
-    chunksCache:
-      enabled: false
-    resultsCache:
-      enabled: false
-    
-    # Test
+    # Disable test
     test:
       enabled: false
