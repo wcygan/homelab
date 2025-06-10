@@ -12,5 +12,5 @@ resources:
   - ./volsync/ks.yaml
   # Phase 2: Uncomment when RWX needed
   # - ./rook-ceph-filesystem/ks.yaml
-  # Phase 3: Uncomment when S3 needed
-  # - ./rook-ceph-objectstore/ks.yaml
+  # Phase 3: S3 storage for Loki
+  - ./rook-ceph-objectstore/ks.yaml
