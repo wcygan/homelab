@@ -165,15 +165,16 @@
         {
           "id": "3.1",
           "name": "Alloy Deployment",
-          "status": "in_progress",
-          "notes": "Deployment attempted but encountering Helm chart template issues with volume configuration",
+          "status": "completed",
+          "completion_date": "2025-06-10",
+          "notes": "Successfully deployed after fixing component names and adding label filtering. All 3 Alloy pods running on all nodes",
           "deliverables": [
-            "Deploy Alloy DaemonSet",
-            "Configure log discovery",
-            "Set up log parsing pipelines",
-            "Implement filtering rules"
+            "Deploy Alloy DaemonSet ✅",
+            "Configure log discovery ✅",
+            "Set up log parsing pipelines ✅",
+            "Implement filtering rules ✅"
           ],
-          "validation": "Alloy running on all nodes"
+          "validation": "All 3 Alloy pods running successfully, logs being collected"
         },
         {
           "id": "3.2",
