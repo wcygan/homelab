@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logging-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-generator
+  namespace: logging-test
+  labels:
+    app: log-generator
+    test: logging-integration
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-generator
+  template:
+    metadata:
+      labels:
+        app: log-generator
+        test: logging-integration
+    spec:
+      containers:
+      - name: logger
+        image: busybox:1.36
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          echo "Starting log generator for integration test"
+          counter=1
+          while true; do
+            echo "$(date) [INFO] Test log entry #${counter} from log-generator pod"
+            echo "$(date) [DEBUG] Debug message with counter: ${counter}"
+            if [ $((counter % 10)) -eq 0 ]; then
+              echo "$(date) [WARN] Warning message every 10 entries (counter: ${counter})"
+            fi
+            if [ $((counter % 50)) -eq 0 ]; then
+              echo "$(date) [ERROR] Error message every 50 entries (counter: ${counter})"
+            fi
+            counter=$((counter + 1))
+            sleep 5
+          done
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 32Mi
+      restartPolicy: Always
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: log-burst-generator
+  namespace: logging-test
+  labels:
+    app: log-burst-generator
+    test: logging-integration
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: log-burst-generator
+        test: logging-integration
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: burst-logger
+        image: busybox:1.36
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          echo "Starting burst log generator for integration test"
+          for i in $(seq 1 100); do
+            echo "$(date) [BURST] Burst log entry #${i} - testing high volume ingestion"
+            echo "$(date) [BURST] JSON-like: {\"iteration\": ${i}, \"timestamp\": \"$(date)\", \"level\": \"info\"}"
+          done
+          echo "Burst log generation completed - 100 entries written"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 100m
+            memory: 32Mi

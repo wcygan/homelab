@@ -1,5 +1,6 @@
 {
   "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.9",
     "@std/async": "jsr:@std/async@^1.0.11",
     "@std/cli": "jsr:@std/cli@^1.0.18",
     "@std/fs": "jsr:@std/fs@^1.0.17",
@@ -26,6 +27,8 @@
     "1p:install": "deno run --allow-all scripts/setup-1password-connect.ts",
     "1p:uninstall": "deno run --allow-all scripts/setup-1password-connect.ts --uninstall",
     "test:s3": "deno run --allow-all scripts/test-s3-integration.ts",
+    "test:integration": "deno test --allow-all tests/integration/",
+    "test:logging": "deno test --allow-all tests/integration/logging-stack.test.ts",
     "validate": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts",
     "validate:manifests": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts"
   }
