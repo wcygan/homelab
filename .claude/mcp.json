@@ -6,6 +6,10 @@
       "env": {
         "ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS": "false"
       }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["tsx", "/path/to/folder/context7-mcp/src/index.ts"]
     }
   }
 }
