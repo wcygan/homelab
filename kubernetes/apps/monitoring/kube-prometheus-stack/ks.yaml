@@ -1,7 +1,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: kube-prometheus-stack
+  name: &app kube-prometheus-stack
   namespace: flux-system
 spec:
   interval: 10m
@@ -15,8 +15,7 @@ spec:
   wait: true
   timeout: 15m # Large deployment, needs more time
   dependsOn:
-    - name: local-path-provisioner
-      namespace: flux-system # Storage dependency for Prometheus/Grafana data
+    - name: local-path-provisioner # Storage dependency for Prometheus/Grafana data
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
