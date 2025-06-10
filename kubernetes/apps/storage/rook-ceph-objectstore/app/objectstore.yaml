@@ -13,7 +13,7 @@ spec:
       size: 3
     parameters:
       compression_mode: passive
-  preservePoolsOnDelete: true
+  preservePoolsOnDelete: false
   gateway:
     port: 80
     instances: 2
