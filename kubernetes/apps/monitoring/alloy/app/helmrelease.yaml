@@ -116,6 +116,24 @@ spec:
               }
             }
             
+            // Drop excessive labels to stay under Loki's limit of 15
+            stage.label_drop {
+              values = [
+                "app_kubernetes_io_component",
+                "app_kubernetes_io_created_by", 
+                "app_kubernetes_io_instance",
+                "app_kubernetes_io_managed_by",
+                "app_kubernetes_io_part_of",
+                "pod_template_hash",
+                "ceph_daemon_id",
+                "ceph_daemon_type",
+                "mon_daemon",
+                "mgr_role",
+                "rook_io_operator_namespace",
+                "rook_object_store",
+              ]
+            }
+            
             // Drop debug logs from noisy sources
             stage.drop {
               source = "namespace"
