@@ -6,6 +6,5 @@ metadata:
   name: vmware-tanzu
   namespace: flux-system
 spec:
-  type: oci
-  url: oci://projects.registry.vmware.com/tanzu-helm-charts
+  url: https://vmware-tanzu.github.io/helm-charts
   interval: 12h
