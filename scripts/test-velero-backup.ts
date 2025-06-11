@@ -181,7 +181,7 @@ class VeleroBackupTester {
 
   private async getExistingBackups(): Promise<any[]> {
     try {
-      const backups = await $`kubectl get backups -n storage -o json`.json();
+      const backups = await $`kubectl get backup.velero.io -n storage -o json`.json();
       
       // Filter for recent backups (last 7 days)
       const sevenDaysAgo = new Date();
@@ -264,7 +264,7 @@ class VeleroBackupTester {
       const maxAttempts = 30; // 30 seconds
       
       while (attempts < maxAttempts) {
-        const backup = await $`kubectl get backup ${this.testBackupName} -n storage -o json`.json();
+        const backup = await $`kubectl get backup.velero.io ${this.testBackupName} -n storage -o json`.json();
         
         if (backup.status?.phase === "Completed") {
           console.log(colors.green(`✅ Test backup created: ${this.testBackupName}`));
@@ -467,7 +467,7 @@ spec:
 
     try {
       // Get backup details
-      const backup = await $`kubectl get backup ${this.testBackupName} -n storage -o json`.json();
+      const backup = await $`kubectl get backup.velero.io ${this.testBackupName} -n storage -o json`.json();
       
       if (backup.status.phase !== "Completed") {
         this.issues.push(`WARNING: Test backup status is ${backup.status.phase}`);
@@ -503,7 +503,7 @@ spec:
       
       // Delete test backup (optional - you might want to keep for debugging)
       if (this.testBackupName) {
-        await $`kubectl delete backup ${this.testBackupName} -n storage --wait=false`.quiet();
+        await $`kubectl delete backup.velero.io ${this.testBackupName} -n storage --wait=false`.quiet();
       }
       
       // Delete test restore
