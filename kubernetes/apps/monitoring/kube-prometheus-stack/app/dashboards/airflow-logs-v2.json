@@ -62,7 +62,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "{namespace=\"airflow\", pod=~\".*-${dag_id:pipe}-.*\"} |~ \"subprocess.py.*INFO\" | line_format \"{{.Line}}\" | regexp \"(?P<timestamp>\\\\[[^\\\\]]+\\\\]) \\\\{subprocess.py:[0-9]+\\\\} INFO - (?P<output>.*)\"",
+          "expr": "{namespace=\"airflow\", pod=~\".*${dag_id}.*\"} |~ \"(Hello World|Testing|print statement|Current date|Pod hostname)\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -109,7 +109,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "{namespace=\"airflow\", pod=~\".*-${dag_id:pipe}-.*\"} |~ \"(INFO|WARNING|ERROR) - .*(log message|from Python task)\"",
+          "expr": "{namespace=\"airflow\", pod=~\".*${dag_id}.*\"} |~ \"(INFO|WARNING|ERROR) - .*(log message|from Python task|This is)\"",
           "queryType": "range",
           "refId": "A"
         }

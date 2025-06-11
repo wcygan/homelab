@@ -199,6 +199,13 @@ spec:
         value: "False"
       - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS_ON_FAILURE
         value: "False"
+      # Add termination grace period to allow log collection
+      - name: AIRFLOW__KUBERNETES_EXECUTOR__WORKER_PODS_CREATION_BATCH_SIZE
+        value: "10"
+      - name: AIRFLOW__KUBERNETES_EXECUTOR__WORKER_CONTAINER_REPOSITORY
+        value: "apache/airflow"
+      - name: AIRFLOW__KUBERNETES_EXECUTOR__WORKER_CONTAINER_TAG
+        value: "2.10.3"
 
     dags:
       gitSync:
