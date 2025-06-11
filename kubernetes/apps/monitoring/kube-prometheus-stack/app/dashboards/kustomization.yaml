@@ -58,7 +58,7 @@ configMapGenerator:
   
   - name: grafana-dashboard-airflow-logs
     files:
-      - airflow-logs-fixed.json
+      - airflow-logs-v2.json
     options:
       labels:
         grafana_dashboard: "1"
