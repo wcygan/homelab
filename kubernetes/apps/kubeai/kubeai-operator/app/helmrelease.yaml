@@ -23,6 +23,16 @@ spec:
       remediateLastFailure: true
     cleanupOnFail: true
   values:
+    # Resource limits for KubeAI operator components
+    operator:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
     # Removed HuggingFace token configuration
     # secrets:
     #   huggingface:
@@ -58,3 +68,10 @@ spec:
         enabled: true
         storageClass: "ceph-block"
         size: 2Gi
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 2Gi
