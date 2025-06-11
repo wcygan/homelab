@@ -1,5 +1,13 @@
 # Airflow Elasticsearch Logging Integration
 
+> **📝 NOTE**: This is an alternative approach that was not implemented.  
+> We chose Alloy + Loki instead for better integration with our existing logging stack.  
+> See [Airflow Alloy Logging](./airflow-alloy-logging.md) for the actual implementation.
+
+---
+
+# Alternative Approach: Airflow Elasticsearch Logging Integration
+
 ## Overview
 
 This document covers how to enhance your Airflow deployment to use Elasticsearch

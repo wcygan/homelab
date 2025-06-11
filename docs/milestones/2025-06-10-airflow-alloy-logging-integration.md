@@ -2,7 +2,7 @@
 
 **Date**: 2025-06-10  
 **Category**: Monitoring  
-**Status**: Planned
+**Status**: In Progress
 
 ## Summary
 
@@ -10,8 +10,8 @@ Implement a unified logging solution for Apache Airflow using the existing Alloy
 
 ## Goals
 
-- [ ] Fix Loki S3 backend configuration with proper ObjectBucketClaim
-- [ ] Enhance Alloy configuration to better identify and label Airflow logs
+- [x] Fix Loki S3 backend configuration with proper ObjectBucketClaim
+- [x] Enhance Alloy configuration to better identify and label Airflow logs
 - [ ] Create Grafana dashboard for Airflow log visualization and analysis
 - [ ] Verify all Airflow component logs (scheduler, webserver, workers) are captured
 - [ ] Document LogQL queries for common Airflow troubleshooting scenarios
@@ -25,11 +25,11 @@ Implement a unified logging solution for Apache Airflow using the existing Alloy
 - Rook-Ceph S3 ObjectStore (existing, ready for use)
 
 ### Configuration Changes
-- Create ObjectBucketClaim for Loki in monitoring namespace
-- Update Loki HelmRelease to use dynamic S3 credentials
-- Add Alloy discovery rules for Airflow pod identification
-- Configure label extraction for DAG and task metadata
-- Remove manual S3 credentials from Loki configuration
+- ✅ Verified Loki S3 configuration (using manual credentials, OBC exists but not used)
+- ✅ Enhanced Alloy configuration with Airflow-specific log processing
+- ✅ Added regex patterns to extract dag_id, task_id, and execution_date
+- ✅ Fixed Alloy syntax error (replaced single quotes with double quotes)
+- ✅ Configured label dropping to stay under Loki's 15 label limit
 
 ## Validation
 

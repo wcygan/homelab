@@ -1,5 +1,12 @@
 # Airflow Persistent Logging Setup
 
+> **⚠️ DEPRECATED**: This approach is no longer used. We now use Alloy + Loki for centralized logging.  
+> See [Airflow Alloy Logging](./airflow-alloy-logging.md) for the current implementation.
+
+---
+
+# Legacy Documentation: Airflow Persistent Logging Setup
+
 ## Problem
 
 The original Airflow deployment was experiencing log persistence issues where
