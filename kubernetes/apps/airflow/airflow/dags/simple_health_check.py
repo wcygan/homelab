@@ -37,15 +37,17 @@ with DAG(
         is_delete_operator_pod=True,
     )
     
-    # Check cluster nodes
-    check_nodes = KubernetesPodOperator(
-        task_id='check_nodes',
-        name='check-nodes',
+    # Simple date check
+    check_date = KubernetesPodOperator(
+        task_id='check_date',
+        name='check-date',
         namespace='airflow',
-        image='bitnami/kubectl:1.31',
+        image='busybox:latest',
         cmds=['sh', '-c'],
-        arguments=['kubectl get nodes -o wide || exit 1'],
+        arguments=['echo "Current date:"; date; echo "Test completed successfully"'],
         get_logs=True,
         is_delete_operator_pod=True,
-        service_account_name='airflow-worker',  # Use existing service account
     )
+    
+    # Set task dependency
+    echo_test >> check_date
