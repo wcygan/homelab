@@ -92,7 +92,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -104,7 +104,19 @@
       },
       "id": 1,
       "options": {
-        "showHeader": true
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value",
+        "wideLayout": true
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -113,31 +125,13 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "(\n  (count(kube_node_status_condition{condition=\"Ready\", status=\"true\"}) == 3) * 1 +\n  (count(ALERTS{alertstate=\"firing\", severity=\"critical\"}) == 0) * 1\n)",
-          "format": "table",
+          "expr": "(\n  (count(kube_node_status_condition{condition=\"Ready\", status=\"true\"}) / 3) * 50 +\n  (1 - clamp_max(count(ALERTS{alertstate=\"firing\", severity=\"critical\"}), 1)) * 50\n)",
           "instant": true,
           "refId": "A"
         }
       ],
       "title": "Cluster Health Score",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "instance": true,
-              "job": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value": "Status"
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "type": "stat"
     },
     {
       "datasource": {
@@ -190,7 +184,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -257,7 +251,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -320,7 +314,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -383,7 +377,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -462,7 +456,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -471,7 +465,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "count(kube_deployment_status_replicas_available{namespace=\"flux-system\"}) >= 4",
+          "expr": "min(count(kube_deployment_status_replicas_available{namespace=\"flux-system\"}), 1)",
           "refId": "A"
         }
       ],
@@ -852,7 +846,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -921,7 +915,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -984,7 +978,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -1067,11 +1061,115 @@
       },
       "id": 13,
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "ceph_cluster_total_bytes / 1024 / 1024 / 1024 / 1024",
+          "legendFormat": "Total Capacity",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "(ceph_cluster_total_bytes - ceph_cluster_total_used_bytes) / 1024 / 1024 / 1024 / 1024",
+          "legendFormat": "Available",
+          "refId": "B"
+        }
+      ],
+      "title": "Ceph Capacity (TB)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 19
+      },
+      "id": 20,
+      "options": {
         "legend": {
-          "calcs": [],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -1084,12 +1182,224 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(kube_persistentvolume_capacity_bytes)",
+          "expr": "ceph_cluster_total_bytes",
+          "legendFormat": "Total Capacity",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "ceph_cluster_total_used_bytes",
+          "legendFormat": "Used",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "ceph_cluster_total_bytes - ceph_cluster_total_used_bytes",
+          "legendFormat": "Available",
+          "refId": "C"
+        }
+      ],
+      "title": "Ceph Storage Trend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 19
+      },
+      "id": 21,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "(ceph_cluster_total_used_bytes / ceph_cluster_total_bytes) * 100",
           "refId": "A"
         }
       ],
-      "title": "PV Capacity",
-      "type": "timeseries"
+      "title": "Ceph Usage %",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 19
+      },
+      "id": 22,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count(ceph_osd_up == 0)",
+          "refId": "A"
+        }
+      ],
+      "title": "OSDs Down",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 23
+      },
+      "id": 23,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count(ceph_pool_objects)",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Pools",
+      "type": "stat"
     },
     {
       "collapsed": false,
@@ -1097,7 +1407,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 27
       },
       "id": 400,
       "panels": [],
@@ -1761,7 +2071,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
