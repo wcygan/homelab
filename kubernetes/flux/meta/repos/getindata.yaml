@@ -5,4 +5,4 @@ metadata:
   namespace: flux-system
 spec:
   interval: 30m
-  url: https://getindata.github.io/hive-metastore
+  url: https://getindata.github.io/charts
