@@ -139,7 +139,8 @@
       "Bash(./scripts/test-logging-stack.ts --json)",
       "Bash(./scripts/validate-airflow-logging.ts)",
       "Bash(task reconcile)",
-      "Bash(gh pr list:*)"
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)"
     ],
     "deny": []
   }
