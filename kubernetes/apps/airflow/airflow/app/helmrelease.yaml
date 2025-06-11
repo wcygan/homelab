@@ -215,10 +215,6 @@ spec:
 
     # Extra secrets/configmaps without Helm hooks
     extraConfigMaps: {}
-    
-    # Use pod template with Vector sidecar for task pods
-    podTemplateFile:
-      existingConfigMap: "airflow-pod-template"
 
     # Triggerer configuration with Ceph storage
     triggerer:
@@ -227,3 +223,88 @@ spec:
         enabled: true
         storageClassName: "ceph-block"
         size: 100Gi
+    
+    # Pod template with Vector sidecar for KubernetesExecutor
+    podTemplate: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: placeholder-name
+        labels:
+          tier: airflow
+          component: worker
+          release: {{ .Release.Name }}
+      spec:
+        shareProcessNamespace: true
+        containers:
+          - name: base
+            env:
+              - name: PYTHONUNBUFFERED
+                value: "1"
+          - name: vector
+            image: timberio/vector:0.39.0-debian
+            args:
+              - --config-yaml
+              - |
+                sources:
+                  task_stdout:
+                    type: file
+                    include: 
+                      - /proc/1/root/dev/stdout
+                    read_from: beginning
+                  task_stderr:
+                    type: file
+                    include:
+                      - /proc/1/root/dev/stderr
+                    read_from: beginning
+                transforms:
+                  add_metadata:
+                    type: remap
+                    inputs: ["task_stdout", "task_stderr"]
+                    source: |
+                      .namespace = "airflow"
+                      .pod = get_env_var!("HOSTNAME")
+                      .dag_id = get_env_var("AIRFLOW_CTX_DAG_ID") ?? "unknown"
+                      .task_id = get_env_var("AIRFLOW_CTX_TASK_ID") ?? "unknown"
+                      .run_id = get_env_var("AIRFLOW_CTX_RUN_ID") ?? "unknown"
+                      .execution_date = get_env_var("AIRFLOW_CTX_EXECUTION_DATE") ?? "unknown"
+                sinks:
+                  loki:
+                    type: loki
+                    inputs: ["add_metadata"]
+                    endpoint: "http://loki-gateway.monitoring.svc.cluster.local:80"
+                    encoding:
+                      codec: json
+                    batch:
+                      max_bytes: 512000
+                      timeout_secs: 0.5
+                    labels:
+                      namespace: "{{ namespace }}"
+                      pod: "{{ pod }}"
+                      dag_id: "{{ dag_id }}"
+                      task_id: "{{ task_id }}"
+            env:
+              - name: HOSTNAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.name
+              - name: AIRFLOW_CTX_DAG_ID
+                value: "{{ dag_id }}"
+              - name: AIRFLOW_CTX_TASK_ID  
+                value: "{{ task_id }}"
+              - name: AIRFLOW_CTX_RUN_ID
+                value: "{{ run_id }}"
+              - name: AIRFLOW_CTX_EXECUTION_DATE
+                value: "{{ execution_date }}"
+            resources:
+              requests:
+                cpu: 5m
+                memory: 20Mi
+              limits:
+                cpu: 25m
+                memory: 50Mi
+            lifecycle:
+              preStop:
+                exec:
+                  command: ["/bin/sh", "-c", "sleep 2"]
+        terminationGracePeriodSeconds: 10

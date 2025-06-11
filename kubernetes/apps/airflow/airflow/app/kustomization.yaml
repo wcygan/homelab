@@ -5,7 +5,6 @@ kind: Kustomization
 resources:
   - ./helmrelease.yaml
   - ./tailscale-ingress.yaml
-  - ./pod-template-configmap.yaml
   - ./health-check-scripts-real.yaml
   - ./airflow-health-service-account.yaml
   - ./airflow-alerting-webhook.yaml
