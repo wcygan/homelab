@@ -247,20 +247,16 @@ spec:
               - --config-yaml
               - |
                 sources:
-                  task_stdout:
+                  task:
                     type: file
                     include: 
-                      - /proc/1/root/dev/stdout
-                    read_from: beginning
-                  task_stderr:
-                    type: file
-                    include:
-                      - /proc/1/root/dev/stderr
+                      - /proc/1/fd/1
+                      - /proc/1/fd/2
                     read_from: beginning
                 transforms:
                   add_metadata:
                     type: remap
-                    inputs: ["task_stdout", "task_stderr"]
+                    inputs: ["task"]
                     source: |
                       .namespace = "airflow"
                       .pod = get_env_var!("HOSTNAME")
