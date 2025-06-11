@@ -12,7 +12,7 @@ import pendulum
 import json
 from typing import Dict, Any
 from airflow.models.dag import DAG
-from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
+from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.cncf.kubernetes.utils.pod_manager import PodPhase
 from airflow.exceptions import AirflowException
