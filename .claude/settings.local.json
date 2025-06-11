@@ -140,7 +140,10 @@
       "Bash(./scripts/validate-airflow-logging.ts)",
       "Bash(task reconcile)",
       "Bash(gh pr list:*)",
-      "Bash(gh pr diff:*)"
+      "Bash(gh pr diff:*)",
+      "Bash(git pull:*)",
+      "Bash(git pull:*)",
+      "Bash(./scripts/test-iceberg-s3.ts)"
     ],
     "deny": []
   }

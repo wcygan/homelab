@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-all
 
 import { $ } from "jsr:@david/dax@0.42.0";
-import { colors } from "jsr:@std/fmt@1.0.3/colors";
+import { blue, green, red, yellow, bold, dim } from "jsr:@std/fmt@1.0.3/colors";
 
 const CEPH_S3_ENDPOINT = "http://rook-ceph-rgw-storage.storage.svc:80";
 const TEST_BUCKET = "iceberg-test";
@@ -13,7 +13,7 @@ interface S3Credentials {
 }
 
 async function getS3Credentials(): Promise<S3Credentials> {
-  console.log(colors.blue("📡 Retrieving S3 credentials..."));
+  console.log(blue("📡 Retrieving S3 credentials..."));
   
   const secretData = await $`kubectl get secret -n storage rook-ceph-object-user-storage-iceberg -o json`.json();
   
@@ -24,7 +24,7 @@ async function getS3Credentials(): Promise<S3Credentials> {
 }
 
 async function testS3Connection(creds: S3Credentials): Promise<boolean> {
-  console.log(colors.blue("\n🔌 Testing S3 connection..."));
+  console.log(blue("\n🔌 Testing S3 connection..."));
   
   try {
     // Create temporary AWS config
@@ -38,35 +38,35 @@ aws_secret_access_key = ${creds.secretKey}
     
     // Test listing buckets
     const result = await $`AWS_SHARED_CREDENTIALS_FILE=/tmp/aws-credentials aws s3 ls --endpoint-url ${CEPH_S3_ENDPOINT}`.text();
-    console.log(colors.green("✅ S3 connection successful"));
+    console.log(green("✅ S3 connection successful"));
     console.log("Existing buckets:", result || "(none)");
     
     return true;
   } catch (error) {
-    console.error(colors.red("❌ S3 connection failed:"), error.message);
+    console.error(red("❌ S3 connection failed:"), error.message);
     return false;
   }
 }
 
 async function createTestBucket(creds: S3Credentials): Promise<boolean> {
-  console.log(colors.blue(`\n🪣 Creating test bucket: ${TEST_BUCKET}...`));
+  console.log(blue(`\n🪣 Creating test bucket: ${TEST_BUCKET}...`));
   
   try {
     await $`AWS_SHARED_CREDENTIALS_FILE=/tmp/aws-credentials aws s3 mb s3://${TEST_BUCKET} --endpoint-url ${CEPH_S3_ENDPOINT}`;
-    console.log(colors.green(`✅ Bucket ${TEST_BUCKET} created successfully`));
+    console.log(green(`✅ Bucket ${TEST_BUCKET} created successfully`));
     return true;
   } catch (error) {
     if (error.message.includes("BucketAlreadyExists")) {
-      console.log(colors.yellow(`⚠️  Bucket ${TEST_BUCKET} already exists`));
+      console.log(yellow(`⚠️  Bucket ${TEST_BUCKET} already exists`));
       return true;
     }
-    console.error(colors.red("❌ Bucket creation failed:"), error.message);
+    console.error(red("❌ Bucket creation failed:"), error.message);
     return false;
   }
 }
 
 async function testIcebergOperations(creds: S3Credentials): Promise<boolean> {
-  console.log(colors.blue("\n🧊 Testing Iceberg-compatible operations..."));
+  console.log(blue("\n🧊 Testing Iceberg-compatible operations..."));
   
   try {
     // Create a sample Parquet file
@@ -86,13 +86,13 @@ async function testIcebergOperations(creds: S3Credentials): Promise<boolean> {
     
     // Upload test data
     await $`AWS_SHARED_CREDENTIALS_FILE=/tmp/aws-credentials aws s3 cp /tmp/test-data.json s3://${TEST_BUCKET}/data/test-data.json --endpoint-url ${CEPH_S3_ENDPOINT}`;
-    console.log(colors.green("✅ File upload successful"));
+    console.log(green("✅ File upload successful"));
     
     // Test multipart upload (required for large Iceberg files)
     const largeFile = "/tmp/large-test.dat";
     await $`dd if=/dev/zero of=${largeFile} bs=1M count=10`;
     await $`AWS_SHARED_CREDENTIALS_FILE=/tmp/aws-credentials aws s3 cp ${largeFile} s3://${TEST_BUCKET}/data/large-test.dat --endpoint-url ${CEPH_S3_ENDPOINT}`;
-    console.log(colors.green("✅ Multipart upload successful"));
+    console.log(green("✅ Multipart upload successful"));
     
     // List objects
     const objects = await $`AWS_SHARED_CREDENTIALS_FILE=/tmp/aws-credentials aws s3 ls s3://${TEST_BUCKET}/data/ --endpoint-url ${CEPH_S3_ENDPOINT} --recursive`.text();
@@ -100,17 +100,17 @@ async function testIcebergOperations(creds: S3Credentials): Promise<boolean> {
     
     // Test byte-range reads (important for Iceberg)
     await $`AWS_SHARED_CREDENTIALS_FILE=/tmp/aws-credentials aws s3api get-object --bucket ${TEST_BUCKET} --key data/test-data.json --range bytes=0-100 --endpoint-url ${CEPH_S3_ENDPOINT} /tmp/partial-read.txt`;
-    console.log(colors.green("✅ Byte-range read successful"));
+    console.log(green("✅ Byte-range read successful"));
     
     return true;
   } catch (error) {
-    console.error(colors.red("❌ Iceberg operations failed:"), error.message);
+    console.error(red("❌ Iceberg operations failed:"), error.message);
     return false;
   }
 }
 
 async function performanceBaseline(creds: S3Credentials): Promise<void> {
-  console.log(colors.blue("\n⚡ Measuring performance baseline..."));
+  console.log(blue("\n⚡ Measuring performance baseline..."));
   
   const fileSizes = [1, 10, 100]; // MB
   const results: any[] = [];
@@ -145,7 +145,7 @@ async function performanceBaseline(creds: S3Credentials): Promise<void> {
 }
 
 async function configureBucketLifecycle(creds: S3Credentials): Promise<boolean> {
-  console.log(colors.blue("\n♻️  Configuring bucket lifecycle policies..."));
+  console.log(blue("\n♻️  Configuring bucket lifecycle policies..."));
   
   const lifecyclePolicy = {
     Rules: [
@@ -167,19 +167,19 @@ async function configureBucketLifecycle(creds: S3Credentials): Promise<boolean> 
   try {
     await Deno.writeTextFile("/tmp/lifecycle.json", JSON.stringify(lifecyclePolicy));
     await $`AWS_SHARED_CREDENTIALS_FILE=/tmp/aws-credentials aws s3api put-bucket-lifecycle-configuration --bucket ${TEST_BUCKET} --lifecycle-configuration file:///tmp/lifecycle.json --endpoint-url ${CEPH_S3_ENDPOINT}`;
-    console.log(colors.green("✅ Lifecycle policies configured"));
+    console.log(green("✅ Lifecycle policies configured"));
     return true;
   } catch (error) {
-    console.error(colors.red("❌ Lifecycle configuration failed:"), error.message);
+    console.error(red("❌ Lifecycle configuration failed:"), error.message);
     return false;
   }
 }
 
 async function main() {
-  console.log(colors.bold.blue("🧊 Iceberg S3 Compatibility Test Suite\n"));
+  console.log(bold(blue("🧊 Iceberg S3 Compatibility Test Suite\n")));
   
   // Wait for S3 user to be created
-  console.log(colors.yellow("⏳ Waiting for S3 user creation..."));
+  console.log(yellow("⏳ Waiting for S3 user creation..."));
   await $.sleep(5000);
   
   try {
@@ -202,8 +202,8 @@ async function main() {
     if (passed === tests.length) {
       await performanceBaseline(creds);
       
-      console.log(colors.bold.green(`\n✅ All tests passed! (${passed}/${tests.length})`));
-      console.log(colors.green("Ceph S3 is compatible with Apache Iceberg requirements"));
+      console.log(bold(green(`\n✅ All tests passed! (${passed}/${tests.length})`)));
+      console.log(green("Ceph S3 is compatible with Apache Iceberg requirements"));
       
       // Save results
       const results = {
@@ -219,9 +219,9 @@ async function main() {
       };
       
       await Deno.writeTextFile("/tmp/iceberg-s3-validation.json", JSON.stringify(results, null, 2));
-      console.log(colors.dim("\nResults saved to: /tmp/iceberg-s3-validation.json"));
+      console.log(dim("\nResults saved to: /tmp/iceberg-s3-validation.json"));
     } else {
-      console.log(colors.bold.red(`\n❌ Some tests failed (${passed}/${tests.length})`));
+      console.log(bold(red(`\n❌ Some tests failed (${passed}/${tests.length})`)));
       Deno.exit(1);
     }
     
@@ -229,7 +229,7 @@ async function main() {
     await $`rm -f /tmp/aws-credentials /tmp/lifecycle.json`;
     
   } catch (error) {
-    console.error(colors.bold.red("Fatal error:"), error.message);
+    console.error(bold(red("Fatal error:")), error.message);
     Deno.exit(1);
   }
 }
