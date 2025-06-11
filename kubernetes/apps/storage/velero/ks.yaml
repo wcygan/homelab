@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -13,18 +14,18 @@ spec:
   timeout: 10m
   prune: true
   wait: true
+  path: ./kubernetes/apps/storage/velero/app
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
   dependsOn:
     - name: external-snapshotter
       namespace: storage
     - name: rook-ceph-cluster
       namespace: storage
   healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
+    - apiVersion: helm.toolkit.fluxcd.io/v2beta2
       kind: HelmRelease
       name: velero
       namespace: storage
-  path: ./kubernetes/apps/storage/velero/app
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-    namespace: flux-system

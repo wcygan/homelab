@@ -1,8 +1,11 @@
-apiVersion: source.toolkit.fluxcd.io/v1
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/helmrepository_v1beta2.json
+apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
 metadata:
   name: vmware-tanzu
   namespace: flux-system
 spec:
-  interval: 24h
-  url: https://vmware-tanzu.github.io/helm-charts/
+  type: oci
+  url: oci://projects.registry.vmware.com/tanzu-helm-charts
+  interval: 12h
