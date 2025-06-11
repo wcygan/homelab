@@ -20,7 +20,5 @@ spec:
   dependsOn:
     - name: cnpg-operator
       namespace: cnpg-system
-    - name: rook-ceph-cluster
-      namespace: storage
     - name: kube-prometheus-stack
       namespace: monitoring
