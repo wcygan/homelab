@@ -12,7 +12,7 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 
 ### Priority 1: Critical Issues (Immediate Action)
 - [x] Fix Ceph Storage Warning (Too many PGs per OSD: 284 > max 250) ✅ COMPLETED
-- [ ] Implement Backup Solution with Velero
+- [x] Implement Backup Solution with Velero ✅ COMPLETED
 - [x] Stabilize Pod Restarts (investigate and fix high restart counts) ✅ COMPLETED
 
 ### Priority 2: Operational Excellence
@@ -155,6 +155,34 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
   - ClusterRole with read permissions across cluster
   - Added pods/exec permission for Ceph health checks
 - **Result**: Automated daily health monitoring with historical tracking and alerting
+
+### Velero Backup Solution (Completed June 11, 2025)
+- **Implementation Details**:
+  - Deployed Velero v1.16.0 with Helm chart 9.2.0
+  - Configured Ceph S3 backend using existing RGW endpoint
+  - Created automated backup schedules (daily at 2 AM, weekly on Sundays)
+  - Integrated with Prometheus for monitoring via ServiceMonitor
+- **Architecture Deployed**:
+  - Server pod for backup orchestration
+  - Node agents (DaemonSet) for filesystem backups
+  - S3 bucket "velero" for backup storage
+  - CSI snapshot support enabled for PVC backups
+- **Testing Infrastructure**:
+  - Created comprehensive integration test script
+  - Added to test-all.ts framework
+  - Supports quick verification and full backup/restore testing
+  - Documents manual backup procedures
+- **Key Challenges Resolved**:
+  - VMware Tanzu repository moved from OCI to HTTPS format
+  - Velero v1.14+ includes built-in CSI support (no plugin needed)
+  - Credential format conversion from Ceph to AWS S3 format
+  - kubectl-based operations (velero CLI not in pod)
+- **Documentation Created**:
+  - Velero README with architecture and procedures
+  - Operations guide with daily/weekly/monthly tasks
+  - Backup strategy document comparing Velero vs Volsync
+  - Integration test for ongoing verification
+- **Result**: Enterprise-grade backup and disaster recovery capability operational
 
 ## References
 
