@@ -33,6 +33,7 @@
     "test:logcli": "deno run --allow-all scripts/test-loki-logcli.ts",
     "logcli": "deno run --allow-all scripts/logcli-wrapper.ts",
     "validate": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts",
-    "validate:manifests": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts"
+    "validate:manifests": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts",
+    "dashboard": "deno run --allow-all scripts/dashboard-launcher.ts"
   }
 }

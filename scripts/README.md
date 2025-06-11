@@ -39,6 +39,28 @@ pods, and system components.
 ./scripts/k8s-health-check.ts --help
 ```
 
+### 📊 `dashboard-launcher.ts` - Interactive Grafana Dashboard Launcher
+
+Interactive CLI for discovering and opening Grafana dashboards from the homelab monitoring stack.
+
+**Features:**
+
+- Auto-discovery of dashboard JSON files from monitoring configuration
+- Dynamic Grafana URL detection from Kubernetes ingress
+- Interactive dashboard selection using fzf
+- Cross-platform browser opening
+- Supports both UID-based and title-based dashboard URLs
+
+**Usage:**
+
+```bash
+# Launch interactive dashboard selector
+deno task dashboard
+
+# Or run directly
+./scripts/dashboard-launcher.ts
+```
+
 ### ✅ `validate-manifests.ts` - Kubernetes Manifest Validation
 
 Fast parallel validation of all Kubernetes manifests before committing. Handles
