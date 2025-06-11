@@ -132,7 +132,12 @@
       "Bash(./scripts/test-airflow-loki-logs.ts)",
       "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"\"airflow\"\"}' --limit=10 --output=raw)",
       "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"airflow\"} |= \"dag_id=hello_world\"' --limit=5 --output=raw)",
-      "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"airflow\", dag_id=~\".+\"}' --limit=2 --output=raw)"
+      "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"airflow\", dag_id=~\".+\"}' --limit=2 --output=raw)",
+      "Bash(git rev-parse:*)",
+      "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"airflow\", dag_id=\"hello_world\"}' --limit=3 --since=5m --output=raw)",
+      "Bash(./scripts/flux-deployment-check.ts --json)",
+      "Bash(./scripts/test-logging-stack.ts --json)",
+      "Bash(./scripts/validate-airflow-logging.ts)"
     ],
     "deny": []
   }

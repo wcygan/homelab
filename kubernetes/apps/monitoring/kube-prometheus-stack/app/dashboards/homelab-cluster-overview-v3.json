@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Perfect homelab cluster overview with comprehensive metrics and actionable insights",
+  "description": "Compact homelab cluster overview with key metrics and actionable insights",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -58,8 +58,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 5,
+        "h": 5,
+        "w": 4,
         "x": 0,
         "y": 0
       },
@@ -134,7 +134,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 80
+                "value": 70
               },
               {
                 "id": "mappings",
@@ -177,16 +177,16 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 200
+                "value": 180
               }
             ]
           }
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 10,
-        "x": 5,
+        "h": 5,
+        "w": 8,
+        "x": 4,
         "y": 0
       },
       "id": 2,
@@ -255,155 +255,36 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "fixedColor": "green",
+            "mode": "fixed"
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
+                "color": "green",
                 "value": null
               }
             ]
           },
           "unit": "short"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Nodes"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "CPU"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 60
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Memory"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 60
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Pods"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Namespaces"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 9,
-        "x": 15,
+        "h": 2,
+        "w": 2,
+        "x": 12,
         "y": 0
       },
-      "id": 3,
+      "id": 31,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
-        "orientation": "horizontal",
+        "orientation": "auto",
         "reduceOptions": {
           "values": false,
           "calcs": [
@@ -411,7 +292,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -421,74 +302,211 @@
             "uid": "$datasource"
           },
           "expr": "count(kube_node_status_condition{condition=\"Ready\", status=\"true\"})",
-          "hide": false,
           "instant": true,
-          "refId": "nodes_ready"
+          "refId": "A"
+        }
+      ],
+      "title": "Nodes",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 14,
+        "y": 0
+      },
+      "id": 32,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "avg(100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100))",
-          "hide": false,
           "instant": true,
-          "refId": "cpu_usage"
+          "refId": "A"
+        }
+      ],
+      "title": "CPU",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 16,
+        "y": 0
+      },
+      "id": 33,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "avg((1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100)",
-          "hide": false,
           "instant": true,
-          "refId": "memory_usage"
+          "refId": "A"
+        }
+      ],
+      "title": "Memory",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 18,
+        "y": 0
+      },
+      "id": 34,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "count(kube_pod_status_phase{phase=\"Running\"})",
-          "hide": false,
           "instant": true,
-          "refId": "pods_running"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "$datasource"
-          },
-          "expr": "count(count by (namespace) (kube_pod_info))",
-          "hide": false,
-          "instant": true,
-          "refId": "namespace_count"
+          "refId": "A"
         }
       ],
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value #nodes_ready": "Nodes",
-              "Value #cpu_usage": "CPU",
-              "Value #memory_usage": "Memory",
-              "Value #pods_running": "Pods",
-              "Value #namespace_count": "Namespaces"
-            }
-          }
-        }
-      ],
-      "title": "⚡ Quick Status",
+      "title": "Pods",
       "type": "stat"
     },
     {
@@ -507,12 +525,12 @@
                 "0": {
                   "color": "red",
                   "index": 0,
-                  "text": "UNHEALTHY"
+                  "text": "DOWN"
                 },
                 "1": {
                   "color": "green",
                   "index": 1,
-                  "text": "HEALTHY"
+                  "text": "UP"
                 }
               },
               "type": "value"
@@ -536,10 +554,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 15,
-        "y": 4
+        "h": 2,
+        "w": 2,
+        "x": 20,
+        "y": 0
       },
       "id": 6,
       "options": {
@@ -567,7 +585,7 @@
           "refId": "A"
         }
       ],
-      "title": "GitOps Status",
+      "title": "GitOps",
       "type": "stat"
     },
     {
@@ -580,6 +598,7 @@
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 1,
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -605,13 +624,16 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 18,
-        "y": 4
+        "h": 2,
+        "w": 2,
+        "x": 22,
+        "y": 0
       },
       "id": 12,
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
@@ -620,8 +642,7 @@
           ],
           "fields": ""
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -634,8 +655,33 @@
           "refId": "A"
         }
       ],
-      "title": "Storage Usage",
-      "type": "gauge"
+      "title": "Storage",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 12,
+        "x": 12,
+        "y": 2
+      },
+      "id": 7,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "**🎯 Action Items** • **KubeProxyDown**: Expected - Cilium in kube-proxy replacement mode • **CPUThrottling**: git-sync containers - consider increasing CPU limits • **Ceph Warning**: Check `ceph health detail`",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.2.0",
+      "title": "",
+      "type": "text"
     },
     {
       "datasource": {
@@ -653,17 +699,17 @@
                 "0": {
                   "color": "red",
                   "index": 0,
-                  "text": "HEALTH_ERR"
+                  "text": "ERR"
                 },
                 "1": {
                   "color": "yellow",
                   "index": 1,
-                  "text": "HEALTH_WARN"
+                  "text": "WARN"
                 },
                 "2": {
                   "color": "green",
                   "index": 2,
-                  "text": "HEALTH_OK"
+                  "text": "OK"
                 }
               },
               "type": "value"
@@ -691,10 +737,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 21,
-        "y": 4
+        "h": 2,
+        "w": 2,
+        "x": 0,
+        "y": 5
       },
       "id": 11,
       "options": {
@@ -722,33 +768,8 @@
           "refId": "A"
         }
       ],
-      "title": "Ceph Health",
+      "title": "Ceph",
       "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "$datasource"
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 15,
-        "x": 0,
-        "y": 8
-      },
-      "id": 7,
-      "options": {
-        "code": {
-          "language": "plaintext",
-          "showLineNumbers": false,
-          "showMiniMap": false
-        },
-        "content": "## 🎯 Action Items\n\n### Critical Alert: KubeProxyDown\n- **Status**: Expected behavior - Cilium is running in kube-proxy replacement mode\n- **Action**: No action needed unless you specifically need kube-proxy metrics\n- **Details**: This cluster uses Cilium CNI which replaces kube-proxy functionality\n\n### Info Alerts: CPUThrottlingHigh\n- **Affected**: git-sync containers (2 instances)\n- **Impact**: Minor performance impact on repository synchronization\n- **Action**: Consider increasing CPU limits for git-sync containers if sync delays are observed\n\n### Ceph Storage Health Warning\n- **Status**: HEALTH_WARN indicates non-critical issues\n- **Action**: Check `kubectl -n storage exec deploy/rook-ceph-tools -- ceph health detail`\n- **Common causes**: Clock skew, slow requests, or rebalancing operations",
-        "mode": "markdown"
-      },
-      "pluginVersion": "10.2.0",
-      "title": "",
-      "type": "text"
     },
     {
       "datasource": {
@@ -758,123 +779,36 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "fixedColor": "text",
+            "mode": "fixed"
           },
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
+                "color": "green",
                 "value": null
               }
             ]
           },
-          "unit": "short"
+          "unit": "decbytes"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Total"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "decbytes"
-              },
-              {
-                "id": "decimals",
-                "value": 2
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Used"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "decbytes"
-              },
-              {
-                "id": "decimals",
-                "value": 2
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Available"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "decbytes"
-              },
-              {
-                "id": "decimals",
-                "value": 2
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "OSDs"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Pools"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Objects"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 9,
-        "x": 15,
-        "y": 8
+        "h": 2,
+        "w": 2,
+        "x": 2,
+        "y": 5
       },
-      "id": 13,
+      "id": 41,
       "options": {
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
+        "justifyMode": "center",
+        "orientation": "auto",
         "reduceOptions": {
           "values": false,
           "calcs": [
@@ -882,7 +816,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -892,88 +826,257 @@
             "uid": "$datasource"
           },
           "expr": "ceph_cluster_total_bytes",
-          "format": "time_series",
-          "hide": false,
           "instant": true,
-          "refId": "ceph_total"
+          "refId": "A"
+        }
+      ],
+      "title": "Total",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "decbytes"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 4,
+        "y": 5
+      },
+      "id": 42,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "ceph_cluster_total_used_bytes",
-          "format": "time_series",
-          "hide": false,
           "instant": true,
-          "refId": "ceph_used"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "$datasource"
+          "refId": "A"
+        }
+      ],
+      "title": "Used",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
           },
-          "expr": "ceph_cluster_total_bytes - ceph_cluster_total_used_bytes",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
-          "refId": "ceph_available"
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 6,
+        "y": 5
+      },
+      "id": 43,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "count(ceph_osd_up) OR on() vector(0)",
-          "hide": false,
           "instant": true,
-          "refId": "osds_up"
+          "refId": "A"
+        }
+      ],
+      "title": "OSDs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 8,
+        "y": 5
+      },
+      "id": 44,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "count(ceph_pool_metadata) OR on() vector(0)",
-          "hide": false,
           "instant": true,
-          "refId": "pool_count"
+          "refId": "A"
+        }
+      ],
+      "title": "Pools",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 10,
+        "y": 5
+      },
+      "id": 45,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "sum(ceph_pool_objects) OR on() vector(0)",
-          "hide": false,
           "instant": true,
-          "refId": "object_count"
+          "refId": "A"
         }
       ],
-      "title": "💾 Ceph Storage Details",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value #ceph_available": "Available",
-              "Value #ceph_total": "Total",
-              "Value #ceph_used": "Used",
-              "Value #object_count": "Objects",
-              "Value #osds_up": "OSDs",
-              "Value #pool_count": "Pools"
-            }
-          }
-        }
-      ],
+      "title": "Objects",
       "type": "stat"
     },
     {
@@ -982,7 +1085,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 7
       },
       "id": 100,
       "panels": [],
@@ -1049,10 +1152,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 8,
         "x": 0,
-        "y": 15
+        "y": 8
       },
       "id": 8,
       "options": {
@@ -1141,10 +1244,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 8,
         "x": 8,
-        "y": 15
+        "y": 8
       },
       "id": 9,
       "options": {
@@ -1196,10 +1299,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 8,
         "x": 16,
-        "y": 15
+        "y": 8
       },
       "id": 10,
       "options": {
@@ -1242,7 +1345,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 14
       },
       "id": 200,
       "panels": [],
@@ -1332,10 +1435,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 15
       },
       "id": 14,
       "options": {
@@ -1442,10 +1545,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 15
       },
       "id": 20,
       "options": {
@@ -1489,7 +1592,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 21
       },
       "id": 300,
       "panels": [],
@@ -1542,7 +1645,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 120
+                "value": 100
               }
             ]
           },
@@ -1554,7 +1657,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 250
+                "value": 200
               }
             ]
           },
@@ -1566,7 +1669,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 80
+                "value": 70
               },
               {
                 "id": "custom.cellOptions",
@@ -1579,10 +1682,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 12,
         "x": 0,
-        "y": 33
+        "y": 22
       },
       "id": 15,
       "options": {
@@ -1759,10 +1862,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 22
       },
       "id": 16,
       "options": {
@@ -1797,7 +1900,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 28
       },
       "id": 400,
       "panels": [],
@@ -1860,10 +1963,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 12,
         "x": 0,
-        "y": 42
+        "y": 29
       },
       "id": 17,
       "options": {
@@ -1926,10 +2029,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 6,
         "x": 12,
-        "y": 42
+        "y": 29
       },
       "id": 18,
       "options": {
@@ -1966,8 +2069,10 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "fixedColor": "text",
+            "mode": "fixed"
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1980,69 +2085,20 @@
           },
           "unit": "short"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Total Pods"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Total Deployments"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Total Services"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Total PVCs"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
+        "h": 3,
+        "w": 3,
         "x": 18,
-        "y": 42
+        "y": 29
       },
-      "id": 19,
+      "id": 51,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
+        "colorMode": "none",
+        "graphMode": "none",
         "justifyMode": "center",
-        "orientation": "horizontal",
+        "orientation": "auto",
         "reduceOptions": {
           "values": false,
           "calcs": [
@@ -2050,7 +2106,7 @@
           ],
           "fields": ""
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -2060,63 +2116,197 @@
             "uid": "$datasource"
           },
           "expr": "count(kube_pod_info)",
-          "hide": false,
           "instant": true,
-          "refId": "total_pods"
+          "refId": "A"
+        }
+      ],
+      "title": "Total Pods",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 29
+      },
+      "id": 52,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "count(kube_deployment_created)",
-          "hide": false,
           "instant": true,
-          "refId": "total_deployments"
+          "refId": "A"
+        }
+      ],
+      "title": "Deployments",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 18,
+        "y": 32
+      },
+      "id": 53,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "count(kube_service_created)",
-          "hide": false,
           "instant": true,
-          "refId": "total_services"
+          "refId": "A"
+        }
+      ],
+      "title": "Services",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 32
+      },
+      "id": 54,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.2.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
           "expr": "count(kube_persistentvolumeclaim_created)",
-          "hide": false,
           "instant": true,
-          "refId": "total_pvcs"
+          "refId": "A"
         }
       ],
-      "title": "📊 Cluster Resources",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value #total_deployments": "Total Deployments",
-              "Value #total_pods": "Total Pods",
-              "Value #total_pvcs": "Total PVCs", 
-              "Value #total_services": "Total Services"
-            }
-          }
-        }
-      ],
+      "title": "PVCs",
       "type": "stat"
     }
   ],
