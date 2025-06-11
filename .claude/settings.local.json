@@ -137,7 +137,8 @@
       "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"airflow\", dag_id=\"hello_world\"}' --limit=3 --since=5m --output=raw)",
       "Bash(./scripts/flux-deployment-check.ts --json)",
       "Bash(./scripts/test-logging-stack.ts --json)",
-      "Bash(./scripts/validate-airflow-logging.ts)"
+      "Bash(./scripts/validate-airflow-logging.ts)",
+      "Bash(task reconcile)"
     ],
     "deny": []
   }

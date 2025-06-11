@@ -7,4 +7,3 @@ resources:
   - ./helmrelease.yaml
   - ./schedules.yaml
   - ./servicemonitor.yaml
-  - ./velero-bucket.yaml
