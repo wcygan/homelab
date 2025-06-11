@@ -19,11 +19,7 @@ def log_test_function():
     print("Testing log persistence with multiple lines")
     print("Log timestamp:", pendulum.now().to_iso8601_string())
     
-    # Add small delay to ensure logs are captured by Alloy
-    import time
-    print("Waiting for log collection...")
-    time.sleep(5)
-    
+    # Vector sidecar now captures logs immediately
     return "Python task completed successfully"
 
 with DAG(
@@ -43,9 +39,7 @@ with DAG(
         echo "Pod hostname: $(hostname)"
         echo "Testing multi-line bash output"
         echo "This should persist in logs even after pod termination"
-        # Add small delay to ensure logs are captured by Alloy
-        echo "Waiting for log collection..."
-        sleep 5
+        # Vector sidecar captures logs immediately
         echo "Task complete"
         ''',
     )
