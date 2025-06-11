@@ -19,8 +19,8 @@ spec:
     namespace: flux-system
   dependsOn:
     - name: cnpg-operator
-      namespace: flux-system
+      namespace: cnpg-system
     - name: rook-ceph-cluster
-      namespace: flux-system
+      namespace: storage
     - name: kube-prometheus-stack
-      namespace: flux-system
+      namespace: monitoring
