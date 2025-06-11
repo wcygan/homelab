@@ -7,4 +7,4 @@ resources:
   - ./helmrelease.yaml
   - ./schedules.yaml
   - ./servicemonitor.yaml
-  - ./credential-generator-job.yaml
+  - ./velero-bucket.yaml
