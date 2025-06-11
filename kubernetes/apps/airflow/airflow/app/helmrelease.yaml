@@ -116,13 +116,24 @@ spec:
 
     # Resource limits
     webserver:
+      # Optimize gunicorn configuration to reduce memory usage
+      defaultAirflowRepository: apache/airflow
+      defaultAirflowTag: "2.10.3"
+      # Limit gunicorn workers to reduce memory pressure
+      extraEnv:
+        - name: AIRFLOW__WEBSERVER__WORKERS
+          value: "2"  # Reduced from default 4
+        - name: AIRFLOW__WEBSERVER__WORKER_TIMEOUT
+          value: "120"
+        - name: AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT
+          value: "120"
       resources:
         requests:
           cpu: "200m"
-          memory: "512Mi"
+          memory: "1Gi"  # Increased from 512Mi due to OOM kills
         limits:
           cpu: "1000m"
-          memory: "2Gi"
+          memory: "4Gi"  # Increased from 2Gi due to gunicorn OOM kills
 
     scheduler:
       resources:

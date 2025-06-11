@@ -27,3 +27,12 @@ spec:
       disableAuth: true
     # Enable snapshot support with Ceph
     snapshotClassName: csi-ceph-blockpool
+    
+    # Resource limits for VolSync controller
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi

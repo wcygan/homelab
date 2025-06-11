@@ -116,10 +116,7 @@ spec:
         additionalLabels:
           app.kubernetes.io/part-of: kube-prometheus-stack
     
-    # Storage settings
-    kubectl:
-      image:
-        tag: 1.31.2
+    # Use default kubectl image from chart
     
     # Security context
     securityContext:

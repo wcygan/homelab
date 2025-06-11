@@ -11,7 +11,7 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 ## Goals
 
 ### Priority 1: Critical Issues (Immediate Action)
-- [ ] Fix Ceph Storage Warning (Too many PGs per OSD: 284 > max 250)
+- [x] Fix Ceph Storage Warning (Too many PGs per OSD: 284 > max 250) ✅ COMPLETED
 - [ ] Implement Backup Solution with Velero
 - [ ] Stabilize Pod Restarts (investigate and fix high restart counts)
 
@@ -41,7 +41,7 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 ## Validation
 
 ### Tests to Perform
-- Test 1: Verify Ceph health returns to HEALTH_OK
+- Test 1: Verify Ceph health returns to HEALTH_OK ✅ COMPLETED
 - Test 2: Successfully backup and restore a test application with Velero
 - Test 3: Confirm pod restart counts stabilize below 5
 - Test 4: Validate all secrets accessible via External Secrets
@@ -85,9 +85,20 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 - Document operational procedures for common tasks
 - Deploy external monitoring with Uptime Kuma
 
+## Completion Notes
+
+### Ceph PG Warning Fix (Completed June 11, 2025)
+- Reduced total PGs from 569 to 427
+- Reduced erasure-coded pool PGs from 256 to 64
+- Set pg_num_max limits to prevent autoscaler issues
+- Temporarily increased mon_max_pg_per_osd to 260
+- Cluster health restored to HEALTH_OK
+- Created comprehensive [PG Optimization Guide](../ceph/operations/pg-optimization.md)
+
 ## References
 
 - [Ceph Daily Health Check Runbook](../ceph/operations/daily-health-check.md)
+- [Ceph PG Optimization Guide](../ceph/operations/pg-optimization.md)
 - [Storage Health Check Script](../../scripts/storage-health-check.ts)
 - [Cluster Health Monitor](../../scripts/k8s-health-check.ts)
 - [Previous Milestone: Loki Deployment](./2025-06-10-loki-deployment.md)
