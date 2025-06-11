@@ -181,6 +181,11 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
+      
+      # Use pod template with Vector sidecar
+      podTemplate:
+        configMapName: "airflow-pod-template"
+        key: "pod-template.yaml"
 
     # Disable example DAGs in production
     env:

@@ -114,6 +114,14 @@ class UnifiedTestRunner {
       critical: true,
       requires: "k8s",
     },
+    {
+      name: "Velero Backup Verification",
+      script: "test-velero-backup.ts",
+      category: "storage",
+      args: ["--skip-restore"], // Skip restore in regular tests for speed
+      critical: false,
+      requires: "k8s",
+    },
     
     // Network Tests
     {
