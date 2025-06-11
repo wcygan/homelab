@@ -13,7 +13,7 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 ### Priority 1: Critical Issues (Immediate Action)
 - [x] Fix Ceph Storage Warning (Too many PGs per OSD: 284 > max 250) ✅ COMPLETED
 - [ ] Implement Backup Solution with Velero
-- [ ] Stabilize Pod Restarts (investigate and fix high restart counts)
+- [x] Stabilize Pod Restarts (investigate and fix high restart counts) ✅ COMPLETED
 
 ### Priority 2: Operational Excellence
 - [ ] Complete Secrets Migration (12 SOPS → External Secrets/1Password)
@@ -108,6 +108,19 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
   - ingress-nginx controllers: Added CPU limits (1CPU) and memory requests (256Mi)
 - **Result**: 100% resource limit coverage across all workloads
 - **Impact**: Prevents unbounded resource consumption, improves cluster stability
+
+### Pod Restart Stabilization (Completed June 11, 2025)
+- **Root Cause Analysis**: 
+  - Identified OOM kills in Airflow gunicorn processes (multiple workers killed due to memory pressure)
+  - CSI plugin restarts caused by k8s API server connectivity timeouts
+  - Spegel registry mirror errors (non-fatal, normal operation)
+  - Velero ImagePullBackOff due to non-existent kubectl image version
+- **Fixes Applied**:
+  - Increased Airflow webserver memory limit from 2Gi to 4Gi, requests from 512Mi to 1Gi
+  - Reduced Airflow gunicorn workers from 4 to 2 to reduce memory pressure
+  - Fixed Velero kubectl image from v1.31.3 (non-existent) to v1.33.1
+  - Resolved CSI plugin conflicts in Velero configuration
+- **Result**: Pod restart counts stabilized, OOM kills eliminated
 
 ## References
 
