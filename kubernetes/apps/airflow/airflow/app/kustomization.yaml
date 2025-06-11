@@ -8,3 +8,4 @@ resources:
   - ./health-check-scripts-real.yaml
   - ./airflow-health-service-account.yaml
   - ./airflow-alerting-webhook.yaml
+  - ./vector-config.yaml
