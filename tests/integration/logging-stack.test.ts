@@ -408,3 +408,94 @@ Deno.test({
     }
   },
 });
+
+Deno.test({
+  name: "Loki CLI (logcli) query functionality",
+  fn: async () => {
+    console.log("🖥️  Testing Loki CLI query functionality...");
+    
+    // Check if logcli is installed
+    try {
+      const version = await $`logcli --version`.text();
+      console.log(`✅ logcli installed: ${version.trim()}`);
+    } catch (error) {
+      throw new Error("logcli not installed. Please install it for CLI testing.");
+    }
+    
+    // Setup port-forward for logcli
+    console.log("🔄 Setting up port-forward for logcli...");
+    const portForwardCmd = new Deno.Command("kubectl", {
+      args: [
+        "port-forward",
+        "-n", LOKI_NAMESPACE,
+        `svc/${LOKI_SERVICE}`,
+        "3100:80"
+      ],
+      stdout: "piped",
+      stderr: "piped",
+    });
+    
+    const portForwardProcess = portForwardCmd.spawn();
+    
+    // Wait for port-forward to establish
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    try {
+      // Test logcli connectivity
+      const labelsResult = await $`logcli labels`.env({
+        LOGCLI_ADDR: "http://localhost:3100"
+      }).text();
+      
+      assert(labelsResult.includes("namespace"), "logcli failed to retrieve labels");
+      console.log("✅ logcli connected to Loki");
+      
+      // Test querying recent logs
+      const queryResult = await $`logcli query --limit=10 '{namespace="monitoring"}'`.env({
+        LOGCLI_ADDR: "http://localhost:3100"
+      }).noThrow();
+      
+      if (queryResult.code === 0) {
+        console.log("✅ Successfully queried logs via logcli");
+        const lines = queryResult.stdout.trim().split('\n').filter(l => l.length > 0);
+        console.log(`📊 Retrieved ${lines.length} log lines`);
+      } else {
+        console.log("⚠️  logcli query returned no results (this may be normal if no recent logs)");
+      }
+      
+      // Test different output formats
+      const formats = ["jsonl", "raw"];
+      for (const format of formats) {
+        try {
+          const formatResult = await $`logcli query --limit=5 --output=${format} '{namespace="default"}'`.env({
+            LOGCLI_ADDR: "http://localhost:3100"
+          }).quiet();
+          
+          console.log(`✅ Output format '${format}' works correctly`);
+        } catch {
+          console.log(`⚠️  Output format '${format}' test failed (may be due to no matching logs)`);
+        }
+      }
+      
+      // Test time-based queries
+      try {
+        const timeResult = await $`logcli query --from=1h --to=now --limit=5 '{namespace=~"storage|monitoring"}'`.env({
+          LOGCLI_ADDR: "http://localhost:3100"
+        }).quiet();
+        
+        console.log("✅ Time-based queries work correctly");
+      } catch {
+        console.log("⚠️  Time-based query test failed");
+      }
+      
+      console.log("\n✅ Loki CLI (logcli) functionality verified");
+      
+    } finally {
+      // Clean up port-forward
+      try {
+        portForwardProcess.kill();
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  },
+});

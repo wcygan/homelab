@@ -125,7 +125,9 @@
       "Bash(helm list:*)",
       "Bash(deno test:*)",
       "Bash(helm uninstall:*)",
-      "Bash(./scripts/test-loki-grafana.ts)"
+      "Bash(./scripts/test-loki-grafana.ts)",
+      "Bash(logcli --version)",
+      "Bash(./scripts/logcli-wrapper.ts:*)"
     ],
     "deny": []
   }

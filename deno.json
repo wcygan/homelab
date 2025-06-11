@@ -29,6 +29,9 @@
     "test:s3": "deno run --allow-all scripts/test-s3-integration.ts",
     "test:integration": "deno test --allow-all tests/integration/",
     "test:logging": "deno test --allow-all tests/integration/logging-stack.test.ts",
+    "test:loki": "deno run --allow-all scripts/test-loki-complete.ts",
+    "test:logcli": "deno run --allow-all scripts/test-loki-logcli.ts",
+    "logcli": "deno run --allow-all scripts/logcli-wrapper.ts",
     "validate": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts",
     "validate:manifests": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts"
   }
