@@ -144,7 +144,9 @@
       "Bash(git pull:*)",
       "Bash(git pull:*)",
       "Bash(./scripts/test-iceberg-s3.ts)",
-      "Bash(./scripts/test-iceberg-s3-simple.ts)"
+      "Bash(./scripts/test-iceberg-s3-simple.ts)",
+      "WebFetch(domain:artifacthub.io)",
+      "Bash(flux version:*)"
     ],
     "deny": []
   }

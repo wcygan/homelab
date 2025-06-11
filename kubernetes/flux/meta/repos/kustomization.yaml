@@ -24,3 +24,5 @@ resources:
   - ./grafana.yaml
   # renovate: datasource=helm depName=velero lookupName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts/
   - ./vmware-tanzu.yaml
+  # renovate: datasource=helm depName=hive-metastore lookupName=hive-metastore registryUrl=https://getindata.github.io/hive-metastore
+  - ./getindata.yaml

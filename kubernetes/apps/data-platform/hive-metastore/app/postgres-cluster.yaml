@@ -1,0 +1,57 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: hive-metastore-postgres
+  namespace: data-platform
+spec:
+  instances: 1
+  primaryUpdateStrategy: unsupervised
+  
+  # PostgreSQL configuration
+  postgresql:
+    parameters:
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      max_connections: "200"
+      max_wal_size: "1GB"
+      min_wal_size: "80MB"
+
+  # Bootstrap with specific database and owner for Hive
+  bootstrap:
+    initdb:
+      database: metastore
+      owner: hive
+      secret:
+        name: hive-metastore-postgres-credentials
+
+  # Storage configuration
+  storage:
+    size: 10Gi
+    storageClass: ceph-block
+
+  # Resource allocation
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "200m"
+    limits:
+      memory: "2Gi"
+      cpu: "500m"
+
+  # Monitoring
+  monitoring:
+    enabled: true
+
+  # Backup configuration
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: "s3://data-platform-backups/postgres"
+      s3Credentials:
+        accessKeyId:
+          name: postgres-backup-s3
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: postgres-backup-s3
+          key: SECRET_ACCESS_KEY
+      endpointURL: http://rook-ceph-rgw-storage.storage.svc:80

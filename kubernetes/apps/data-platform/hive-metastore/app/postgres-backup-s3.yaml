@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-backup-s3
+  namespace: data-platform
+type: Opaque
+stringData:
+  ACCESS_KEY_ID: "placeholder" # Will be replaced with actual S3 credentials
+  SECRET_ACCESS_KEY: "placeholder" # Will be replaced with actual S3 credentials
