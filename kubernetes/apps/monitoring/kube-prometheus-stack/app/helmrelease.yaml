@@ -28,8 +28,38 @@ spec:
   # Default values are generally good for a start.
   # You can customize values here as needed, for example:
   values:
+    # Resource limits for all components
+    prometheusOperator:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    prometheus:
+      enabled: true
+      prometheusSpec:
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+
     alertmanager:
       enabled: true
+      alertmanagerSpec:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
     grafana:
       enabled: true
       # Default admin password is "prom-operator"
@@ -43,18 +73,30 @@ spec:
           jsonData:
             timeout: 60
             maxLines: 1000
-    prometheus:
-      enabled: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+
     kubeStateMetrics:
       enabled: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
     nodeExporter:
       enabled: true
-    # Example: Adjust resource requests/limits if needed
-    # prometheusOperator:
-    #   resources:
-    #     requests:
-    #       cpu: 100m
-    #       memory: 128Mi
-    #     limits:
-    #       cpu: 200m
-    #       memory: 256Mi
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
