@@ -121,7 +121,7 @@ spec:
             
             // Special processing for Airflow logs
             stage.match {
-              selector = '{namespace="airflow"}'
+              selector = "{namespace=\"airflow\"}"
               
               // Extract Airflow-specific information from log messages
               stage.regex {
