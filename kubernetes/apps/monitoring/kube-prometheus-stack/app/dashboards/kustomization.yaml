@@ -64,6 +64,15 @@ configMapGenerator:
         grafana_dashboard: "1"
       annotations:
         grafana_folder: "Airflow"
+  
+  - name: grafana-dashboard-cluster-health-monitoring
+    files:
+      - cluster-health-monitoring.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: "Homelab"
 
 # Disable hash suffix to maintain stable ConfigMap names
 generatorOptions:
