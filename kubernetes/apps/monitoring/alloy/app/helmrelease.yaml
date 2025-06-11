@@ -168,6 +168,28 @@ spec:
                 "rook_object_store",
                 "controller_revision_hash",
                 "service_istio_io_canonical_revision",
+                // Airflow-specific labels to drop
+                "airflow_executor_done",
+                "airflow_version",
+                "airflow_worker",
+                "kubernetes_executor",
+                "run_id",
+                "try_number",
+                "execution_date",
+                // Rook-ceph labels
+                "app_kubernetes_io_component",
+                "app_kubernetes_io_instance",
+                "app_kubernetes_io_name",
+                "ceph_osd_id",
+                "device_class",
+                "encrypted",
+                "failure_domain",
+                "osd",
+                "osd_store",
+                "portable",
+                "rook_cluster",
+                "topology_location_host",
+                "topology_location_root",
               ]
             }
             
