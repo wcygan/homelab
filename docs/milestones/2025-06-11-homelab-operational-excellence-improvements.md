@@ -21,7 +21,7 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 - [ ] Fix Loki Storage Volume Mount Issues
 
 ### Priority 3: Efficiency Improvements
-- [ ] Implement Resource Requests/Limits for All Workloads
+- [x] Implement Resource Requests/Limits for All Workloads ✅ COMPLETED
 - [ ] Optimize Storage Utilization (currently at 0.17%)
 - [ ] Create Comprehensive Operational Runbooks
 
@@ -94,6 +94,20 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 - Temporarily increased mon_max_pg_per_osd to 260
 - Cluster health restored to HEALTH_OK
 - Created comprehensive [PG Optimization Guide](../ceph/operations/pg-optimization.md)
+
+### Resource Limits Implementation (Completed June 11, 2025)
+- Added comprehensive resource limits to all HelmReleases (27 total)
+- **Critical Components Fixed**:
+  - kube-prometheus-stack: Added limits for Prometheus (2CPU/4Gi), Grafana (500m/1Gi), AlertManager (200m/256Mi)
+  - kubeai-operator: Added limits for operator (500m/512Mi) and open-webui (1CPU/2Gi)
+  - volsync: Added limits (200m CPU/512Mi memory)
+  - rook-ceph-operator: Added missing limits (500m CPU/512Mi memory)
+- **Partial Configurations Fixed**:
+  - flux-operator: Added CPU limit (200m)
+  - flux-instance: Added CPU limit (500m) 
+  - ingress-nginx controllers: Added CPU limits (1CPU) and memory requests (256Mi)
+- **Result**: 100% resource limit coverage across all workloads
+- **Impact**: Prevents unbounded resource consumption, improves cluster stability
 
 ## References
 
