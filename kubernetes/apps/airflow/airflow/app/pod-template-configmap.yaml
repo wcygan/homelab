@@ -4,48 +4,85 @@ metadata:
   name: airflow-pod-template
   namespace: airflow
 data:
-  pod-template.yaml: |
+  pod_template_file.yaml: |
     apiVersion: v1
     kind: Pod
     metadata:
-      name: airflow-task-pod-template
+      name: placeholder-name
+      labels:
+        tier: airflow
+        component: worker
     spec:
+      shareProcessNamespace: true
       containers:
         - name: base
-          # Main task container - configured by Airflow
+          # This container will be configured by Airflow
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
         - name: vector
           image: timberio/vector:0.39.0-debian
+          args:
+            - --config-yaml
+            - |
+              sources:
+                task_stdout:
+                  type: file
+                  include: 
+                    - /proc/1/root/dev/stdout
+                  read_from: beginning
+                task_stderr:
+                  type: file
+                  include:
+                    - /proc/1/root/dev/stderr
+                  read_from: beginning
+              transforms:
+                add_metadata:
+                  type: remap
+                  inputs: ["task_stdout", "task_stderr"]
+                  source: |
+                    .namespace = "airflow"
+                    .pod = get_env_var!("HOSTNAME")
+                    .dag_id = get_env_var("AIRFLOW_CTX_DAG_ID") ?? "unknown"
+                    .task_id = get_env_var("AIRFLOW_CTX_TASK_ID") ?? "unknown"
+                    .run_id = get_env_var("AIRFLOW_CTX_RUN_ID") ?? "unknown"
+                    .execution_date = get_env_var("AIRFLOW_CTX_EXECUTION_DATE") ?? "unknown"
+              sinks:
+                loki:
+                  type: loki
+                  inputs: ["add_metadata"]
+                  endpoint: "http://loki-gateway.monitoring.svc.cluster.local:80"
+                  encoding:
+                    codec: json
+                  batch:
+                    max_bytes: 512000
+                    timeout_secs: 0.5
+                  labels:
+                    namespace: "{{ namespace }}"
+                    pod: "{{ pod }}"
+                    dag_id: "{{ dag_id }}"
+                    task_id: "{{ task_id }}"
           env:
-            - name: VECTOR_CONFIG
-              value: |
-                [sources.task]
-                type = "file"
-                include = ["/proc/1/fd/1", "/proc/1/fd/2"]
-                ignore_older_secs = 0
-                fingerprint.strategy = "device_and_inode"
-                
-                [transforms.add_metadata]
-                type = "remap"
-                inputs = ["task"]
-                source = '''
-                .namespace = "airflow"
-                .pod = get_env_var!("HOSTNAME")
-                .dag_id = get_env_var("AIRFLOW_CTX_DAG_ID") ?? "unknown"
-                .task_id = get_env_var("AIRFLOW_CTX_TASK_ID") ?? "unknown"
-                .execution_date = get_env_var("AIRFLOW_CTX_EXECUTION_DATE") ?? "unknown"
-                '''
-                
-                [sinks.loki]
-                type = "loki"
-                inputs = ["add_metadata"]
-                endpoint = "http://loki-gateway.monitoring.svc.cluster.local:80"
-                encoding.codec = "json"
-                batch.max_bytes = 512000
-                batch.timeout_secs = 0.5
-                labels.namespace = "{{ namespace }}"
-                labels.pod = "{{ pod }}"
-                labels.dag_id = "{{ dag_id }}"
-                labels.task_id = "{{ task_id }}"
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: AIRFLOW_CTX_DAG_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['dag_id']
+            - name: AIRFLOW_CTX_TASK_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['task_id']
+            - name: AIRFLOW_CTX_RUN_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['run_id']
+            - name: AIRFLOW_CTX_EXECUTION_DATE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['execution_date']
           resources:
             requests:
               cpu: 5m
@@ -56,5 +93,5 @@ data:
           lifecycle:
             preStop:
               exec:
-                command: ["/bin/sh", "-c", "sleep 1"]
-      terminationGracePeriodSeconds: 5
+                command: ["/bin/sh", "-c", "sleep 2"]
+      terminationGracePeriodSeconds: 10

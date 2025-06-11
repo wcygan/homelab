@@ -215,6 +215,10 @@ spec:
 
     # Extra secrets/configmaps without Helm hooks
     extraConfigMaps: {}
+    
+    # Use pod template with Vector sidecar for task pods
+    podTemplateFile:
+      existingConfigMap: "airflow-pod-template"
 
     # Triggerer configuration with Ceph storage
     triggerer:

@@ -18,7 +18,7 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 ### Priority 2: Operational Excellence
 - [ ] Complete Secrets Migration (12 SOPS → External Secrets/1Password)
 - [ ] Configure Prometheus Monitoring & Alerting Rules
-- [ ] Fix Loki Storage Volume Mount Issues
+- [x] Fix Loki Storage Volume Mount Issues ✅ COMPLETED
 - [x] Implement Automated Health Monitoring with Airflow ✅ COMPLETED
 
 ### Priority 3: Efficiency Improvements
