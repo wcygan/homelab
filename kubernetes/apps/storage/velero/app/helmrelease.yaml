@@ -116,7 +116,10 @@ spec:
         additionalLabels:
           app.kubernetes.io/part-of: kube-prometheus-stack
     
-    # Use default kubectl image from chart
+    # Storage settings - fix kubectl image version
+    kubectl:
+      image:
+        tag: "1.33.1"  # Use available version instead of non-existent 1.31.3
     
     # Security context
     securityContext:
