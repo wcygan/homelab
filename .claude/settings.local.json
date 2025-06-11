@@ -146,7 +146,9 @@
       "Bash(./scripts/test-iceberg-s3.ts)",
       "Bash(./scripts/test-iceberg-s3-simple.ts)",
       "WebFetch(domain:artifacthub.io)",
-      "Bash(flux version:*)"
+      "Bash(flux version:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)"
     ],
     "deny": []
   }
