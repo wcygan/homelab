@@ -63,8 +63,8 @@ spec:
     
     credentials:
       useSecret: true
-      name: rook-ceph-object-user-storage-velero
-      existingSecret: rook-ceph-object-user-storage-velero
+      name: velero-credentials
+      existingSecret: velero-credentials
     
     configuration:
       backupStorageLocation:
