@@ -142,7 +142,7 @@ def create_health_check_task(dag: DAG, check: Dict[str, str]) -> KubernetesPodOp
         task_id=check['name'],
         name=f"health-check-{check['name']}",
         namespace='airflow',
-        image='denoland/deno:alpine-1.47.0',
+        image='busybox:latest',
         cmds=['sh', '-c'],
         arguments=[
             f'''
