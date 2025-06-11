@@ -116,30 +116,13 @@ spec:
 
     # Resource limits
     webserver:
-      # Optimize gunicorn configuration to reduce memory usage
-      defaultAirflowRepository: apache/airflow
-      defaultAirflowTag: "2.10.3"
-      # Limit gunicorn workers to reduce memory pressure
-      extraEnv:
-        - name: AIRFLOW__WEBSERVER__WORKERS
-          value: "2"  # Reduced from default 4
-        - name: AIRFLOW__WEBSERVER__WORKER_TIMEOUT
-          value: "120"
-        - name: AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT
-          value: "120"
       # Improved health checks to prevent OOM-related restarts
       livenessProbe:
-        httpGet:
-          path: /health
-          port: 8080
         initialDelaySeconds: 60  # Allow time for gunicorn startup
         periodSeconds: 30
         timeoutSeconds: 10
         failureThreshold: 5  # Generous threshold to avoid false positives during memory pressure
       readinessProbe:
-        httpGet:
-          path: /health
-          port: 8080
         initialDelaySeconds: 30
         periodSeconds: 10
         timeoutSeconds: 5
@@ -155,11 +138,6 @@ spec:
     scheduler:
       # Health checks for scheduler daemon
       livenessProbe:
-        exec:
-          command:
-            - sh
-            - -c
-            - "airflow jobs check --job-type SchedulerJob --local"
         initialDelaySeconds: 120  # Scheduler takes time to initialize
         periodSeconds: 60  # Check every minute
         timeoutSeconds: 20
@@ -181,11 +159,6 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
-      
-      # Use pod template with Vector sidecar
-      podTemplate:
-        configMapName: "airflow-pod-template"
-        key: "pod-template.yaml"
 
     # Disable example DAGs in production
     env:
@@ -194,6 +167,13 @@ spec:
       # Force Python to flush stdout/stderr immediately
       - name: PYTHONUNBUFFERED
         value: "1"
+      # Limit gunicorn workers to reduce memory pressure
+      - name: AIRFLOW__WEBSERVER__WORKERS
+        value: "2"  # Reduced from default 4
+      - name: AIRFLOW__WEBSERVER__WORKER_TIMEOUT
+        value: "120"
+      - name: AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT
+        value: "120"
       # Ensure task logs are visible
       - name: AIRFLOW__LOGGING__BASE_LOG_FOLDER
         value: "/opt/airflow/logs"
