@@ -138,7 +138,8 @@
       "Bash(./scripts/flux-deployment-check.ts --json)",
       "Bash(./scripts/test-logging-stack.ts --json)",
       "Bash(./scripts/validate-airflow-logging.ts)",
-      "Bash(task reconcile)"
+      "Bash(task reconcile)",
+      "Bash(gh pr list:*)"
     ],
     "deny": []
   }
