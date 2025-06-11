@@ -23,25 +23,25 @@ from kubernetes.client import models as k8s
 HEALTH_CHECKS = [
     {
         'name': 'k8s_health_check',
-        'script': '/scripts/k8s-health-check.ts',
+        'script': 'k8s-health-check.sh',
         'description': 'Comprehensive Kubernetes cluster health check',
         'critical': True,
     },
     {
         'name': 'storage_health_check', 
-        'script': '/scripts/storage-health-check.ts',
+        'script': 'storage-health-check.sh',
         'description': 'Storage and PVC health monitoring',
         'critical': True,
     },
     {
         'name': 'network_monitor',
-        'script': '/scripts/network-monitor.ts',
+        'script': 'network-monitor.sh',
         'description': 'Network and ingress health check',
         'critical': False,
     },
     {
         'name': 'flux_deployment_check',
-        'script': '/scripts/flux-deployment-check.ts',
+        'script': 'flux-deployment-check.sh',
         'description': 'GitOps deployment status check',
         'critical': True,
     },
@@ -127,54 +127,49 @@ def create_health_check_task(dag: DAG, check: Dict[str, str]) -> KubernetesPodOp
     """
     Create a KubernetesPodOperator for a health check script.
     """
-    # For now, scripts will be embedded in the command
-    # In production, mount from ConfigMap or git-sync
-    volume_mounts = []
-    volumes = []
+    # Mount scripts from ConfigMap
+    volume_mounts = [
+        k8s.V1VolumeMount(
+            name='health-scripts',
+            mount_path='/scripts',
+            read_only=True
+        )
+    ]
+    
+    volumes = [
+        k8s.V1Volume(
+            name='health-scripts',
+            config_map=k8s.V1ConfigMapVolumeSource(
+                name='health-check-scripts-real',
+                default_mode=0o755
+            )
+        )
+    ]
     
     # Environment variables
     env_vars = [
-        k8s.V1EnvVar(name='KUBECONFIG', value='/root/.kube/config'),
-        k8s.V1EnvVar(name='FORCE_COLOR', value='0'),  # Disable color output for logs
+        k8s.V1EnvVar(name='HOME', value='/tmp'),  # For kubectl config
     ]
     
     return KubernetesPodOperator(
         task_id=check['name'],
         name=f"health-check-{check['name']}",
         namespace='airflow',
-        image='busybox:latest',
-        cmds=['sh', '-c'],
-        arguments=[
-            f'''
-            # For testing, simulate health check
-            echo "Running health check: {check['name']}"
-            
-            # Simulate different exit codes for testing
-            if [ "{check['name']}" = "flux_deployment_check" ]; then
-                EXIT_CODE=1  # Warning
-                echo '{{"status": "warning", "message": "Minor issue detected"}}'
-            else
-                EXIT_CODE=0  # Success
-                echo '{{"status": "healthy", "message": "All systems operational"}}'
-            fi
-            
-            echo "Exit code: $EXIT_CODE"
-            
-            # Exit with the simulated code
-            exit $EXIT_CODE
-            '''
-        ],
+        image='bitnami/kubectl:1.31',
+        cmds=['bash'],
+        arguments=[f'/scripts/{check["script"]}'],
         volumes=volumes,
         volume_mounts=volume_mounts,
         env_vars=env_vars,
         get_logs=True,
         is_delete_operator_pod=True,
+        service_account_name='airflow-health-checker',  # Use the service account we created
         on_failure_callback=alert_on_failure if check['critical'] else None,
         container_resources=k8s.V1ResourceRequirements(
-            requests={'memory': '512Mi', 'cpu': '250m'},
-            limits={'memory': '1Gi', 'cpu': '500m'}
+            requests={'memory': '256Mi', 'cpu': '100m'},
+            limits={'memory': '512Mi', 'cpu': '500m'}
         ),
-# do_xcom_push=True,  # Simplified for testing
+# do_xcom_push=True,  # Will enable later with result processing
     )
 
 # DAG Definition
