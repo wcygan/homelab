@@ -7,4 +7,4 @@ resources:
   - ./kube-prometheus-stack/ks.yaml
   - ./loki/ks.yaml
   - ./alloy/ks.yaml
-  - ./loki-s3-bucket
+  - ./loki-s3-bucket/ks.yaml
