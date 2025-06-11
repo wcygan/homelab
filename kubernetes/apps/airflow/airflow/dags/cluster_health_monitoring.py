@@ -194,7 +194,7 @@ def create_health_check_task(dag: DAG, check: Dict[str, str]) -> KubernetesPodOp
         get_logs=True,
         is_delete_operator_pod=True,
         on_failure_callback=alert_on_failure if check['critical'] else None,
-        resources=k8s.V1ResourceRequirements(
+        container_resources=k8s.V1ResourceRequirements(
             requests={'memory': '512Mi', 'cpu': '250m'},
             limits={'memory': '1Gi', 'cpu': '500m'}
         ),
