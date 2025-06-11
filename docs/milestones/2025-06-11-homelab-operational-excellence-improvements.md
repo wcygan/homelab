@@ -156,6 +156,21 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
   - Added pods/exec permission for Ceph health checks
 - **Result**: Automated daily health monitoring with historical tracking and alerting
 
+### Loki Storage Fix (Completed June 11, 2025)
+- **Issue Identified**: 
+  - Not actually a volume mount issue - Loki persistence is working correctly on Ceph storage
+  - Real issue was "negative structured metadata bytes received" errors flooding logs
+  - Alloy was sending structured metadata that Loki wasn't configured to accept
+- **Fix Applied**:
+  - Disabled `allow_structured_metadata` in Loki limits_config
+  - Verified storage is properly mounted at `/var/loki` with 9.7GB Ceph volume
+  - Confirmed WAL and TSDB storage functioning correctly
+- **Verification**:
+  - No more metadata errors in logs
+  - Storage utilization stable at 0.3% of 9.7GB volume
+  - Logs being retained according to 7-day policy
+- **Result**: Loki storage working correctly, error spam eliminated
+
 ### Velero Backup Solution (Completed June 11, 2025)
 - **Implementation Details**:
   - Deployed Velero v1.16.0 with Helm chart 9.2.0
