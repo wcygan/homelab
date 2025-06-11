@@ -1,8 +1,10 @@
 # Milestone: Airflow Alloy Logging Integration
 
+> **Note**: This milestone has been superseded by [2025-01-11-airflow-vector-sidecar-deployment.md](./2025-01-11-airflow-vector-sidecar-deployment.md) which solved the ephemeral pod logging issue.
+
 **Date**: 2025-06-10  
 **Category**: Monitoring  
-**Status**: Completed
+**Status**: Completed (Superseded)
 
 ## Summary
 

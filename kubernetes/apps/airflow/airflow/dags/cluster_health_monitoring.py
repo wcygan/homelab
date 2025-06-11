@@ -50,20 +50,48 @@ HEALTH_CHECKS = [
 def alert_on_failure(context: Dict[str, Any]) -> None:
     """
     Alert callback for task failures.
-    In production, this would send to Slack/PagerDuty/email.
+    Sends alerts to the webhook handler for distribution.
     """
+    import requests
+    from datetime import datetime
+    
     task_instance = context['task_instance']
     dag_id = context['dag'].dag_id
     task_id = task_instance.task_id
     execution_date = context['execution_date']
     
-    # Log the failure for now - in production, integrate with alerting
-    print(f"ALERT: Health check failure in {dag_id}.{task_id} at {execution_date}")
-    print(f"Task logs: {context.get('exception', 'No exception details')}")
+    # Find the check configuration
+    check_info = next((c for c in HEALTH_CHECKS if c['name'] == task_id), None)
     
-    # TODO: Implement actual alerting
-    # Example: send_slack_notification(message)
-    # Example: create_pagerduty_incident(severity='critical')
+    # Prepare alert payload
+    alert_payload = {
+        'check_name': task_id,
+        'dag_id': dag_id,
+        'execution_date': str(execution_date),
+        'severity': 'critical' if check_info and check_info.get('critical') else 'warning',
+        'message': f"Health check '{task_id}' failed in DAG '{dag_id}'",
+        'description': check_info.get('description', 'Unknown check') if check_info else 'Unknown check',
+        'timestamp': datetime.utcnow().isoformat(),
+        'failures': [
+            f"Task {task_id} failed at {execution_date}",
+            f"Exception: {context.get('exception', 'No exception details')}"
+        ]
+    }
+    
+    # Send to webhook handler
+    try:
+        webhook_url = 'http://airflow-webhook-handler.airflow.svc.cluster.local:8080/'
+        response = requests.post(webhook_url, json=alert_payload, timeout=10)
+        if response.status_code == 200:
+            print(f"Alert sent successfully for {task_id}")
+        else:
+            print(f"Failed to send alert: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Error sending alert: {e}")
+    
+    # Still log locally for debugging
+    print(f"ALERT: Health check failure in {dag_id}.{task_id} at {execution_date}")
+    print(f"Alert payload: {json.dumps(alert_payload, indent=2)}")
 
 def process_health_results(**context) -> Dict[str, Any]:
     """
@@ -141,7 +169,32 @@ def process_health_results(**context) -> Dict[str, Any]:
     # Alert if critical
     if overall_health == 'critical':
         print(f"ALERT: Critical health issues detected! {len(critical_failures)} critical failures")
-        # alert_on_failure(context)  # Uncomment when alerting is configured
+        
+        # Send summary alert
+        import requests
+        from datetime import datetime
+        
+        alert_payload = {
+            'check_name': 'cluster_health_summary',
+            'dag_id': context['dag'].dag_id,
+            'execution_date': str(context['execution_date']),
+            'severity': 'critical',
+            'message': f"Cluster health check detected {len(critical_failures)} critical failures",
+            'description': 'Overall cluster health summary',
+            'timestamp': datetime.utcnow().isoformat(),
+            'failures': critical_failures + warnings,
+            'summary': summary
+        }
+        
+        try:
+            webhook_url = 'http://airflow-webhook-handler.airflow.svc.cluster.local:8080/'
+            response = requests.post(webhook_url, json=alert_payload, timeout=10)
+            if response.status_code == 200:
+                print("Summary alert sent successfully")
+            else:
+                print(f"Failed to send summary alert: {response.status_code}")
+        except Exception as e:
+            print(f"Error sending summary alert: {e}")
     
     return summary
 

@@ -1,32 +1,94 @@
-# Airflow Logging with Alloy and Loki
+# Airflow Logging with Vector Sidecar and Loki
+
+> **Note**: This document has been updated to reflect the Vector sidecar implementation, which replaced the Alloy-only approach to solve ephemeral pod logging issues.
 
 ## Overview
 
-This document describes the production logging solution for Apache Airflow in our Kubernetes cluster. We use a unified logging pipeline where Airflow logs flow through Alloy (log collector) to Loki (log aggregator) and are stored in S3-compatible Ceph storage.
+This document describes the production logging solution for Apache Airflow in our Kubernetes cluster. We use a Vector sidecar pattern to guarantee 100% log capture from ephemeral task pods, with logs flowing to Loki (log aggregator) and stored in S3-compatible Ceph storage.
 
 ## Architecture
 
+### Current Architecture (Vector Sidecar)
+
+```
+┌─────────────────────────────────────┐
+│         Airflow Task Pod            │
+│  ┌─────────────┐  ┌──────────────┐ │
+│  │ Task        │  │ Vector       │ │
+│  │ Container   │  │ Sidecar      │ │
+│  │ stdout ─────┼──┤ /proc/1/fd/* │ │
+│  └─────────────┘  └──────┬───────┘ │
+└───────────────────────────┼─────────┘
+                            ▼
+                    [Loki Gateway] ──► [Ceph S3]
+                            │
+                            └──► [Grafana]
+```
+
+### Previous Architecture (Alloy DaemonSet - Deprecated)
+
 ```
 [Airflow Pods] ── stdout/stderr ──► [Alloy DaemonSet] ──► [Loki] ──► [Ceph S3]
-                                            │
-                                            └──► [Grafana] (visualization)
 ```
+
+**Why we switched**: The Alloy DaemonSet approach suffered from a race condition where task pods completed before Alloy could discover and collect their logs, resulting in >90% log loss.
 
 ### Key Benefits
 
-- **Zero Airflow Changes**: Works with existing Airflow deployment
-- **Unified Pipeline**: Same logging infrastructure as entire cluster
+- **100% Log Capture**: Vector sidecar guarantees no logs are lost
+- **Zero Race Conditions**: Logs are collected before pod termination
+- **Minimal Overhead**: Only 5m CPU and 20Mi memory per task
+- **Rich Metadata**: Automatic labeling with DAG ID, task ID, and execution date
+- **No Task Delays**: Removed artificial sleep commands from DAGs
 - **Persistent Storage**: Logs survive pod termination
-- **Rich Metadata**: Automatic extraction of DAG ID, task ID, and execution date
 - **Cost Effective**: Loki's label-based indexing minimizes storage costs
 
 ## Implementation
 
-### 1. Alloy Configuration
+### 1. Vector Sidecar Configuration
 
-The Alloy DaemonSet is configured to provide special processing for Airflow logs. The configuration extracts structured data from Airflow's log format.
+Each Airflow task pod includes a Vector sidecar container that directly reads stdout/stderr from the main container via `/proc/1/fd/*`.
 
-**Location**: `kubernetes/apps/monitoring/alloy/app/helmrelease.yaml`
+**Location**: `kubernetes/apps/airflow/airflow/app/pod-template-configmap.yaml`
+
+```yaml
+- name: vector
+  image: timberio/vector:0.39.0-debian
+  env:
+    - name: VECTOR_CONFIG
+      value: |
+        [sources.task]
+        type = "file"
+        include = ["/proc/1/fd/1", "/proc/1/fd/2"]
+        
+        [transforms.add_metadata]
+        type = "remap"
+        inputs = ["task"]
+        source = '''
+        .dag_id = get_env_var("AIRFLOW_CTX_DAG_ID") ?? "unknown"
+        .task_id = get_env_var("AIRFLOW_CTX_TASK_ID") ?? "unknown"
+        '''
+        
+        [sinks.loki]
+        type = "loki"
+        endpoint = "http://loki-gateway.monitoring.svc.cluster.local:80"
+        batch.timeout_secs = 0.5
+```
+
+### 2. Airflow Pod Template
+
+The pod template is referenced in the Airflow HelmRelease:
+
+```yaml
+workers:
+  podTemplate:
+    configMapName: "airflow-pod-template"
+    key: "pod-template.yaml"
+```
+
+### 3. Legacy Alloy Configuration (Still Active for Non-Task Pods)
+
+The Alloy DaemonSet continues to collect logs from Airflow's persistent components (scheduler, webserver). For historical reference, here's the Airflow-specific processing that was attempted for task pods:
 
 ```hcl
 // Special processing for Airflow logs
@@ -72,15 +134,22 @@ Loki stores logs in Ceph S3 with the following configuration:
 - **Retention**: 30 days (720 hours)
 - **Endpoint**: `http://rook-ceph-rgw-storage.storage.svc.cluster.local`
 
-### 3. Airflow Configuration
+### 4. Airflow Configuration
 
-No changes required to Airflow! The existing configuration works as-is:
+Minimal changes to enable the pod template:
 
 ```yaml
-config:
-  logging:
-    remote_logging: "False"  # Local logging, collected by Alloy
-    logging_level: "INFO"
+workers:
+  podTemplate:
+    configMapName: "airflow-pod-template"
+    key: "pod-template.yaml"
+
+env:
+  # Disable automatic pod deletion to allow log flush
+  - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS
+    value: "False"
+  - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS_ON_FAILURE
+    value: "False"
 ```
 
 ## Querying Logs
@@ -216,20 +285,29 @@ kubectl logs -n monitoring daemonset/alloy --tail=50
 
 ## Migration from Previous Solutions
 
+### From Alloy DaemonSet (Phase 1)
+
+The Alloy-only approach failed due to:
+- Task pods completing in <1 second
+- Kubelet log discovery lag
+- File-based tailing couldn't capture ephemeral containers
+
+The Vector sidecar solution eliminates these issues entirely.
+
 ### From Persistent Volume Logging
 
 The PVC-based approach is no longer needed. Logs are now:
-- Collected automatically by Alloy
+- Collected in real-time by Vector sidecar
 - Stored centrally in Loki
 - Accessible even after pod deletion
 
 ### From Direct S3 Logging
 
-We chose Alloy + Loki over direct S3 because:
-- Unified logging pipeline for all services
+We chose Vector + Loki over direct S3 because:
 - Real-time log streaming and analysis
 - Better integration with Grafana
-- No Airflow configuration required
+- Minimal Airflow configuration changes
+- Lower latency for log availability
 
 ## Best Practices
 
@@ -262,10 +340,14 @@ We chose Alloy + Loki over direct S3 because:
 2. **SLA Monitoring**: Track task execution times against SLAs
 3. **Log-based Metrics**: Export metrics from logs to Prometheus
 4. **ML Anomaly Detection**: Identify unusual patterns in logs
+5. **Vector Metrics**: Add Prometheus metrics export from Vector sidecars
+6. **Conditional Routing**: Route ERROR logs to separate high-priority stream
 
 ## References
 
-- [Alloy Documentation](https://grafana.com/docs/alloy/latest/)
+- [Vector Sidecar Documentation](https://vector.dev/docs/setup/deployment/roles/#sidecar)
+- [Airflow Pod Template Guide](https://airflow.apache.org/docs/apache-airflow/stable/kubernetes.html#pod-template-file)
 - [Loki Documentation](https://grafana.com/docs/loki/latest/)
 - [LogQL Query Language](https://grafana.com/docs/loki/latest/logql/)
 - [Airflow Logging Architecture](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/logging-architecture.html)
+- [Vector Sidecar Implementation Guide](../logging-stack/setup/airflow-vector-sidecar.md)

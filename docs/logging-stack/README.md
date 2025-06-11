@@ -65,6 +65,9 @@ When working with the logging stack, leverage MCP servers for accurate, document
 4. **[02-implementation-guide.md](bootstrap/02-implementation-guide.md)** - Step-by-step deployment instructions
 5. **[03-goals.json](bootstrap/03-goals.json)** - Structured objectives and success metrics
 
+### Setup Guides
+- **[airflow-vector-sidecar.md](setup/airflow-vector-sidecar.md)** - Vector sidecar pattern for ephemeral pods
+
 ### Operations Guides (To Be Created)
 - `operations/daily-health-check.md` - Daily operational tasks
 - `operations/troubleshooting.md` - Common issues and solutions

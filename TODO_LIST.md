@@ -46,7 +46,7 @@ Components needed:
 - Airflow 3
   - https://github.com/apache/airflow/issues/50994
   - https://airflow.apache.org/blog/airflow-three-point-oh-is-here/
-  - Better persistent logging + elasticsearch
+  - ~~Better persistent logging + elasticsearch~~ ✅ Solved with Vector sidecar pattern
 - Huginn: https://github.com/huginn/huginn
 - Supabase: https://github.com/supabase-community/supabase-kubernetes
 - Cal.com: https://github.com/calcom/cal.com

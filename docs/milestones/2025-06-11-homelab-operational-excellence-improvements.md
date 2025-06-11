@@ -19,6 +19,7 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
 - [ ] Complete Secrets Migration (12 SOPS → External Secrets/1Password)
 - [ ] Configure Prometheus Monitoring & Alerting Rules
 - [ ] Fix Loki Storage Volume Mount Issues
+- [x] Implement Automated Health Monitoring with Airflow ✅ COMPLETED
 
 ### Priority 3: Efficiency Improvements
 - [x] Implement Resource Requests/Limits for All Workloads ✅ COMPLETED
@@ -127,6 +128,33 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
   - Added Alloy /-/ready and /-/healthy endpoint monitoring
   - Configured generous failure thresholds (3-5) to prevent false positives during resource pressure
   - Tuned timing for application-specific startup requirements (60-120s initial delays)
+
+### Automated Health Monitoring with Airflow (Completed June 11, 2025)
+- **Architecture Implemented**:
+  - Daily cluster health monitoring DAG with 4 parallel health checks
+  - Real bash scripts replacing simulated checks (k8s, storage, network, flux)
+  - ConfigMap-based result storage for historical tracking (30-day retention)
+  - Webhook-based alerting system with Prometheus AlertManager integration
+- **Health Checks Deployed**:
+  - **k8s_health_check.sh**: Node status, unhealthy pods, high restart counts
+  - **storage_health_check.sh**: PVC binding status, Ceph cluster health
+  - **network_monitor.sh**: Ingress controller health, service endpoints
+  - **flux_deployment_check.sh**: Flux components, failed HelmReleases
+- **Monitoring Features**:
+  - Grafana dashboard with 7 panels for visualization
+  - Exit code based severity (0=healthy, 1=warning, 2=critical)
+  - Result processing with overall health determination
+  - Automatic alerting for critical failures
+- **Alerting Configuration**:
+  - Python webhook handler deployed (airflow-webhook-handler)
+  - Forwards to Prometheus AlertManager at monitoring namespace
+  - Optional Slack webhook integration ready
+  - Per-task and summary alerts on failures
+- **RBAC Configuration**:
+  - Created airflow-health-checker ServiceAccount
+  - ClusterRole with read permissions across cluster
+  - Added pods/exec permission for Ceph health checks
+- **Result**: Automated daily health monitoring with historical tracking and alerting
 
 ## References
 
