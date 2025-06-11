@@ -306,12 +306,50 @@
         "type": "loki",
         "uid": "${datasource}"
       },
-      "description": "Interactive log browser with filters",
+      "description": "Task execution output logs",
       "gridPos": {
         "h": 10,
         "w": 24,
         "x": 0,
         "y": 16
+      },
+      "id": 8,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "{namespace=\"airflow\", pod=~\"hello-world-.*|dbt-.*|etl-.*\"} |~ \"(subprocess\\\\.py.*INFO|Hello World|Current date|Testing|This should persist)\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Task Execution Output",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "description": "Interactive log browser with filters",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 26
       },
       "id": 4,
       "options": {
@@ -378,7 +416,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 26
+        "y": 36
       },
       "id": 5,
       "options": {
@@ -484,7 +522,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 26
+        "y": 36
       },
       "id": 6,
       "options": {
@@ -577,7 +615,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 26
+        "y": 36
       },
       "id": 7,
       "options": {
