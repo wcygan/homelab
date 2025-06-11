@@ -18,10 +18,9 @@ spec:
       cpu: "500m"
       memory: "512Mi"
 
-  # Storage configuration - using Ceph block storage
+  # Storage configuration - using default storage class
   storage:
     size: "5Gi" # Small storage for testing
-    storageClassName: "ceph-block" # Use Ceph storage instead of local-path
 
   # Enable monitoring if Prometheus is available and desired
   # monitoring:
