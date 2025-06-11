@@ -199,9 +199,6 @@ spec:
         value: "False"
       - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS_ON_FAILURE
         value: "False"
-      # Make tasks log to both file and stdout
-      - name: AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS
-        value: "log_config.LOGGING_CONFIG"
 
     dags:
       gitSync:
