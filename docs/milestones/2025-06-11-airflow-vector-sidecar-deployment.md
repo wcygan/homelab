@@ -1,6 +1,6 @@
 # Milestone: Airflow Vector Sidecar Deployment
 
-**Date**: 2025-01-11  
+**Date**: 2025-06-11  
 **Category**: Monitoring  
 **Status**: Completed  
 **Supersedes**: [2025-06-10-airflow-alloy-logging-integration.md](./2025-06-10-airflow-alloy-logging-integration.md)
