@@ -46,7 +46,6 @@ spec:
       type: ClusterIP
       port: 9083
       labels:
-        app.kubernetes.io/name: hive-metastore
         app.kubernetes.io/component: metastore
     
     # Resource allocation
