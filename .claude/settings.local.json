@@ -124,7 +124,8 @@
       "Bash(./scripts/test-s3-integration.ts)",
       "Bash(helm list:*)",
       "Bash(deno test:*)",
-      "Bash(helm uninstall:*)"
+      "Bash(helm uninstall:*)",
+      "Bash(./scripts/test-loki-grafana.ts)"
     ],
     "deny": []
   }

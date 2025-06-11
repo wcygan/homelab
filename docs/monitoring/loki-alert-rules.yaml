@@ -1,0 +1,130 @@
+# Grafana Alert Rules for Critical Errors
+# Import this via Grafana UI: Alerting → Alert rules → Import
+
+apiVersion: 1
+groups:
+  - name: critical_errors
+    interval: 1m
+    rules:
+      - uid: flux_gitops_errors
+        title: Flux GitOps Errors
+        condition: flux_errors
+        data:
+          - refId: flux_errors
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: ${loki_datasource_uid}
+            model:
+              expr: |
+                sum(rate({namespace="flux-system"} |~ "error|failed|Fatal" [5m])) > 0.1
+              refId: flux_errors
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Flux GitOps is experiencing errors"
+          description: "Flux has recorded {{ $value | humanize }} errors per second in the last 5 minutes"
+          runbook_url: "https://fluxcd.io/flux/troubleshooting/"
+        labels:
+          severity: critical
+          team: platform
+
+      - uid: storage_health_degraded
+        title: Ceph Storage Health Degraded
+        condition: storage_degraded
+        data:
+          - refId: storage_degraded
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: ${loki_datasource_uid}
+            model:
+              expr: |
+                sum(rate({namespace="storage"} |~ "HEALTH_WARN|HEALTH_ERR|OSD.*down|degraded" [5m])) > 0
+              refId: storage_degraded
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Ceph storage cluster health is degraded"
+          description: "Ceph cluster is reporting health warnings or errors"
+          runbook_url: "/docs/ceph/operations/troubleshooting.md"
+        labels:
+          severity: critical
+          team: platform
+
+      - uid: external_secrets_sync_failures
+        title: External Secrets Sync Failures
+        condition: secret_sync_errors
+        data:
+          - refId: secret_sync_errors
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: ${loki_datasource_uid}
+            model:
+              expr: |
+                sum(rate({namespace="external-secrets"} |~ "SecretSyncError|failed to sync|error syncing" [5m])) > 0.05
+              refId: secret_sync_errors
+        noDataState: NoData
+        execErrState: Alerting
+        for: 10m
+        annotations:
+          summary: "External Secrets failing to sync"
+          description: "External Secrets Operator is experiencing {{ $value | humanize }} sync errors per second"
+        labels:
+          severity: warning
+          team: platform
+
+      - uid: ingress_high_error_rate
+        title: High Ingress Error Rate
+        condition: ingress_errors
+        data:
+          - refId: ingress_errors
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: ${loki_datasource_uid}
+            model:
+              expr: |
+                sum(rate({namespace="network", app_kubernetes_io_name="ingress-nginx"} | json | __error__="" | status >= 500 [5m])) > 1
+              refId: ingress_errors
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "High rate of 5xx errors on ingress"
+          description: "Ingress is returning {{ $value | humanize }} 5xx errors per second"
+        labels:
+          severity: warning
+          team: platform
+
+      - uid: node_critical_condition
+        title: Node Critical Condition
+        condition: node_problems
+        data:
+          - refId: node_problems
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: ${loki_datasource_uid}
+            model:
+              expr: |
+                sum(rate({namespace="system-health"} |~ "NodeCondition.*Critical|KernelDeadlock|OOMKilling" [5m])) > 0
+              refId: node_problems
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: "Kubernetes node experiencing critical condition"
+          description: "Node problem detector has identified critical node conditions"
+        labels:
+          severity: critical
+          team: platform
+
+# Contact Points Configuration (configure in Grafana UI)
+# Suggested contact points:
+# - Slack webhook for team notifications
+# - PagerDuty for critical alerts
+# - Email for backup notifications
