@@ -92,6 +92,9 @@ spec:
             forward_to = [loki.process.logs.receiver]
           }
           
+          // Note: Airflow logs are collected automatically from all pods in the airflow namespace
+          // The loki.process stage below extracts DAG and task metadata from log content
+          
           // Process logs
           loki.process "logs" {
             forward_to = [loki.write.default.receiver]
@@ -116,12 +119,44 @@ spec:
               }
             }
             
+            // Special processing for Airflow logs
+            stage.match {
+              selector = '{namespace="airflow"}'
+              
+              // Extract Airflow-specific information from log messages
+              stage.regex {
+                expression = "\\[(?P<timestamp>[^\\]]+)\\] \\{(?P<source>[^}]+)\\}"
+              }
+              
+              // Extract DAG ID from log content
+              stage.regex {
+                expression = "dag_id=(?P<dag_id>[\\w-]+)"
+              }
+              
+              // Extract task ID from log content
+              stage.regex {
+                expression = "task_id=(?P<task_id>[\\w-]+)"
+              }
+              
+              // Extract execution date from log content
+              stage.regex {
+                expression = "execution_date=(?P<execution_date>[\\d-]+T[\\d:+]+)"
+              }
+              
+              // Add Airflow-specific labels if found
+              stage.labels {
+                values = {
+                  dag_id = "",
+                  task_id = "",
+                  execution_date = "",
+                }
+              }
+            }
+            
             // Drop excessive labels to stay under Loki's limit of 15
             stage.label_drop {
               values = [
-                "app_kubernetes_io_component",
                 "app_kubernetes_io_created_by", 
-                "app_kubernetes_io_instance",
                 "app_kubernetes_io_managed_by",
                 "app_kubernetes_io_part_of",
                 "pod_template_hash",
@@ -131,6 +166,8 @@ spec:
                 "mgr_role",
                 "rook_io_operator_namespace",
                 "rook_object_store",
+                "controller_revision_hash",
+                "service_istio_io_canonical_revision",
               ]
             }
             
