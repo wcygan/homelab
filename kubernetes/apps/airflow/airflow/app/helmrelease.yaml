@@ -127,6 +127,23 @@ spec:
           value: "120"
         - name: AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT
           value: "120"
+      # Improved health checks to prevent OOM-related restarts
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 60  # Allow time for gunicorn startup
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 5  # Generous threshold to avoid false positives during memory pressure
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
       resources:
         requests:
           cpu: "200m"
@@ -136,6 +153,17 @@ spec:
           memory: "4Gi"  # Increased from 2Gi due to gunicorn OOM kills
 
     scheduler:
+      # Health checks for scheduler daemon
+      livenessProbe:
+        exec:
+          command:
+            - sh
+            - -c
+            - "airflow jobs check --job-type SchedulerJob --local"
+        initialDelaySeconds: 120  # Scheduler takes time to initialize
+        periodSeconds: 60  # Check every minute
+        timeoutSeconds: 20
+        failureThreshold: 5
       resources:
         requests:
           cpu: "200m"
@@ -171,6 +199,9 @@ spec:
         value: "False"
       - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS_ON_FAILURE
         value: "False"
+      # Make tasks log to both file and stdout
+      - name: AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS
+        value: "log_config.LOGGING_CONFIG"
 
     dags:
       gitSync:

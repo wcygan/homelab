@@ -110,6 +110,23 @@ spec:
         enabled: true
         size: 10Gi
         storageClass: ceph-block
+      # Health checks for Loki API and S3 connectivity
+      readinessProbe:
+        httpGet:
+          path: /ready
+          port: 3100
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /ready
+          port: 3100
+        initialDelaySeconds: 120  # Allow time for S3 bucket initialization
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 5  # Generous for S3 connectivity issues
       resources:
         requests:
           cpu: 100m

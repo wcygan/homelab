@@ -205,6 +205,24 @@ spec:
     controller:
       type: daemonset
       
+      # Health checks for log collection pipeline
+      readinessProbe:
+        httpGet:
+          path: /-/ready
+          port: 12345
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /-/healthy
+          port: 12345
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 3
+      
       # Resources
       resources:
         requests:
