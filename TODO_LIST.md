@@ -13,10 +13,23 @@ MCP servers with Claude Code
 
 ## Stuff to install
 
+### Modern Data Platform Stack (Brief TLDR)
+
+**What we could build:** Complete lakehouse architecture on existing K8s infrastructure
+- **Spark Operator**: Declarative PySpark job management via Kubernetes CRDs
+- **Hive Metastore**: Table catalog for Iceberg, backed by existing CNPG Postgres
+- **Trino**: Interactive SQL queries on same data Spark processes
+- **Result**: Airflow orchestrates Spark batch jobs → writes Iceberg tables to Ceph S3 → Trino provides ad-hoc analytics
+
+Components needed:
 - Apache Iceberg
-- Apache Parquet
+- Apache Parquet  
 - Apache Spark
 - Trino
+- Hive Metastore
+
+### Others
+
 - Pi Hole: https://pi-hole.net/
 - Message Queue:
   [RedPanda](https://docs.redpanda.com/current/deploy/deployment-option/self-hosted/kubernetes/get-started-dev/)

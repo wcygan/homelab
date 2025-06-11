@@ -127,7 +127,12 @@
       "Bash(helm uninstall:*)",
       "Bash(./scripts/test-loki-grafana.ts)",
       "Bash(logcli --version)",
-      "Bash(./scripts/logcli-wrapper.ts:*)"
+      "Bash(./scripts/logcli-wrapper.ts:*)",
+      "WebFetch(domain:grafana.com)",
+      "Bash(./scripts/test-airflow-loki-logs.ts)",
+      "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"\"airflow\"\"}' --limit=10 --output=raw)",
+      "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"airflow\"} |= \"dag_id=hello_world\"' --limit=5 --output=raw)",
+      "Bash(./scripts/logcli-wrapper.ts query '{namespace=\"airflow\", dag_id=~\".+\"}' --limit=2 --output=raw)"
     ],
     "deny": []
   }
