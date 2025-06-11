@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app goldilocks
+  namespace: flux-system
+spec:
+  targetNamespace: system-health
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  dependsOn:
+    - name: vpa
+      namespace: system-health
+    - name: ingress-nginx-internal
+      namespace: network
+  interval: 30m
+  timeout: 10m
+  prune: true
+  wait: true
+  path: ./kubernetes/apps/system-health/goldilocks/app
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system

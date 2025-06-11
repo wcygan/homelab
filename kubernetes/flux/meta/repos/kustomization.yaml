@@ -26,3 +26,6 @@ resources:
   - ./vmware-tanzu.yaml
   # renovate: datasource=helm depName=hive-metastore lookupName=hive-metastore registryUrl=https://getindata.github.io/hive-metastore
   - ./getindata.yaml
+  # renovate: datasource=helm depName=vpa lookupName=vpa registryUrl=https://charts.fairwinds.com/stable
+  # renovate: datasource=helm depName=goldilocks lookupName=goldilocks registryUrl=https://charts.fairwinds.com/stable
+  - ./fairwinds.yaml
