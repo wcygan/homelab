@@ -79,9 +79,9 @@ spec:
       limits_config:
         allow_structured_metadata: true
         volume_enabled: true
-        retention_period: 720h
+        retention_period: 168h  # 7 days retention
         reject_old_samples: true
-        reject_old_samples_max_age: 168h
+        reject_old_samples_max_age: 72h  # Reject logs older than 3 days
         max_cache_freshness_per_query: 10m
         split_queries_by_interval: 15m
         ingestion_rate_mb: 50
