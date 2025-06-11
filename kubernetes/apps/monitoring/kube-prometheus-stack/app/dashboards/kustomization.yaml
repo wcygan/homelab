@@ -30,6 +30,23 @@ configMapGenerator:
       annotations:
         grafana_folder: "Ceph"
 
+  - name: grafana-dashboard-homelab-logging
+    files:
+      - homelab-logging.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: "Homelab"
+  - name: grafana-dashboard-loki
+    files:
+      - loki-dashboard.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: "Logging"
+
 # Disable hash suffix to maintain stable ConfigMap names
 generatorOptions:
   disableNameSuffixHash: true
