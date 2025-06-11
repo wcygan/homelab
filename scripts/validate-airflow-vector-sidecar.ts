@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-all
 
-import { $ } from "npm:dax@0.39.2";
-import { colors } from "https://deno.land/std@0.208.0/fmt/colors.ts";
+import { $ } from "jsr:@david/dax@0.42.0";
+import * as colors from "https://deno.land/std@0.208.0/fmt/colors.ts";
 
 interface ValidationResult {
   test: string;
