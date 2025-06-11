@@ -21,8 +21,12 @@ spec:
       repository: velero/velero
       tag: v1.16.0
     
-    plugins:
-      - velero/velero-plugin-for-aws:v1.12.0
+    initContainers:
+      - name: velero-plugin-for-aws
+        image: velero/velero-plugin-for-aws:v1.12.0
+        volumeMounts:
+          - mountPath: /target
+            name: plugins
     
     kubectl:
       image:
