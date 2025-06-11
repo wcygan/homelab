@@ -121,6 +121,12 @@ Comprehensive improvement plan to enhance the homelab cluster's health, organiza
   - Fixed Velero kubectl image from v1.31.3 (non-existent) to v1.33.1
   - Resolved CSI plugin conflicts in Velero configuration
 - **Result**: Pod restart counts stabilized, OOM kills eliminated
+- **Health Probe Improvements**:
+  - Added comprehensive liveness/readiness probes to Airflow (webserver HTTP /health, scheduler job check)
+  - Added Loki /ready endpoint probes with S3 initialization delays
+  - Added Alloy /-/ready and /-/healthy endpoint monitoring
+  - Configured generous failure thresholds (3-5) to prevent false positives during resource pressure
+  - Tuned timing for application-specific startup requirements (60-120s initial delays)
 
 ## References
 
