@@ -1,0 +1,28 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Critical infrastructure
+  - ./flux-system
+  - ./kube-system
+  - ./cert-manager
+  - ./external-secrets
+  
+  # Storage layer
+  - ./storage
+  - ./cnpg-system
+  - ./database
+  
+  # Networking
+  - ./network
+  
+  # Core applications
+  - ./default
+  - ./monitoring
+  - ./system-health
+  
+  # Application workloads
+  - ./airflow
+  - ./data-platform
+  - ./kubeai
