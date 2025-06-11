@@ -1,0 +1,167 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: velero
+spec:
+  interval: 1h
+  releaseName: velero
+  chart:
+    spec:
+      chart: velero
+      version: 7.2.1
+      sourceRef:
+        kind: HelmRepository
+        name: vmware-tanzu
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+    cleanupOnFail: true
+  values:
+    # Resources
+    resources:
+      requests:
+        cpu: 500m
+        memory: 128Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    
+    # Node agent (for file system backups)
+    nodeAgent:
+      deploy: true
+      podVolumePath: /var/lib/kubelet/pods
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+    
+    # Configuration for AWS S3 compatible storage (Ceph)
+    configuration:
+      # Backup storage location
+      backupStorageLocation:
+        - name: default
+          provider: aws
+          bucket: velero-backups
+          config:
+            region: storage
+            s3ForcePathStyle: "true"
+            s3Url: http://rook-ceph-rgw-storage.storage.svc.cluster.local:80
+            # Disable S3 server-side encryption checksum for Ceph compatibility
+            checksumAlgorithm: ""
+      
+      # Volume snapshot location for CSI snapshots
+      volumeSnapshotLocation:
+        - name: default
+          provider: csi
+      
+      # Global features
+      features: EnableCSI
+      logLevel: info
+      uploaderType: kopia  # Use kopia for better performance
+      
+      # File system backup settings
+      defaultVolumesToFsBackup: false  # Explicit opt-in
+      
+    # Credentials for S3 access
+    credentials:
+      existingSecret: rook-ceph-object-user-storage-velero
+      secretContents:
+        cloud: |
+          [default]
+          aws_access_key_id=$(cat /credentials/AccessKey)
+          aws_secret_access_key=$(cat /credentials/SecretKey)
+    
+    # Initialize plugins
+    initContainers:
+      - name: velero-plugin-for-aws
+        image: velero/velero-plugin-for-aws:v1.10.0
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+          - mountPath: /target
+            name: plugins
+      - name: velero-plugin-for-csi
+        image: velero/velero-plugin-for-csi:v0.7.1
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+          - mountPath: /target
+            name: plugins
+    
+    # RBAC settings
+    rbac:
+      create: true
+      clusterAdministrator: true
+    
+    # Service account
+    serviceAccount:
+      server:
+        create: true
+        name: velero
+        annotations: {}
+    
+    # Metrics
+    metrics:
+      enabled: true
+      scrapeInterval: 30s
+      scrapeTimeout: 10s
+      serviceMonitor:
+        enabled: true
+        additionalLabels:
+          app.kubernetes.io/part-of: kube-prometheus-stack
+    
+    # Storage settings
+    kubectl:
+      image:
+        tag: v1.31.3
+    
+    # Security context
+    securityContext:
+      fsGroup: 65534
+    
+    # Cleanup settings
+    cleanUpCRDs: false  # Let Flux handle CRDs
+    
+    # Schedule templates for common backup scenarios
+    schedules:
+      # Daily backup of all resources
+      daily-backup:
+        disabled: false
+        schedule: "0 2 * * *"  # 2 AM daily
+        useOwnerReferencesInBackup: false
+        template:
+          ttl: "720h"  # 30 days
+          includedNamespaces:
+            - "*"
+          excludedNamespaces:
+            - velero
+            - kube-system
+          excludedResources:
+            - events
+            - events.events.k8s.io
+          snapshotVolumes: true
+          defaultVolumesToFsBackup: false
+      
+      # Weekly backup with longer retention
+      weekly-backup:
+        disabled: false
+        schedule: "0 3 * * 0"  # 3 AM Sunday
+        useOwnerReferencesInBackup: false
+        template:
+          ttl: "2160h"  # 90 days
+          includedNamespaces:
+            - "*"
+          excludedNamespaces:
+            - velero
+            - kube-system
+          excludedResources:
+            - events
+            - events.events.k8s.io
+          snapshotVolumes: true
+          defaultVolumesToFsBackup: true

@@ -11,3 +11,16 @@ spec:
   capabilities:
     user: "*"
     bucket: "*"
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: velero
+  namespace: storage
+spec:
+  store: storage
+  displayName: "Velero Backup User"
+  # Grant full access for backup operations
+  capabilities:
+    user: "*"
+    bucket: "*"

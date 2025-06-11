@@ -10,6 +10,7 @@ resources:
   - ./rook-ceph-cluster/ks.yaml
   - ./external-snapshotter/ks.yaml  # Required for Volsync
   - ./volsync/ks.yaml
+  - ./velero/ks.yaml
   # Phase 2: Uncomment when RWX needed
   # - ./rook-ceph-filesystem/ks.yaml
   # Phase 3: S3 storage for Loki

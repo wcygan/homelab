@@ -22,3 +22,5 @@ resources:
   - ./backube.yaml
   # renovate: datasource=helm depName=loki lookupName=loki registryUrl=https://grafana.github.io/helm-charts
   - ./grafana.yaml
+  # renovate: datasource=helm depName=velero lookupName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts/
+  - ./vmware-tanzu.yaml
