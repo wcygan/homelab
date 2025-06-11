@@ -43,10 +43,10 @@ spec:
           discovery.relabel "pods" {
             targets = discovery.kubernetes.pods.targets
             
-            // Keep only running pods
+            // Keep running and recently completed pods
             rule {
               source_labels = ["__meta_kubernetes_pod_phase"]
-              regex         = "Pending|Succeeded|Failed|Completed|Unknown"
+              regex         = "Pending|Failed|Unknown"
               action        = "drop"
             }
             
