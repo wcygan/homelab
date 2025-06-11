@@ -279,23 +279,23 @@ spec:
                       max_bytes: 512000
                       timeout_secs: 0.5
                     labels:
-                      namespace: "{{ namespace }}"
-                      pod: "{{ pod }}"
-                      dag_id: "{{ dag_id }}"
-                      task_id: "{{ task_id }}"
+                      namespace: '{{ "{{ namespace }}" }}'
+                      pod: '{{ "{{ pod }}" }}'
+                      dag_id: '{{ "{{ dag_id }}" }}'
+                      task_id: '{{ "{{ task_id }}" }}'
             env:
               - name: HOSTNAME
                 valueFrom:
                   fieldRef:
                     fieldPath: metadata.name
               - name: AIRFLOW_CTX_DAG_ID
-                value: "{{ dag_id }}"
+                value: '{{ "{{ dag_id }}" }}'
               - name: AIRFLOW_CTX_TASK_ID  
-                value: "{{ task_id }}"
+                value: '{{ "{{ task_id }}" }}'
               - name: AIRFLOW_CTX_RUN_ID
-                value: "{{ run_id }}"
+                value: '{{ "{{ run_id }}" }}'
               - name: AIRFLOW_CTX_EXECUTION_DATE
-                value: "{{ execution_date }}"
+                value: '{{ "{{ execution_date }}" }}'
             resources:
               requests:
                 cpu: 5m
