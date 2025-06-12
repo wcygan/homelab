@@ -14,7 +14,7 @@ spec:
   timeout: 10m
   prune: true
   wait: true
-  path: ./kubernetes/apps/data-platform/nessie/app
+  path: ./kubernetes/apps/nessie/app
   sourceRef:
     kind: GitRepository
     name: flux-system
