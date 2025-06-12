@@ -38,18 +38,9 @@ spec:
 
     # Database configuration
     data:
-      metadataConnection:
-        user: airflow
-        existingSecret: "airflow-postgresql-secret"
-        existingSecretKey: "password"
-        protocol: postgresql
-        host: airflow-postgresql.airflow.svc.cluster.local
-        port: 5432
-        db: airflow
-        sslmode: disable
-
-    # Create a custom metadata secret with the correct connection string
-    extraSecrets: {}
+      # Use the existing airflow-metadata secret that contains the connection string
+      metadataSecretName: airflow-metadata
+      # metadataConnection is not needed when using metadataSecretName
 
     # Ingress configuration
     ingress:
