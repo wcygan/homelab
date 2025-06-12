@@ -33,6 +33,7 @@ spec:
       [global]
       bdev_enable_discard = true
       bdev_async_discard = true
+    cephObjectStores: []
     cephBlockPools:
       - name: replicapool
         spec:
