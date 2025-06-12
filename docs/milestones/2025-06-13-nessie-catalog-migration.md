@@ -1,6 +1,6 @@
 # Milestone: Project Nessie Catalog Migration
 
-**Date**: January 13, 2025  
+**Date**: June 13, 2025  
 **Status**: In Progress  
 **Duration**: 2 hours (estimated)  
 **Impact**: Major - Replacing Apache Polaris with Project Nessie for Iceberg catalog
