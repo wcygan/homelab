@@ -53,7 +53,7 @@ spec:
 
   # Monitoring configuration
   monitoring:
-    enabled: true
+    enablePodMonitor: true
     customQueriesConfigMap:
       - name: nessie-postgres-monitoring
         key: queries.yaml

@@ -164,7 +164,8 @@
       "Bash(./scripts/check-flux-config.ts)",
       "Bash(./scripts/create-loki-s3-bucket.ts)",
       "Bash(./scripts/fix-flux-kustomizations.ts)",
-      "Bash(./scripts/fix-flux-kustomizations.ts --apply)"
+      "Bash(./scripts/fix-flux-kustomizations.ts --apply)",
+      "mcp__kubernetes__explain_resource"
     ],
     "deny": []
   }
