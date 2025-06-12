@@ -9,3 +9,4 @@ resources:
   - ./airflow-health-service-account.yaml
   - ./airflow-alerting-webhook.yaml
   - ./vector-config.yaml
+  - ./postgres-secret.yaml

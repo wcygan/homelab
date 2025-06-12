@@ -40,7 +40,8 @@ spec:
     data:
       metadataConnection:
         user: airflow
-        pass: airflow-db-password-changeme # TODO: Move to 1Password/ESO
+        existingSecret: "airflow-postgresql-secret"
+        existingSecretKey: "password"
         protocol: postgresql
         host: airflow-postgresql.airflow.svc.cluster.local
         port: 5432
@@ -68,9 +69,11 @@ spec:
       enabled: true
       auth:
         enablePostgresUser: true
-        postgresPassword: postgres-admin-changeme # TODO: Move to 1Password/ESO
+        existingSecret: "airflow-postgresql-secret"
+        secretKeys:
+          adminPasswordKey: "postgres-password"
+          userPasswordKey: "password"
         username: "airflow"
-        password: airflow-db-password-changeme # TODO: Move to 1Password/ESO - must match data.metadataConnection.pass
         database: "airflow"
       primary:
         persistence:
