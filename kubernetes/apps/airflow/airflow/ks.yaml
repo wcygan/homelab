@@ -2,8 +2,9 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: airflow
-  namespace: airflow
+  namespace: flux-system
 spec:
+  targetNamespace: airflow
   commonMetadata:
     labels:
       app.kubernetes.io/name: airflow
