@@ -2,7 +2,7 @@
 
 ## Overview
 
-Establish the foundational components for the data platform: S3 storage validation, Apache Polaris catalog deployment, and basic Iceberg table operations. This phase provides immediate value through modern catalog management and S3-compatible data lake capabilities.
+Establish the foundational components for the data platform: S3 storage validation, Project Nessie catalog deployment, and basic Iceberg table operations. This phase provides immediate value through Git-like data versioning and S3-compatible data lake capabilities.
 
 ## Objectives
 
@@ -115,7 +115,7 @@ kubectl exec -n data-platform deploy/hive-metastore -- \
 **Goal**: Create and manage Iceberg tables via Spark SQL
 
 **Prerequisites**:
-- Hive Metastore operational
+- Nessie catalog operational
 - S3 storage accessible
 - Spark client available for testing
 
@@ -127,11 +127,12 @@ kubectl exec -n data-platform deploy/hive-metastore -- \
 
 **Implementation Examples**:
 ```sql
--- Create database in Hive Metastore
-CREATE DATABASE IF NOT EXISTS lakehouse;
+-- Using Nessie catalog on main branch
+USE nessie.main;
+CREATE NAMESPACE IF NOT EXISTS lakehouse;
 
--- Create Iceberg table
-CREATE TABLE lakehouse.sample_data (
+-- Create Iceberg table in Nessie
+CREATE TABLE nessie.main.lakehouse.sample_data (
   id BIGINT,
   name STRING,
   created_at TIMESTAMP
@@ -151,8 +152,9 @@ INSERT INTO lakehouse.sample_data VALUES
 **Validation Criteria**:
 ```bash
 # Verify table creation
-kubectl exec -n data-platform deploy/hive-metastore -- \
-  beeline -u "jdbc:hive2://localhost:10000" -e "SHOW TABLES IN lakehouse;"
+kubectl exec -n data-platform deploy/spark-client -- spark-sql \
+  --conf spark.sql.catalog.nessie.uri=http://nessie:19120/api/v2 \
+  -e "SHOW TABLES IN nessie.main.lakehouse;"
 
 # Check S3 storage artifacts
 aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://iceberg-test/sample_data/ --recursive
@@ -170,7 +172,9 @@ After creating your first Iceberg table, introspect and validate:
 ```bash
 # At this checkpoint, create and test a real table:
 kubectl exec -n data-platform deploy/spark-client -- spark-sql \
-  --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
+  --conf spark.sql.catalog.nessie=org.apache.iceberg.spark.SparkCatalog \
+  --conf spark.sql.catalog.nessie.catalog-impl=org.apache.iceberg.nessie.NessieCatalog \
+  --conf spark.sql.catalog.nessie.uri=http://nessie:19120/api/v2 \
   -e "CREATE TABLE lakehouse.checkpoint_test (id BIGINT, data STRING) USING ICEBERG; 
       INSERT INTO lakehouse.checkpoint_test VALUES (1, 'test data');
       SELECT * FROM lakehouse.checkpoint_test;"

@@ -1,12 +1,12 @@
-# Hive Metastore to Apache Polaris Migration Plan
+# Hive Metastore to Project Nessie Migration Plan
 
-**Date**: January 12, 2025  
-**Status**: Phase 2 Complete - Awaiting Image Build  
+**Date**: January 13, 2025  
+**Status**: In Progress - Phase 1 Complete  
 **Impact**: Major - Complete replacement of metadata catalog technology
 
 ## Executive Summary
 
-This document outlines the complete migration plan from Hive Metastore to Apache Polaris for the Anton Kubernetes cluster's data platform. The migration involves removing all Hive-related components and implementing Apache Polaris as the modern, cloud-native catalog for Apache Iceberg.
+This document outlines the complete migration plan from Hive Metastore to Project Nessie for the Anton Kubernetes cluster's data platform. The migration involves removing all Hive-related components and implementing Project Nessie as a Git-like versioned catalog for Apache Iceberg.
 
 ## Background
 
@@ -16,26 +16,26 @@ This document outlines the complete migration plan from Hive Metastore to Apache
 - **Infrastructure**: PostgreSQL cluster already deployed and healthy
 
 ### Decision Rationale
-After investigation of modern alternatives (see investigation results below), Apache Polaris was selected because:
-1. Purpose-built for Apache Iceberg (not a legacy adaptation)
-2. Lightweight, cloud-native architecture
-3. Active development under Apache incubation
+After Apache Polaris was found to lack pre-built Docker images, Project Nessie was selected because:
+1. Pre-built Docker images readily available
+2. Production-ready with proven deployments (Dremio)
+3. Git-like versioning for data (branches, tags, commits)
 4. Kubernetes-native with official Helm charts
-5. Implements Iceberg REST API standard
+5. Implements Iceberg REST API with additional features
 
 ## Investigation Results
 
 ### Catalog Options Evaluated
 
-#### 1. Apache Polaris (Selected)
-- **Pros**: Open-source, Iceberg-native, Kubernetes support, REST API standard
-- **Cons**: Iceberg-only (no Delta/Hudi), newer project
-- **Deployment**: Official Helm chart available
+#### 1. Project Nessie (Selected)
+- **Pros**: Git-like versioning, mature project, multi-table transactions, pre-built images
+- **Cons**: Iceberg-only (no Delta/Hudi), requires understanding Git concepts
+- **Deployment**: Official Helm chart with production images
 
-#### 2. Project Nessie
-- **Pros**: Git-like versioning, mature project, multi-table transactions
-- **Cons**: More complex setup, additional overhead for simple use cases
-- **Deployment**: Helm chart available
+#### 2. Apache Polaris (Initially Selected, then Rejected)
+- **Pros**: Open-source, Iceberg-native, Kubernetes support, REST API standard
+- **Cons**: No pre-built Docker images, requires build pipeline
+- **Deployment**: Helm chart available but no images
 
 #### 3. Unity Catalog OSS
 - **Pros**: Multi-format support (Iceberg, Delta, Hudi)
