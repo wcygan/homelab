@@ -162,6 +162,8 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
+      # Ensure worker pods inherit the database connection from parent
+      safeToEvict: true
 
     # Disable example DAGs in production
     env:
@@ -184,12 +186,9 @@ spec:
         value: "/opt/airflow/logs/dag_processor_manager/dag_processor_manager.log"
       # Configure KubernetesExecutor to keep pods for log collection
       - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS
-        value: "False"
+        value: "True"  # Changed back to True to auto-cleanup after log collection
       - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS_ON_FAILURE
         value: "False"
-      # Ensure worker pods can connect to PostgreSQL
-      - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
-        value: "postgresql+psycopg2://airflow:$(POSTGRES_PASSWORD)@airflow-postgresql.airflow.svc.cluster.local:5432/airflow"
       # Add termination grace period to allow log collection
       - name: AIRFLOW__KUBERNETES_EXECUTOR__WORKER_PODS_CREATION_BATCH_SIZE
         value: "10"
@@ -197,6 +196,11 @@ spec:
         value: "apache/airflow"
       - name: AIRFLOW__KUBERNETES_EXECUTOR__WORKER_CONTAINER_TAG
         value: "2.10.3"
+      # Pass environment variables to worker pods
+      - name: AIRFLOW__KUBERNETES_EXECUTOR__NAMESPACE
+        value: "airflow"
+      - name: AIRFLOW__KUBERNETES_EXECUTOR__AIRFLOW_CONFIGMAP
+        value: "airflow-config"
 
     dags:
       gitSync:
