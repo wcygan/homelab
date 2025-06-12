@@ -1,11 +1,10 @@
----
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: external-secrets
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 5m
   path: ./kubernetes/apps/external-secrets/external-secrets/app
   prune: true
   sourceRef:
@@ -14,7 +13,7 @@ spec:
     namespace: flux-system
   targetNamespace: external-secrets
   wait: true
-  timeout: 10m
+  timeout: 5m
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment

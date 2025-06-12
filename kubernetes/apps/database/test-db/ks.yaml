@@ -1,26 +1,24 @@
-# kubernetes/apps/database/test-db/ks.yaml
----
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: &app test-db
-  namespace: flux-system # Flux Kustomizations are in flux-system
+  name: test-db
+  namespace: flux-system
 spec:
   commonMetadata:
     labels:
-      app.kubernetes.io/name: *app
+      app.kubernetes.io/name: test-db
   dependsOn:
-    - name: cnpg-operator # Depends on the CloudNativePG operator in cnpg-system
-      namespace: cnpg-system # The Kustomization for cnpg-operator is in cnpg-system
-  interval: 30m # Standard interval for applications
+    - name: cnpg-operator
+      namespace: cnpg-system
+  interval: 15m
   path: ./kubernetes/apps/database/test-db/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
-    namespace: flux-system # Explicitly set sourceRef namespace
-  targetNamespace: database # Deploy database to the 'database' namespace
-  timeout: 10m # Allow more time for DB provisioning
+    namespace: flux-system
+  targetNamespace: database
+  timeout: 10m
   wait: true
   healthChecks:
     - apiVersion: postgresql.cnpg.io/v1

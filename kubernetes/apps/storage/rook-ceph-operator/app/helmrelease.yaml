@@ -42,4 +42,5 @@ spec:
     # Enable discovery daemon for automatic OSD discovery
     enableDiscoveryDaemon: true
     # Enable ObjectBucketClaims for S3 bucket provisioning
-    enableOBCs: true
+    rbacAggregate:
+      enableOBCs: true

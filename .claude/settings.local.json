@@ -148,7 +148,14 @@
       "WebFetch(domain:artifacthub.io)",
       "Bash(flux version:*)",
       "Bash(gh pr view:*)",
-      "Bash(gh pr checks:*)"
+      "Bash(gh pr checks:*)",
+      "Bash(helm get manifest:*)",
+      "Bash(flux trace:*)",
+      "Bash(flux build:*)",
+      "Bash(./scripts/validate-hive-metastore.ts)",
+      "Bash(flux resume helmrelease:*)",
+      "Bash(./scripts/fix-flux-kustomizations.ts)",
+      "Bash(./scripts/fix-flux-kustomizations.ts --apply)"
     ],
     "deny": []
   }

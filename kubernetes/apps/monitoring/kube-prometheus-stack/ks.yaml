@@ -1,10 +1,10 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: &app kube-prometheus-stack
+  name: kube-prometheus-stack
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 15m
   path: ./kubernetes/apps/monitoring/kube-prometheus-stack/app
   prune: true
   sourceRef:
@@ -13,10 +13,10 @@ spec:
     namespace: flux-system
   targetNamespace: monitoring
   wait: true
-  timeout: 15m # Large deployment, needs more time
+  timeout: 10m
   dependsOn:
     - name: local-path-provisioner
-      namespace: storage # Storage dependency for Prometheus/Grafana data
+      namespace: storage
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment

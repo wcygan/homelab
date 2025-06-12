@@ -24,3 +24,7 @@ If you need to uninstall the operator, you can run:
 ```bash
 deno run --allow-all scripts/tailscale/uninstall-tailscale-operator.ts
 ```
+
+## Troubleshooting
+
+For common issues including ingress lockouts and access problems, see the [Tailscale Troubleshooting Guide](./troubleshooting.md).

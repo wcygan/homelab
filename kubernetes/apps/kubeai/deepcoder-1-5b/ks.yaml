@@ -4,7 +4,7 @@ metadata:
   name: deepcoder-1-5b
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 30m
   path: ./kubernetes/apps/kubeai/deepcoder-1-5b/app
   prune: true
   sourceRef:
@@ -14,3 +14,4 @@ spec:
   targetNamespace: kubeai
   dependsOn:
     - name: kubeai-operator
+  timeout: 10m

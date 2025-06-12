@@ -14,3 +14,11 @@ kube-prometheus-stack-grafana                    ClusterIP   10.43.170.101   <no
 ```
 
 Username: `admin` Password: `prom-operator`
+
+## Access URL
+
+Once configured, Grafana is accessible at: `https://grafana.walleye-monster.ts.net`
+
+## Troubleshooting
+
+If you cannot access Grafana or other Tailscale-exposed services, see the [Tailscale Troubleshooting Guide](./troubleshooting.md) for common issues and solutions.
