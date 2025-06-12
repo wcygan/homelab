@@ -10,3 +10,4 @@ resources:
   - ./airflow-alerting-webhook.yaml
   - ./vector-config.yaml
   - ./postgres-secret.yaml
+  - ./test-dags-configmap.yaml

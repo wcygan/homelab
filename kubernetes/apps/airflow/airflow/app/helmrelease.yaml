@@ -187,6 +187,9 @@ spec:
         value: "False"
       - name: AIRFLOW__KUBERNETES_EXECUTOR__DELETE_WORKER_PODS_ON_FAILURE
         value: "False"
+      # Ensure worker pods can connect to PostgreSQL
+      - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+        value: "postgresql+psycopg2://airflow:$(POSTGRES_PASSWORD)@airflow-postgresql.airflow.svc.cluster.local:5432/airflow"
       # Add termination grace period to allow log collection
       - name: AIRFLOW__KUBERNETES_EXECUTOR__WORKER_PODS_CREATION_BATCH_SIZE
         value: "10"
@@ -228,6 +231,8 @@ spec:
         size: 100Gi
     
     # Pod template with Vector sidecar for KubernetesExecutor
+    # Note: The Airflow Helm chart handles database connection automatically
+    # when using the built-in PostgreSQL, so we don't need to add those env vars
     podTemplate: |
       apiVersion: v1
       kind: Pod
