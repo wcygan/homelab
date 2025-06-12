@@ -167,7 +167,8 @@
       "Bash(./scripts/fix-flux-kustomizations.ts --apply)",
       "mcp__kubernetes__explain_resource",
       "Bash(flux get source git:*)",
-      "Bash(helmfile:*)"
+      "Bash(helmfile:*)",
+      "Bash(task --list)"
     ],
     "deny": [
       "Bash(kubectl delete kustomization cluster-apps -n flux-system)",
