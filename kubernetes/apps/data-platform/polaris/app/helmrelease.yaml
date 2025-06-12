@@ -1,0 +1,52 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: polaris
+  namespace: data-platform
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: ./helm/polaris
+      sourceRef:
+        kind: GitRepository
+        name: apache-polaris
+        namespace: flux-system
+  values:
+    # PostgreSQL backend configuration
+    persistence:
+      type: postgres
+      postgres:
+        host: hive-metastore-postgres-rw.data-platform.svc.cluster.local
+        port: 5432
+        database: polaris_catalog
+        username: polaris
+        existingSecret: polaris-postgres-credentials
+        secretUsernameKey: username
+        secretPasswordKey: password
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 8182  # Using 8182 to avoid conflicts
+    
+    # Resource allocation
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+    
+    # Enable ingress for internal access
+    ingress:
+      enabled: false  # We'll use port-forward for now
+    
+    # Metrics and monitoring
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        namespace: monitoring
