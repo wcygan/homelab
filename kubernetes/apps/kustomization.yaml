@@ -25,4 +25,5 @@ resources:
   # Application workloads
   - ./airflow
   - ./data-platform/ks.yaml
+  - ./data-platform/nessie/ks.yaml
   - ./kubeai
