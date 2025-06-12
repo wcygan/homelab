@@ -1,0 +1,108 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flux-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: flux.rules
+      interval: 30s
+      rules:
+        - alert: FluxReconciliationFailure
+          expr: |
+            max by (namespace, name, kind) (
+              gotk_reconcile_condition{type="Ready",status="False"} == 1
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Flux reconciliation failure"
+            description: "{{ $labels.kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} reconciliation has been failing for more than 10 minutes."
+
+        - alert: FluxReconciliationStalled
+          expr: |
+            max by (namespace, name, kind) (
+              gotk_reconcile_condition{type="Stalled",status="True"} == 1
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Flux reconciliation stalled"
+            description: "{{ $labels.kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} reconciliation has been stalled for more than 10 minutes."
+
+        - alert: FluxSuspendedResource
+          expr: |
+            gotk_suspend_status == 1
+          for: 24h
+          labels:
+            severity: info
+          annotations:
+            summary: "Flux resource suspended"
+            description: "{{ $labels.kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} has been suspended for more than 24 hours."
+
+        - alert: FluxHighReconciliationTime
+          expr: |
+            histogram_quantile(0.95,
+              sum by (namespace, name, kind, le) (
+                rate(gotk_reconcile_duration_seconds_bucket[5m])
+              )
+            ) > 60
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Flux high reconciliation time"
+            description: "{{ $labels.kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} has a 95th percentile reconciliation time above 60 seconds."
+
+        - alert: FluxSourceNotFound
+          expr: |
+            gotk_reconcile_condition{type="Ready",status="Unknown",reason="ArtifactFailed"} == 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Flux source not found"
+            description: "{{ $labels.kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} cannot find its source reference."
+
+        - alert: FluxHelmReleaseNotReady
+          expr: |
+            gotk_reconcile_condition{kind="HelmRelease",type="Ready",status="False"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Helm release not ready"
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.namespace }} has been failing for more than 15 minutes."
+
+        - alert: FluxKustomizationNotReady
+          expr: |
+            gotk_reconcile_condition{kind="Kustomization",type="Ready",status="False"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Kustomization not ready"
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.namespace }} has been failing for more than 15 minutes."
+
+        - alert: FluxGitRepositoryNotReady
+          expr: |
+            gotk_reconcile_condition{kind="GitRepository",type="Ready",status="False"} == 1
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Git repository not ready"
+            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.namespace }} has been failing for more than 15 minutes. This may block all deployments."
+
+        - alert: FluxSystemDown
+          expr: |
+            up{namespace="flux-system"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Flux system is down"
+            description: "Flux controller in namespace flux-system is not running. GitOps deployments will not work."

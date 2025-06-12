@@ -5,3 +5,4 @@ resources:
   - helmrelease.yaml
   - tailscale-grafana-ingress.yaml
   - dashboards
+  - prometheusrules/flux-alerts.yaml
