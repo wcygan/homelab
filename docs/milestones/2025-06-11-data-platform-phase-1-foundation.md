@@ -7,7 +7,7 @@
 
 ## Overview
 
-This milestone tracks the implementation of Phase 1 of the Data Platform bootstrap initiative, establishing the foundational components for a modern data lakehouse architecture on the Anton Kubernetes cluster. The phase focuses on S3 storage validation, Hive Metastore deployment, and basic Apache Iceberg operations.
+This milestone tracks the implementation of Phase 1 of the Data Platform bootstrap initiative, establishing the foundational components for a modern data lakehouse architecture on the Anton Kubernetes cluster. The phase focuses on S3 storage validation, Apache Polaris catalog deployment, and basic Apache Iceberg operations.
 
 ## Motivation
 
@@ -32,9 +32,9 @@ Despite storage usage being below the 200Gi automatic trigger threshold (current
    - S3 API compatibility validation
    - Bucket lifecycle policies
 
-2. **Hive Metastore** (🚧 In Progress)
-   - PostgreSQL backend via CloudNativePG
-   - Thrift service on port 9083
+2. **Apache Polaris Catalog** (🚧 In Progress)
+   - Modern Iceberg-native catalog service
+   - REST API on port 8181
    - Integration with S3 storage
 
 3. **Iceberg Table Operations** (⏳ Pending)

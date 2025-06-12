@@ -2,7 +2,7 @@
 
 ## Overview
 
-Establish the foundational components for the data platform: S3 storage validation, Hive Metastore deployment, and basic Iceberg table operations. This phase provides immediate value through centralized metadata management and S3-compatible data lake capabilities.
+Establish the foundational components for the data platform: S3 storage validation, Apache Polaris catalog deployment, and basic Iceberg table operations. This phase provides immediate value through modern catalog management and S3-compatible data lake capabilities.
 
 ## Objectives
 
@@ -50,54 +50,54 @@ After S3 validation is complete, create an integration test script that:
 
 ---
 
-### Objective 1.2: Hive Metastore Deployment
-**Goal**: Deploy Hive Metastore using existing CNPG PostgreSQL as backend
+### Objective 1.2: Apache Polaris Catalog Deployment
+**Goal**: Deploy Apache Polaris as modern Iceberg-native catalog service
 
 **Prerequisites**:
-- CNPG PostgreSQL operator functional
-- Storage namespace configured
+- Data platform namespace configured
+- S3 storage accessible
 - Helm repository access
 
 **Deliverables**:
-- [ ] Hive Metastore Helm configuration
-- [ ] PostgreSQL database schema initialization
+- [ ] Apache Polaris Helm configuration
+- [ ] REST API endpoint configuration
 - [ ] RBAC and service configuration
 - [ ] Health checks and monitoring integration
 
 **Implementation Pattern**:
 ```yaml
-# kubernetes/apps/data-platform/hive-metastore/app/helmrelease.yaml
+# kubernetes/apps/data-platform/polaris/app/helmrelease.yaml
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: hive-metastore
+  name: polaris
 spec:
   chart:
     spec:
-      chart: hive-metastore
-      version: "1.0.0"
+      chart: polaris
+      version: "0.1.0"
       sourceRef:
         kind: HelmRepository
-        name: apache-hive
+        name: apache-polaris
 ```
 
 **Validation Criteria**:
 ```bash
-# Check Hive Metastore pod status
-kubectl get pods -n data-platform -l app=hive-metastore
+# Check Polaris pod status
+kubectl get pods -n data-platform -l app=polaris
 
-# Test metadata operations
-kubectl exec -n data-platform deploy/hive-metastore -- \
-  beeline -u "jdbc:hive2://localhost:10000" -e "SHOW DATABASES;"
+# Test catalog operations via REST API
+kubectl port-forward -n data-platform svc/polaris 8181:8181 &
+curl http://localhost:8181/api/management/v1/principal-roles
 ```
 
 **Estimated Duration**: 2-3 days
 
 **Checkpoint & Integration Test Creation**:
-After Hive Metastore deployment, introspect and test:
-- Connect to the actual Hive Metastore instance
-- Run SHOW DATABASES and CREATE DATABASE commands
-- Verify PostgreSQL backend connectivity
+After Polaris deployment, introspect and test:
+- Connect to the Polaris REST API
+- Create catalog and namespace
+- Verify S3 backend integration
 - Document actual connection strings and ports
 
 ```bash

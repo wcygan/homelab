@@ -17,7 +17,7 @@
     {
       "id": "phase_1",
       "name": "Foundation",
-      "description": "S3 storage validation, Hive Metastore deployment, and basic Iceberg operations",
+      "description": "S3 storage validation, Apache Polaris catalog deployment, and basic Iceberg operations",
       "status": "in_progress",
       "estimated_duration": "1-2 weeks",
       "resource_allocation": {
@@ -53,23 +53,23 @@
         },
         {
           "id": "1.2", 
-          "name": "Hive Metastore Deployment",
-          "description": "Deploy Hive Metastore using existing CNPG PostgreSQL as backend",
+          "name": "Apache Polaris Catalog Deployment",
+          "description": "Deploy Apache Polaris as modern Iceberg-native catalog service",
           "status": "pending",
           "prerequisites": [
-            "CNPG PostgreSQL operator functional",
-            "Storage namespace configured",
+            "Data platform namespace configured",
+            "S3 storage accessible",
             "Helm repository access"
           ],
           "deliverables": [
-            "Hive Metastore Helm configuration",
-            "PostgreSQL database schema initialization", 
+            "Apache Polaris Helm configuration",
+            "REST API endpoint configuration", 
             "RBAC and service configuration",
             "Health checks and monitoring integration"
           ],
           "validation_criteria": [
-            "kubectl get pods -n data-platform -l app=hive-metastore",
-            "beeline -u 'jdbc:hive2://localhost:10000' -e 'SHOW DATABASES;'"
+            "kubectl get pods -n data-platform -l app=polaris",
+            "curl http://polaris:8181/api/management/v1/principal-roles"
           ],
           "estimated_duration": "2-3 days",
           "assigned_to": null,
@@ -81,7 +81,7 @@
           "description": "Create and manage Iceberg tables via Spark SQL",
           "status": "pending",
           "prerequisites": [
-            "Hive Metastore operational",
+            "Apache Polaris catalog operational",
             "S3 storage accessible",
             "Spark client available for testing"
           ],
