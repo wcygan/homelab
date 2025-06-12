@@ -158,7 +158,11 @@
       "Bash(./scripts/fix-flux-kustomizations.ts --apply)",
       "Bash(./scripts/analyze-resource-limits.ts)",
       "Bash(./scripts/add-resource-limits.ts)",
-      "Bash(./scripts/add-resource-limits.ts --apply)"
+      "Bash(./scripts/add-resource-limits.ts --apply)",
+      "Bash(./scripts/test-loki-logcli.ts)",
+      "Bash(./scripts/validate-manifests.ts)",
+      "Bash(./scripts/check-flux-config.ts)",
+      "Bash(./scripts/create-loki-s3-bucket.ts)"
     ],
     "deny": []
   }
