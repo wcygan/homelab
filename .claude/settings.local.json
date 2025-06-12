@@ -166,8 +166,37 @@
       "Bash(./scripts/fix-flux-kustomizations.ts)",
       "Bash(./scripts/fix-flux-kustomizations.ts --apply)",
       "mcp__kubernetes__explain_resource",
-      "Bash(flux get source git:*)"
+      "Bash(flux get source git:*)",
+      "Bash(helmfile:*)"
     ],
-    "deny": []
+    "deny": [
+      "Bash(kubectl delete kustomization cluster-apps -n flux-system)",
+      "Bash(kubectl delete kustomization cluster-meta -n flux-system)",
+      "Bash(kubectl delete kustomization flux-system -n flux-system)",
+      "Bash(kubectl delete cephcluster:* --force)",
+      "Bash(kubectl delete pvc:* --force)",
+      "Bash(kubectl delete pv:* --force)",
+      "Bash(kubectl apply -f:*)",
+      "Bash(kubectl edit:*)",
+      "Bash(kubectl patch:* --type=merge)",
+      "Bash(rm age.key)",
+      "Bash(rm -rf age.key)",
+      "Bash(git add age.key)",
+      "Bash(git add:*secret.yaml)",
+      "Bash(git add:*password*)",
+      "Bash(echo:*password*)",
+      "Bash(echo:*secret*)",
+      "Bash(cat age.key)",
+      "Bash(kubectl delete namespace flux-system)",
+      "Bash(kubectl delete namespace storage)",
+      "Bash(kubectl delete namespace external-secrets)",
+      "Bash(kubectl delete deployment -n flux-system:*)",
+      "Bash(kubectl delete helmrelease -A:*)",
+      "Bash(kubectl delete kustomization -A:*)",
+      "Bash(flux uninstall:*)",
+      "Bash(talosctl reset:*)",
+      "Bash(kubectl drain:* --force)",
+      "Bash(kubectl cordon:* --force)"
+    ]
   }
 }

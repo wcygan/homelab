@@ -5,6 +5,7 @@ MCP servers with Claude Code
 
 ## Things I should do
 
+- Introduce a rule to never delete the `cluster-apps` namespace as it causes destruction... lol stupid AI
 - Investigate Ceph in other repos, document it here
 - Invtestigate Rook Ceph Operator installation steps
 - Have the AI reason about my cluster, ceph in other repos, and the rook + ceph installation to create steps for my cluster

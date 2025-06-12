@@ -4,6 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with
 code in this repository. It automatically loads into conversations to provide
 project-specific context and instructions.
 
+## CRITICAL: Golden Rules for Safe Operations
+
+**MANDATORY**: Before making ANY changes to the cluster, consult the golden rules at `/docs/golden-rules/`. These rules prevent catastrophic failures and are based on real incidents that caused cluster outages.
+
+Key documents:
+- **[Kubernetes Operations](./docs/golden-rules/kubernetes-operations.md)** - NEVER delete Flux kustomizations without analysis
+- **[GitOps Practices](./docs/golden-rules/gitops-practices.md)** - All changes MUST go through Git
+- **[Storage Operations](./docs/golden-rules/storage-operations.md)** - Storage resources need special handling
+- **[Secret Management](./docs/golden-rules/secret-management.md)** - Never commit unencrypted secrets
+
+The #1 rule: **Think before you delete. Suspend, don't delete.**
+
 ## MCP Server Usage for Informed Decision Making
 
 **CRITICAL**: When working with this Kubernetes homelab, leverage MCP servers for accurate, documentation-based decisions:
