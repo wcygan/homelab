@@ -13,8 +13,18 @@ Create the following items in 1Password:
   - `username`: `nessie`
   - `password`: Generate a strong password
 
-#### 2. S3 Credentials 
-**Note**: The S3 credentials are automatically managed by Rook-Ceph. The existing `iceberg` CephObjectStoreUser provides access to S3 storage.
+#### 2. S3 Credentials for Nessie
+- **Item Name**: `nessie-s3-credentials`
+- **Vault**: `Homelab` (or your configured vault)
+- **Fields**:
+  - `access_key`: Your Ceph S3 access key (from the iceberg user)
+  - `secret_key`: Your Ceph S3 secret key (from the iceberg user)
+
+**Note**: You can find the existing credentials by running:
+```bash
+kubectl get secret rook-ceph-object-user-storage-iceberg -n storage -o jsonpath='{.data.AccessKey}' | base64 -d
+kubectl get secret rook-ceph-object-user-storage-iceberg -n storage -o jsonpath='{.data.SecretKey}' | base64 -d
+```
 
 The ExternalSecrets will sync these credentials to Kubernetes.
 
@@ -29,19 +39,17 @@ The ExternalSecrets will sync these credentials to Kubernetes.
 
 The deployment is managed by Flux and includes:
 1. PostgreSQL cluster creation
-2. Secret synchronization from 1Password
+2. Secret synchronization from 1Password (PostgreSQL and S3 credentials)
 3. Monitoring configuration
 4. Nessie HelmRelease with JDBC backend
 
-### Post-Deployment Steps
+### Prerequisites
 
-After Flux deploys the resources, copy the S3 secret to the data-platform namespace:
+Before deployment, ensure you have created both 1Password items:
+- `nessie-postgres`: PostgreSQL credentials
+- `nessie-s3-credentials`: S3 access credentials
 
-```bash
-./copy-s3-secret.sh
-```
-
-This is required because the S3 credentials are created in the storage namespace but Nessie needs them in data-platform.
+The ExternalSecrets will automatically sync these to Kubernetes.
 
 ## Validation
 

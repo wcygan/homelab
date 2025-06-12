@@ -7,4 +7,5 @@ resources:
   - postgres-cluster.yaml
   - postgres-credentials.yaml
   - postgres-monitoring.yaml
+  - s3-credentials.yaml
   - helmrelease.yaml
