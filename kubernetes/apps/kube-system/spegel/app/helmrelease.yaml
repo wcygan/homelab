@@ -1,5 +1,3 @@
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/ocirepository-source-v1beta2.json
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: OCIRepository
 metadata:
@@ -11,9 +9,8 @@ spec:
     operation: copy
   ref:
     tag: 0.2.0
-  url: oci://ghcr.io/spegel-org/helm-charts/spegel
+  url: 'oci://ghcr.io/spegel-org/helm-charts/spegel'
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -33,3 +30,11 @@ spec:
   valuesFrom:
     - kind: ConfigMap
       name: spegel-values
+  values:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi

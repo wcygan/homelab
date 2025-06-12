@@ -1,5 +1,3 @@
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -24,15 +22,12 @@ spec:
       strategy: rollback
       retries: 3
   values:
-    # VPA Admission Controller
     admissionController:
       enabled: true
       generateCertificate: true
       secretName: vpa-webhook-certs
       cleanupOnDelete: true
-      
       replicaCount: 1
-      
       resources:
         requests:
           cpu: 50m
@@ -40,17 +35,11 @@ spec:
         limits:
           cpu: 200m
           memory: 500Mi
-      
-      # PodDisruptionBudget
       pdb:
         minAvailable: 1
-    
-    # VPA Recommender
     recommender:
       enabled: true
-      
       replicaCount: 1
-      
       resources:
         requests:
           cpu: 50m
@@ -58,24 +47,16 @@ spec:
         limits:
           cpu: 200m
           memory: 1Gi
-      
-      # Recommender configuration
       extraArgs:
         storage: prometheus
-        prometheus-address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        prometheus-address: 'http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090'
         prometheus-cadvisor-job-name: kubelet
         memory-saver: true
-        
-      # PodDisruptionBudget
       pdb:
         minAvailable: 1
-    
-    # VPA Updater
     updater:
       enabled: true
-      
       replicaCount: 1
-      
       resources:
         requests:
           cpu: 50m
@@ -83,38 +64,20 @@ spec:
         limits:
           cpu: 200m
           memory: 500Mi
-      
-      # Updater configuration
       extraArgs:
-        min-replicas: 2  # Don't evict pods if it would bring replicas below this
-        eviction-tolerance: 0.5  # Allow eviction only if new recommendation differs by 50%
-        
-      # PodDisruptionBudget
+        min-replicas: 2
+        eviction-tolerance: 0.5
       pdb:
         minAvailable: 1
-    
-    # Mutual TLS for components
     mutatingWebhookConfiguration:
-      failurePolicy: Ignore  # Don't block pod creation if VPA is down
-      
-    # RBAC
+      failurePolicy: Ignore
     rbac:
       create: true
-      
-    # Service Account
     serviceAccount:
       create: true
-      
-    # Priority Class
-    priorityClassName: "system-cluster-critical"
-    
-    # Node Selector
+    priorityClassName: system-cluster-critical
     nodeSelector: {}
-    
-    # Tolerations
     tolerations: []
-    
-    # Affinity - spread components across nodes
     affinity:
       podAntiAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
@@ -127,10 +90,15 @@ spec:
                     values:
                       - vpa
               topologyKey: kubernetes.io/hostname
-    
-    # Monitoring
     metrics:
       serviceMonitor:
         enabled: true
         interval: 30s
         scrapeTimeout: 10s
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi

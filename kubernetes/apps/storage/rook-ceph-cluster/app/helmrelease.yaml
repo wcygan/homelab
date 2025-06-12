@@ -1,4 +1,3 @@
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -29,6 +28,13 @@ spec:
       rulesNamespaceOverride: monitoring
     toolbox:
       enabled: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
     configOverride: |
       [global]
       bdev_enable_discard = true
@@ -52,7 +58,7 @@ spec:
           allowVolumeExpansion: true
           volumeBindingMode: Immediate
           parameters:
-            imageFormat: "2"
+            imageFormat: '2'
             imageFeatures: layering
             csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
             csi.storage.k8s.io/provisioner-secret-namespace: storage
@@ -66,7 +72,7 @@ spec:
         enable: false
       clusterName: storage
       cephVersion:
-        image: quay.io/ceph/ceph:v19.2.0
+        image: 'quay.io/ceph/ceph:v19.2.0'
         allowUnsupported: false
       dataDirHostPath: /var/lib/rook
       skipUpgradeChecks: false
@@ -96,7 +102,7 @@ spec:
         periodicity: daily
         maxLogSize: 500M
       cleanupPolicy:
-        confirmation: ""
+        confirmation: ''
         sanitizeDisks:
           method: quick
           dataSource: zero
@@ -109,53 +115,53 @@ spec:
       resources:
         mgr:
           requests:
-            cpu: "100m"
-            memory: "512Mi"
+            cpu: 100m
+            memory: 512Mi
           limits:
-            memory: "1Gi"
+            memory: 1Gi
         mon:
           requests:
-            cpu: "100m"
-            memory: "512Mi"
+            cpu: 100m
+            memory: 512Mi
           limits:
-            memory: "2Gi"
+            memory: 2Gi
         osd:
           requests:
-            cpu: "500m"
-            memory: "2Gi"
+            cpu: 500m
+            memory: 2Gi
           limits:
-            memory: "4Gi"
+            memory: 4Gi
       removeOSDsIfOutAndSafeToRemove: true
       storage:
         useAllNodes: false
         useAllDevices: false
         config:
-          osdsPerDevice: "1"
+          osdsPerDevice: '1'
         nodes:
-          - name: "k8s-1"
+          - name: k8s-1
             devices:
-              - name: "/dev/nvme0n1"
+              - name: /dev/nvme0n1
                 config:
-                  deviceClass: "nvme"
-              - name: "/dev/nvme1n1"
+                  deviceClass: nvme
+              - name: /dev/nvme1n1
                 config:
-                  deviceClass: "nvme"
-          - name: "k8s-2"
+                  deviceClass: nvme
+          - name: k8s-2
             devices:
-              - name: "/dev/nvme0n1"
+              - name: /dev/nvme0n1
                 config:
-                  deviceClass: "nvme"
-              - name: "/dev/nvme1n1"
+                  deviceClass: nvme
+              - name: /dev/nvme1n1
                 config:
-                  deviceClass: "nvme"
-          - name: "k8s-3"
+                  deviceClass: nvme
+          - name: k8s-3
             devices:
-              - name: "/dev/nvme0n1"
+              - name: /dev/nvme0n1
                 config:
-                  deviceClass: "nvme"
-              - name: "/dev/nvme1n1"
+                  deviceClass: nvme
+              - name: /dev/nvme1n1
                 config:
-                  deviceClass: "nvme"
+                  deviceClass: nvme
       disruptionManagement:
         managePodBudgets: true
         osdMaintenanceTimeout: 30

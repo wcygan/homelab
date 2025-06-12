@@ -4,4 +4,4 @@ namespace: data-platform
 resources:
   - namespace.yaml
   # Phase 1: Foundation
-  - ./hive-metastore/ks.yaml
+  # - ./hive-metastore/ks.yaml  # Removed - migrating to Apache Polaris

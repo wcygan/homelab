@@ -1,5 +1,3 @@
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/ocirepository-source-v1beta2.json
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: OCIRepository
 metadata:
@@ -11,9 +9,8 @@ spec:
     operation: copy
   ref:
     tag: 0.20.0
-  url: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-instance
+  url: 'oci://ghcr.io/controlplaneio-fluxcd/charts/flux-instance'
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -37,3 +34,18 @@ spec:
   valuesFrom:
     - kind: ConfigMap
       name: flux-instance-values
+  values:
+    source-controller:
+      resources: &ref_0
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    kustomize-controller:
+      resources: *ref_0
+    helm-controller:
+      resources: *ref_0
+    notification-controller:
+      resources: *ref_0

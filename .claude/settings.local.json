@@ -155,7 +155,10 @@
       "Bash(./scripts/validate-hive-metastore.ts)",
       "Bash(flux resume helmrelease:*)",
       "Bash(./scripts/fix-flux-kustomizations.ts)",
-      "Bash(./scripts/fix-flux-kustomizations.ts --apply)"
+      "Bash(./scripts/fix-flux-kustomizations.ts --apply)",
+      "Bash(./scripts/analyze-resource-limits.ts)",
+      "Bash(./scripts/add-resource-limits.ts)",
+      "Bash(./scripts/add-resource-limits.ts --apply)"
     ],
     "deny": []
   }
