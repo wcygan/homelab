@@ -108,8 +108,10 @@ follow the stages in order.
    ```sh
    mise trust
    pip install pipx
-   mise install
+   mise install  # This will automatically install all missing dependencies
    ```
+
+   📍 _The `mise install` command will install all tools defined in `.mise.toml` including cue, kubeconform, yq, gh CLI, and cilium-cli_
 
    📍 _**Having trouble installing the tools?** Try unsetting the `GITHUB_TOKEN`
    env var and then run these commands again_
