@@ -10,7 +10,6 @@
     "docker:enableMajor",
     "helpers:pinGitHubActionDigests",
     ":disableRateLimiting",
-    ":separateMultipleMajor",
     "group:monorepos",
   ],
   dependencyDashboard: true,
