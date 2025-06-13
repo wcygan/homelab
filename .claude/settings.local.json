@@ -170,7 +170,8 @@
       "Bash(helmfile:*)",
       "Bash(task --list)",
       "WebFetch(domain:api.github.com)",
-      "Bash(cilium:*)"
+      "Bash(cilium:*)",
+      "WebFetch(domain:factory.talos.dev)"
     ],
     "deny": [
       "Bash(kubectl delete kustomization cluster-apps -n flux-system)",
