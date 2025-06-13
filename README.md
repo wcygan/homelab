@@ -370,26 +370,81 @@ In-order to have Flux reconcile on `git push` you must configure Github to send
 > Tailscale provides secure remote access to your homelab cluster and is essential
 > for remote cluster recovery and management. Set this up after full cluster reconciliation.
 
-1. **Set up Tailscale Kubernetes Operator**:
+### Option A: Tailscale System Extension (Recommended for Remote Node Management)
 
-   Run the Tailscale installation scripts (these should already be configured in your cluster):
+For secure remote `talosctl` access to your cluster nodes:
+
+1. **Create Factory Schematic with Tailscale Extension**:
+
+   Visit [Talos Factory](https://factory.talos.dev/) and include the `siderolabs/tailscale` extension:
+   ```
+   https://factory.talos.dev/?arch=amd64&cmdline-set=true&extensions=siderolabs%2Ftailscale&platform=metal&target=metal&version=1.10.4
+   ```
+
+2. **Generate Tailscale Auth Key**:
+   - Create non-ephemeral, reusable auth key in Tailscale admin console
+   - Add `tag:k8s-node` for organization
+
+3. **Configure Tailscale Extension**:
+
+   Create SOPS-encrypted configuration files for each node:
+   ```sh
+   # Create tailscale-extension.sops.yaml for each node
+   sops -e -i talos/patches/k8s-*/tailscale-extension.sops.yaml
+   ```
+
+4. **Update Certificate SANs**:
+
+   Add Tailscale IPs to `talconfig.yaml`:
+   ```yaml
+   additionalApiServerCertSans: &sans
+     - "127.0.0.1"
+     - "192.168.1.101"
+     - "100.x.x.x"  # Tailscale IP
+   additionalMachineCertSans: *sans
+   ```
+
+5. **Deploy to Nodes**:
+   ```sh
+   task talos:generate-config
+   task talos:upgrade-node IP=192.168.1.98  # Repeat for each node
+   ```
+
+6. **Verify Remote Access**:
+   ```sh
+   talosctl -n 100.x.x.x time    # Should work via Tailscale IP
+   talosctl -n 100.x.x.x version
+   ```
+
+   📍 _See [Tailscale System Extension Guide](docs/talos-linux/tailscale-integration.md) for complete implementation details_
+
+### Option B: Tailscale Kubernetes Operator (For Application Access)
+
+For secure remote access to Kubernetes applications:
+
+1. **Set up Tailscale Kubernetes Operator**:
 
    ```sh
    # Check if Tailscale ingress resources exist
    kubectl get ingress -A | grep tailscale
    ```
 
-   📍 _If you see Tailscale ingress resources, the operator setup is ready to be activated_
-
 2. **Access your services remotely**:
 
-   Once Tailscale is configured, you'll have secure access to:
+   Once configured, you'll have secure access to:
    - **Grafana**: `grafana.{your-tailnet}.ts.net`
    - **Ceph Dashboard**: `storage-ceph-dashboard-ingress.{your-tailnet}.ts.net`
    - **KubeAI API**: `kubeai-api.{your-tailnet}.ts.net`
    - **Open WebUI**: `open-webui.{your-tailnet}.ts.net`
 
-   📍 _See [Tailscale milestone documentation](docs/milestones/2025-06-12-tailscale-kubernetes-operator-deployment.md) for detailed setup_
+   📍 _See [Tailscale Operator Documentation](docs/milestones/2025-06-12-tailscale-kubernetes-operator-deployment.md) for setup details_
+
+### Why Both Options?
+
+- **System Extension**: Provides infrastructure-level access for emergency cluster recovery and remote `talosctl` commands
+- **Kubernetes Operator**: Provides secure application access via Tailscale hostnames
+
+Choose the option that best fits your needs, or implement both for comprehensive remote access capabilities.
 
 ## 💥 Reset
 
