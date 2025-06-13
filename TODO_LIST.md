@@ -5,7 +5,7 @@ MCP servers with Claude Code
 
 ## Things I should do
 
-- Get the 6th OSD working in Ceph. There's something wrong with it being named differently.
+- Backup all important files needed for recovery (See: Pre-Bootstrap Requirements)
 - Add Tailscale to all Talos Linux nodes so that we can recover the cluster remotely if needed
 - Introduce a rule to never delete the `cluster-apps` namespace as it causes destruction... lol stupid AI
 - Investigate Ceph in other repos, document it here
