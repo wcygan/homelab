@@ -69,7 +69,7 @@ spec:
   storage:
     useAllNodes: true
     useAllDevices: false
-    deviceFilter: "^nvme[01]n1$"  # Only use the 1TB NVMe drives
+    deviceFilter: "^nvme[012]n1$"  # Only use the 1TB NVMe drives
     config:
       osdsPerDevice: "1"
     nodes:
@@ -84,7 +84,7 @@ spec:
       - name: "k8s-3"
         devices:
           - name: "nvme0n1"
-          - name: "nvme1n1"
+          - name: "nvme2n1"
   disruptionManagement:
     managePodBudgets: true
     osdMaintenanceTimeout: 30
