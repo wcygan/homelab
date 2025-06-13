@@ -168,7 +168,8 @@
       "mcp__kubernetes__explain_resource",
       "Bash(flux get source git:*)",
       "Bash(helmfile:*)",
-      "Bash(task --list)"
+      "Bash(task --list)",
+      "WebFetch(domain:api.github.com)"
     ],
     "deny": [
       "Bash(kubectl delete kustomization cluster-apps -n flux-system)",

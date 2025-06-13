@@ -92,7 +92,8 @@ function apply_crds() {
         # renovate: datasource=github-releases depName=prometheus-operator/prometheus-operator
         https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.83.0/stripped-down-crds.yaml
         # renovate: datasource=github-releases depName=kubernetes-sigs/external-dns
-        https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/tags/v0.17.0/docs/sources/crd/crd-manifest.yaml
+        # NOTE: Using v0.16.1 because v0.17.0 removed the CRD manifest file
+        https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/tags/v0.16.1/docs/sources/crd/crd-manifest.yaml
     )
 
     for crd in "${crds[@]}"; do
