@@ -15,25 +15,24 @@ Anton runs in my basement. It is based on
 
 ## ✨ Features
 
-A Kubernetes cluster deployed with
-[Talos Linux](https://github.com/siderolabs/talos) and an opinionated
-implementation of [Flux](https://github.com/fluxcd/flux2) using
-[GitHub](https://github.com/) as the Git provider,
-[sops](https://github.com/getsops/sops) to manage secrets and
-[cloudflared](https://github.com/cloudflare/cloudflared) to access applications
-external to your local network.
+A production-grade Kubernetes cluster deployed with
+[Talos Linux](https://github.com/siderolabs/talos) and a complete GitOps implementation using [Flux](https://github.com/fluxcd/flux2), 
+[1Password Connect](https://github.com/1Password/connect) for secret management, and
+[Rook-Ceph](https://github.com/rook/rook) for distributed storage.
 
 - **Required:** Some knowledge of [Containers](https://opencontainers.org/),
-  [YAML](https://noyaml.com/), [Git](https://git-scm.com/), and a **Cloudflare
-  account** with a **domain**.
-- **Included components:** [flux](https://github.com/fluxcd/flux2),
+  [YAML](https://noyaml.com/), [Git](https://git-scm.com/), a **1Password account**,
+  and a **Cloudflare account** with a **domain**.
+- **Core Infrastructure:** [flux](https://github.com/fluxcd/flux2),
   [cilium](https://github.com/cilium/cilium),
   [cert-manager](https://github.com/cert-manager/cert-manager),
-  [spegel](https://github.com/spegel-org/spegel),
-  [reloader](https://github.com/stakater/Reloader),
+  [external-secrets-operator](https://github.com/external-secrets/external-secrets),
+  [1password-connect](https://github.com/1Password/connect),
+  [rook-ceph](https://github.com/rook/rook),
   [ingress-nginx](https://github.com/kubernetes/ingress-nginx/),
-  [external-dns](https://github.com/kubernetes-sigs/external-dns) and
-  [cloudflared](https://github.com/cloudflare/cloudflared).
+  [external-dns](https://github.com/kubernetes-sigs/external-dns),
+  [cloudflared](https://github.com/cloudflare/cloudflared), and
+  [tailscale](https://github.com/tailscale/tailscale) for secure remote access.
 
 **Other features include:**
 
@@ -47,7 +46,7 @@ Does this sound cool to you? If so, continue to read on! 👇
 
 ## 🚀 Let's Go!
 
-There are **5 stages** outlined below for completing this project, make sure you
+There are **6 stages** outlined below for completing this project, make sure you
 follow the stages in order.
 
 ### Stage 1: Machine Preparation
@@ -145,6 +144,29 @@ follow the stages in order.
    cloudflared tunnel create --credentials-file cloudflare-tunnel.json kubernetes
    ```
 
+### Stage 3.5: 1Password Setup
+
+> [!IMPORTANT]
+> 1Password Connect is **REQUIRED** for secret management and GitOps functionality.
+> Without this, applications will fail to deploy due to missing secrets.
+
+1. **Set up 1Password Connect credentials**:
+
+   You'll need two files from your 1Password account:
+   - `1password-credentials.json` - Connect server credentials 
+   - `1password-api-token.txt` - API access token
+
+   📍 _Download these from your 1Password account and place them in `~/Downloads/`_
+
+2. **1Password Connect will be installed later** after the initial cluster bootstrap:
+
+   ```sh
+   # This command will be run AFTER task bootstrap:apps
+   deno task 1p:install
+   ```
+
+   📍 _Don't run this yet - we'll come back to it in Stage 5_
+
 ### Stage 4: Cluster configuration
 
 1. Generate the config files from the sample files:
@@ -182,13 +204,9 @@ follow the stages in order.
 ### Stage 5: Bootstrap Talos, Kubernetes, and Flux
 
 > [!WARNING]
-> It might take a while for the cluster to be setup (10+ minutes is normal).
-> During which time you will see a variety of error messages like: "couldn't get
-> current server API group list," "error: no matching resources found", etc.
-> 'Ready' will remain "False" as no CNI is deployed yet. **This is a normal.**
-> If this step gets interrupted, e.g. by pressing <kbd>Ctrl</kbd> +
-> <kbd>C</kbd>, you likely will need to [reset the cluster](#-reset) before
-> trying again
+> The complete bootstrap process can take 15+ minutes and involves multiple phases.
+> You'll see various error messages initially - this is normal until all components are ready.
+> **Do not interrupt the process** or you may need to [reset the cluster](#-reset).
 
 1. Install Talos:
 
@@ -204,14 +222,29 @@ follow the stages in order.
    git push
    ```
 
-3. Install cilium, coredns, spegel, flux and sync the cluster to the repository
-   state:
+3. Install essential services (Cilium, CoreDNS, Spegel, Flux):
 
    ```sh
    task bootstrap:apps
    ```
 
-4. Watch the rollout of your cluster happen:
+   📍 _This installs core infrastructure but applications will fail until secrets are available_
+
+4. **CRITICAL: Set up 1Password Connect for secret management**:
+
+   ```sh
+   deno task 1p:install
+   ```
+
+   📍 _This enables GitOps by providing secrets to applications. Wait for this to complete before proceeding._
+
+5. Force full cluster reconciliation:
+
+   ```sh
+   task reconcile
+   ```
+
+6. Watch the complete rollout happen:
 
    ```sh
    kubectl get pods --all-namespaces --watch
@@ -221,14 +254,22 @@ follow the stages in order.
 
 ### ✅ Verifications
 
-1. Check the status of Cilium:
+1. **Verify 1Password Connect is working**:
+
+   ```sh
+   kubectl get clustersecretstore onepassword-connect
+   kubectl get externalsecret -A | grep cluster-secrets
+   ```
+
+   📍 _All ExternalSecrets should show "SecretSynced: True"_
+
+2. Check the status of Cilium:
 
    ```sh
    cilium status
    ```
 
-2. Check the status of Flux and if the Flux resources are up-to-date and in a
-   ready state:
+3. Check the status of Flux and GitOps deployment:
 
    📍 _Run `task reconcile` to force Flux to sync your Git repository state_
 
@@ -239,24 +280,35 @@ follow the stages in order.
    flux get hr -A
    ```
 
-3. Check TCP connectivity to both the ingress controllers:
+   📍 _All Kustomizations should show "Ready: True" and HelmReleases should be deployed_
+
+4. Check TCP connectivity to both the ingress controllers:
 
    ```sh
    nmap -Pn -n -p 443 ${cluster_ingress_addr} ${cloudflare_ingress_addr} -vv
    ```
 
-4. Check you can resolve DNS for `echo`, this should resolve to
+5. Check you can resolve DNS for `echo`, this should resolve to
    `${cluster_ingress_addr}`:
 
    ```sh
    dig @${cluster_dns_gateway_addr} echo.${cloudflare_domain}
    ```
 
-5. Check the status of your wildcard `Certificate`:
+6. Check the status of your wildcard `Certificate`:
 
    ```sh
    kubectl -n cert-manager describe certificates
    ```
+
+> [!NOTE]
+> **Troubleshooting Bootstrap Issues?**
+> 
+> If you encounter problems during bootstrap, check the comprehensive troubleshooting guides:
+> - [Bootstrap Troubleshooting Guide](docs/cluster-template/bootstrap-troubleshooting.md)
+> - [Successful Bootstrap Checklist](docs/cluster-template/successful-bootstrap-checklist.md)
+> 
+> Common issues include CRD compatibility problems and secret management setup.
 
 ### 🌐 Public DNS
 
@@ -311,6 +363,33 @@ In-order to have Flux reconcile on `git push` you must configure Github to send
    "Settings/Webhooks" press the "Add webhook" button. Fill in the webhook URL
    and your token from `github-push-token.txt`, Content type:
    `application/json`, Events: Choose Just the push event, and save.
+
+## 🔒 Stage 6: Tailscale Remote Access
+
+> [!IMPORTANT]
+> Tailscale provides secure remote access to your homelab cluster and is essential
+> for remote cluster recovery and management. Set this up after full cluster reconciliation.
+
+1. **Set up Tailscale Kubernetes Operator**:
+
+   Run the Tailscale installation scripts (these should already be configured in your cluster):
+
+   ```sh
+   # Check if Tailscale ingress resources exist
+   kubectl get ingress -A | grep tailscale
+   ```
+
+   📍 _If you see Tailscale ingress resources, the operator setup is ready to be activated_
+
+2. **Access your services remotely**:
+
+   Once Tailscale is configured, you'll have secure access to:
+   - **Grafana**: `grafana.{your-tailnet}.ts.net`
+   - **Ceph Dashboard**: `storage-ceph-dashboard-ingress.{your-tailnet}.ts.net`
+   - **KubeAI API**: `kubeai-api.{your-tailnet}.ts.net`
+   - **Open WebUI**: `open-webui.{your-tailnet}.ts.net`
+
+   📍 _See [Tailscale milestone documentation](docs/milestones/2025-06-12-tailscale-kubernetes-operator-deployment.md) for detailed setup_
 
 ## 💥 Reset
 
