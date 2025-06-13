@@ -159,7 +159,7 @@ spec:
               - name: /dev/nvme0n1
                 config:
                   deviceClass: nvme
-              - name: /dev/nvme1n1
+              - name: /dev/nvme2n1
                 config:
                   deviceClass: nvme
       disruptionManagement:
