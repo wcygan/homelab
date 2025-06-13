@@ -38,6 +38,10 @@
     "logcli": "deno run --allow-all scripts/logcli-wrapper.ts",
     "validate": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts",
     "validate:manifests": "deno run --allow-read --allow-run --allow-write --allow-env scripts/validate-manifests.ts",
-    "dashboard": "deno run --allow-all scripts/dashboard-launcher.ts"
+    "dashboard": "deno run --allow-all scripts/dashboard-launcher.ts",
+    "note": "deno run --allow-write --allow-read --allow-run --allow-env scripts/notes.ts",
+    "note:zed": "deno run --allow-write --allow-read --allow-run --allow-env scripts/notes.ts --editor zed",
+    "note:code": "deno run --allow-write --allow-read --allow-run --allow-env scripts/notes.ts --editor code",
+    "note:cursor": "deno run --allow-write --allow-read --allow-run --allow-env scripts/notes.ts --editor cursor"
   }
 }

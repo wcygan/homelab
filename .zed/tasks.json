@@ -1,0 +1,22 @@
+[
+  {
+    "label": "Note: Create New (Zed)",
+    "command": "deno task note:zed",
+    "cwd": "$ZED_WORKSPACE_ROOT"
+  },
+  {
+    "label": "Note: Create New (VSCode)",
+    "command": "deno task note:code",
+    "cwd": "$ZED_WORKSPACE_ROOT"
+  },
+  {
+    "label": "Note: Create New (Cursor)",
+    "command": "deno task note:cursor",
+    "cwd": "$ZED_WORKSPACE_ROOT"
+  },
+  {
+    "label": "Note: Create New (Default Editor)",
+    "command": "deno task note",
+    "cwd": "$ZED_WORKSPACE_ROOT"
+  }
+]
