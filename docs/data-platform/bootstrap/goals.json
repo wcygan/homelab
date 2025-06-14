@@ -17,7 +17,7 @@
     {
       "id": "phase_1",
       "name": "Foundation",
-      "description": "S3 storage validation, Apache Polaris catalog deployment, and basic Iceberg operations",
+      "description": "S3 storage validation, Nessie catalog deployment, and basic Iceberg operations",
       "status": "in_progress",
       "estimated_duration": "1-2 weeks",
       "resource_allocation": {
@@ -53,26 +53,27 @@
         },
         {
           "id": "1.2", 
-          "name": "Apache Polaris Catalog Deployment",
-          "description": "Deploy Apache Polaris as modern Iceberg-native catalog service",
-          "status": "pending",
+          "name": "Nessie Catalog Configuration",
+          "description": "Configure Nessie as the Iceberg catalog service with S3 storage backend",
+          "status": "in_progress",
           "prerequisites": [
             "Data platform namespace configured",
-            "S3 storage accessible",
-            "Helm repository access"
+            "S3 storage accessible via Ceph RADOS Gateway",
+            "PostgreSQL database for Nessie metadata storage"
           ],
           "deliverables": [
-            "Apache Polaris Helm configuration",
-            "REST API endpoint configuration", 
-            "RBAC and service configuration",
+            "Nessie deployment with PostgreSQL backend",
+            "REST API endpoint configuration and validation", 
+            "S3 integration with Ceph object storage",
             "Health checks and monitoring integration"
           ],
           "validation_criteria": [
-            "kubectl get pods -n data-platform -l app=polaris",
-            "curl http://polaris:8181/api/management/v1/principal-roles"
+            "kubectl get pods -n data-platform -l app.kubernetes.io/name=nessie",
+            "curl http://nessie:19120/api/v2/config",
+            "Nessie using PostgreSQL instead of IN_MEMORY storage"
           ],
           "estimated_duration": "2-3 days",
-          "assigned_to": null,
+          "assigned_to": "automated",
           "completion_timestamp": null
         },
         {
@@ -81,7 +82,7 @@
           "description": "Create and manage Iceberg tables via Spark SQL",
           "status": "pending",
           "prerequisites": [
-            "Apache Polaris catalog operational",
+            "Nessie catalog operational",
             "S3 storage accessible",
             "Spark client available for testing"
           ],
@@ -103,10 +104,10 @@
         {
           "id": "1.4",
           "name": "Metadata Backup Procedures",
-          "description": "Implement backup and recovery for Hive Metastore",
+          "description": "Implement backup and recovery for Nessie catalog metadata",
           "status": "pending", 
           "prerequisites": [
-            "Hive Metastore operational",
+            "Nessie catalog operational with PostgreSQL backend",
             "Backup storage available (S3 or PVC)",
             "Scheduled job execution capability"
           ],
@@ -117,9 +118,9 @@
             "Disaster recovery testing"
           ],
           "validation_criteria": [
-            "kubectl create job --from=cronjob/metastore-backup metastore-backup-test",
-            "aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://data-platform-backups/metastore/",
-            "Successful restoration test"
+            "kubectl create job --from=cronjob/nessie-backup nessie-backup-test",
+            "aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://data-platform-backups/nessie/",
+            "Successful PostgreSQL backup and restoration test"
           ],
           "estimated_duration": "1 day",
           "assigned_to": null,
@@ -128,9 +129,9 @@
       ],
       "success_criteria": [
         "S3 API fully functional with Ceph storage",
-        "Hive Metastore responding to metadata queries",
-        "Iceberg tables created, updated, and queried successfully",
-        "Backup and recovery procedures validated"
+        "Nessie catalog REST API responding to metadata queries",
+        "Iceberg tables created, updated, and queried successfully via Nessie",
+        "Backup and recovery procedures validated for PostgreSQL backend"
       ]
     },
     {
@@ -201,7 +202,7 @@
           "description": "Configure Spark jobs to read/write Iceberg tables efficiently",
           "status": "pending",
           "prerequisites": [
-            "Hive Metastore operational (from Phase 1)",
+            "Nessie catalog operational (from Phase 1)",
             "S3 storage accessible",
             "Spark Operator managing jobs successfully"
           ],
@@ -271,7 +272,7 @@
           "description": "Deploy distributed Trino cluster with coordinator and worker nodes",
           "status": "pending",
           "prerequisites": [
-            "Hive Metastore operational (from Phase 1)",
+            "Nessie catalog operational (from Phase 1)",
             "Sufficient cluster resources (48GB RAM for workers)",
             "Helm repository access to Trino charts"
           ],
@@ -403,8 +404,8 @@
             "Backup restoration testing procedures"
           ],
           "validation_criteria": [
-            "kubectl create job --from=cronjob/metastore-backup metastore-backup-test",
-            "aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://data-platform-backups/metastore/",
+            "kubectl create job --from=cronjob/nessie-backup nessie-backup-test",
+            "aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://data-platform-backups/nessie/",
             "Successful restoration test validation"
           ],
           "estimated_duration": "2-3 days",
@@ -544,12 +545,12 @@
   "dependencies": {
     "external": [
       "Ceph cluster operational with S3 gateway (RADOS Gateway)",
-      "CNPG PostgreSQL for Hive Metastore backend database",
+      "CNPG PostgreSQL for Nessie catalog backend database",
       "Airflow existing deployment for orchestration integration",
       "Monitoring stack (Prometheus/Grafana) for observability"
     ],
     "tools": [
-      "Helm for deploying charts (Spark Operator, Trino, Hive Metastore)",
+      "Helm for deploying charts (Spark Operator, Trino, Nessie)",
       "kubectl for Kubernetes cluster administration",
       "S3 CLI tools for storage validation and testing",
       "Sample datasets for validation and performance testing"
