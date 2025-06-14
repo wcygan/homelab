@@ -38,15 +38,14 @@ spec:
         memory: "2Gi"
         cpu: "1000m"
 
-    # Version store configuration - PostgreSQL via JDBC
-    versionStore:
-      type: JDBC
-      jdbc:
-        jdbcUrl: "jdbc:postgresql://nessie-postgres-rw.data-platform.svc.cluster.local:5432/nessie?currentSchema=nessie"
-        secret:
-          name: nessie-postgres-credentials
-          username: postgres_username
-          password: postgres_password
+    # Version store configuration - PostgreSQL via JDBC2
+    versionStoreType: JDBC2
+    jdbc:
+      jdbcUrl: "jdbc:postgresql://nessie-postgres-rw.data-platform.svc.cluster.local:5432/nessie?currentSchema=nessie"
+      secret:
+        name: nessie-postgres-credentials
+        username: postgres_username
+        password: postgres_password
 
     # Catalog settings
     catalog:
