@@ -100,8 +100,8 @@ spec:
         # Force task logs to stdout for collection by Alloy
         colored_console_log: "True"
         # Ensure logs are formatted for easy parsing
-        log_format: "[%%(asctime)s] {{%%(filename)s:%%(lineno)d}} %%(levelname)s - %%(message)s"
-        simple_log_format: "%%(asctime)s %%(levelname)s - %%(message)s"
+        log_format: "[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s"
+        simple_log_format: "%(asctime)s %(levelname)s - %(message)s"
         
       # Configure task logging to write to stdout
       core:
