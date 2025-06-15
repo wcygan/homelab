@@ -81,7 +81,7 @@
           "id": "1.3",
           "name": "Iceberg Table Operations", 
           "description": "Create and manage Iceberg tables via Spark SQL",
-          "status": "pending",
+          "status": "in_progress",
           "prerequisites": [
             "Nessie catalog operational",
             "S3 storage accessible",

@@ -174,7 +174,8 @@
       "WebFetch(domain:factory.talos.dev)",
       "WebFetch(domain:tailscale.com)",
       "WebFetch(domain:community.cloudflare.com)",
-      "Bash(./scripts/validate-nessie.ts)"
+      "Bash(./scripts/validate-nessie.ts)",
+      "Bash(./scripts/test-iceberg-operations.ts)"
     ],
     "deny": [
       "Bash(kubectl delete kustomization cluster-apps -n flux-system)",
