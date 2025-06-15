@@ -7,11 +7,6 @@
  * detailed timing metrics for troubleshooting and optimization.
  */
 
-import { Command } from "@cliffy/command";
-import { Table } from "@cliffy/table";
-import { colors } from "@cliffy/ansi/colors";
-import { MonitoringResult, ExitCode } from "./types/monitoring.ts";
-
 interface PerformanceMetrics {
   url: string;
   dnsResolution?: number;
@@ -30,6 +25,28 @@ interface GrafanaHealthCheck {
   status: "healthy" | "unhealthy" | "error";
   responseTime: number;
   details?: string;
+}
+
+interface MonitoringResult {
+  status: "healthy" | "warning" | "critical" | "error";
+  timestamp: string;
+  summary: {
+    total: number;
+    healthy: number;
+    warnings: number;
+    critical: number;
+  };
+  details: {
+    performance: PerformanceMetrics[];
+    health: GrafanaHealthCheck[];
+    statistics: {
+      avgResponseTime: number;
+      maxResponseTime: number;
+      cacheHitRate: number;
+      errorRate: number;
+    };
+  };
+  issues: string[];
 }
 
 async function measurePerformance(url: string): Promise<PerformanceMetrics> {
@@ -93,44 +110,38 @@ async function checkGrafanaHealth(): Promise<GrafanaHealthCheck[]> {
       url: "https://grafana.walleye-monster.ts.net/public/img/grafana_icon.svg"
     }
   ];
-  
+
   const results: GrafanaHealthCheck[] = [];
   
   for (const endpoint of endpoints) {
+    const startTime = performance.now();
+    
     try {
-      const metrics = await measurePerformance(endpoint.url);
-      
-      let status: "healthy" | "unhealthy" | "error" = "error";
-      let details = "";
-      
-      if (metrics.statusCode === 200) {
-        if (metrics.totalTime < 2000) {
-          status = "healthy";
-          details = `${metrics.totalTime.toFixed(0)}ms response`;
-        } else {
-          status = "unhealthy"; 
-          details = `Slow response: ${metrics.totalTime.toFixed(0)}ms`;
+      const response = await fetch(endpoint.url, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Grafana-Health-Monitor/1.0"
         }
-      } else if (metrics.statusCode > 0) {
-        status = "unhealthy";
-        details = `HTTP ${metrics.statusCode}`;
-      } else {
-        status = "error";
-        details = "Connection failed";
-      }
+      });
+      
+      const endTime = performance.now();
+      const responseTime = endTime - startTime;
       
       results.push({
         endpoint: endpoint.name,
-        status,
-        responseTime: metrics.totalTime,
-        details
+        status: response.ok ? "healthy" : "unhealthy",
+        responseTime,
+        details: response.ok ? `HTTP ${response.status}` : `HTTP ${response.status} ${response.statusText}`
       });
     } catch (error) {
+      const endTime = performance.now();
+      const responseTime = endTime - startTime;
+      
       results.push({
         endpoint: endpoint.name,
         status: "error",
-        responseTime: 0,
-        details: (error as Error).message
+        responseTime,
+        details: error.message
       });
     }
   }
@@ -138,200 +149,148 @@ async function checkGrafanaHealth(): Promise<GrafanaHealthCheck[]> {
   return results;
 }
 
-async function runPerformanceAnalysis(options: { samples: number; json: boolean }): Promise<MonitoringResult> {
-  const startTime = new Date().toISOString();
-  
-  if (!options.json) {
-    console.log(colors.blue.bold("🔍 Grafana Performance Analysis\n"));
-    console.log(`Taking ${options.samples} samples...`);
-  }
-  
-  // Collect multiple samples for statistical analysis
-  const allMetrics: PerformanceMetrics[] = [];
-  
-  for (let i = 0; i < options.samples; i++) {
-    if (!options.json) {
-      process.stdout.write(`\rSample ${i + 1}/${options.samples}...`);
+async function runComprehensiveTest(samples: number = 5, jsonOutput: boolean = false, watch: boolean = false): Promise<void> {
+  const testUrls = [
+    "https://grafana.walleye-monster.ts.net/",
+    "https://grafana.walleye-monster.ts.net/dashboards",
+    "https://grafana.walleye-monster.ts.net/api/health",
+    "https://grafana.walleye-monster.ts.net/public/css/grafana.dark.css"
+  ];
+
+  do {
+    const timestamp = new Date().toISOString();
+    const performanceResults: PerformanceMetrics[] = [];
+    const issues: string[] = [];
+
+    // Run performance tests
+    for (const url of testUrls) {
+      for (let i = 0; i < samples; i++) {
+        const result = await measurePerformance(url);
+        performanceResults.push(result);
+        
+        if (result.statusCode === 0) {
+          issues.push(`Connection failed to ${url}`);
+        } else if (result.statusCode >= 400) {
+          issues.push(`HTTP ${result.statusCode} error for ${url}`);
+        } else if (result.totalTime > 5000) {
+          issues.push(`Slow response (${result.totalTime.toFixed(0)}ms) for ${url}`);
+        }
+      }
     }
+
+    // Run health checks
+    const healthResults = await checkGrafanaHealth();
     
-    const metrics = await measurePerformance("https://grafana.walleye-monster.ts.net/dashboards");
-    allMetrics.push(metrics);
-    
-    // Wait between samples to avoid overwhelming
-    if (i < options.samples - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    for (const health of healthResults) {
+      if (health.status === "error") {
+        issues.push(`Health check failed for ${health.endpoint}: ${health.details}`);
+      } else if (health.responseTime > 3000) {
+        issues.push(`Slow health check (${health.responseTime.toFixed(0)}ms) for ${health.endpoint}`);
+      }
     }
-  }
-  
-  if (!options.json) {
-    console.log("\n");
-  }
-  
-  // Calculate statistics
-  const responseTimes = allMetrics.map(m => m.totalTime);
-  const avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-  const minResponseTime = Math.min(...responseTimes);
-  const maxResponseTime = Math.max(...responseTimes);
-  
-  // Check health endpoints
-  const healthChecks = await checkGrafanaHealth();
-  
-  // Determine overall status
-  const criticalIssues = healthChecks.filter(h => h.status === "error").length;
-  const warnings = healthChecks.filter(h => h.status === "unhealthy").length;
-  const healthy = healthChecks.filter(h => h.status === "healthy").length;
-  
-  let overallStatus: "healthy" | "warning" | "critical" | "error" = "healthy";
-  const issues: string[] = [];
-  
-  if (criticalIssues > 0) {
-    overallStatus = "critical";
-    issues.push(`${criticalIssues} endpoints failed`);
-  } else if (warnings > 0) {
-    overallStatus = "warning";
-    issues.push(`${warnings} endpoints slow`);
-  }
-  
-  if (avgResponseTime > 5000) {
-    overallStatus = "critical";
-    issues.push(`Average response time too high: ${avgResponseTime.toFixed(0)}ms`);
-  } else if (avgResponseTime > 2000) {
-    if (overallStatus === "healthy") overallStatus = "warning";
-    issues.push(`Response time elevated: ${avgResponseTime.toFixed(0)}ms`);
-  }
-  
-  // Display results
-  if (!options.json) {
-    console.log(colors.blue.bold("📊 Performance Statistics"));
-    console.log("=".repeat(50));
-    
-    const statsTable = new Table()
-      .header(["Metric", "Value"])
-      .body([
-        ["Average Response Time", `${avgResponseTime.toFixed(0)}ms`],
-        ["Min Response Time", `${minResponseTime.toFixed(0)}ms`],
-        ["Max Response Time", `${maxResponseTime.toFixed(0)}ms`],
-        ["Samples Taken", options.samples.toString()],
-        ["Success Rate", `${(allMetrics.filter(m => m.statusCode === 200).length / allMetrics.length * 100).toFixed(1)}%`]
-      ]);
-    
-    console.log(statsTable.toString());
-    console.log();
-    
-    console.log(colors.blue.bold("🏥 Health Check Results"));
-    console.log("=".repeat(50));
-    
-    const healthTable = new Table()
-      .header(["Endpoint", "Status", "Response Time", "Details"]);
-    
-    for (const check of healthChecks) {
-      const statusColor = check.status === "healthy" ? colors.green : 
-                         check.status === "unhealthy" ? colors.yellow : colors.red;
-      
-      healthTable.push([
-        check.endpoint,
-        statusColor(check.status.toUpperCase()),
-        `${check.responseTime.toFixed(0)}ms`,
-        check.details || ""
-      ]);
-    }
-    
-    console.log(healthTable.toString());
-    console.log();
-    
+
+    // Calculate statistics
+    const responseTimes = performanceResults.map(r => r.totalTime);
+    const avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+    const maxResponseTime = Math.max(...responseTimes);
+    const cacheHits = performanceResults.filter(r => r.cacheHit).length;
+    const cacheHitRate = (cacheHits / performanceResults.length) * 100;
+    const errors = performanceResults.filter(r => r.statusCode === 0 || r.statusCode >= 400).length;
+    const errorRate = (errors / performanceResults.length) * 100;
+
+    // Determine overall status
+    let status: "healthy" | "warning" | "critical" | "error" = "healthy";
     if (issues.length > 0) {
-      console.log(colors.yellow.bold("⚠️  Issues Found:"));
-      for (const issue of issues) {
-        console.log(`  • ${issue}`);
-      }
-      console.log();
+      if (errorRate > 20) status = "critical";
+      else if (avgResponseTime > 3000 || errorRate > 10) status = "warning";
     }
-    
-    console.log(colors.blue.bold("💡 Optimization Recommendations:"));
-    if (avgResponseTime > 3000) {
-      console.log("  • Dashboard loading is slow - consider reducing panel count");
-      console.log("  • Check Loki query performance - reduce time ranges");
+
+    const result: MonitoringResult = {
+      status,
+      timestamp,
+      summary: {
+        total: performanceResults.length + healthResults.length,
+        healthy: performanceResults.filter(r => r.statusCode >= 200 && r.statusCode < 400).length + healthResults.filter(h => h.status === "healthy").length,
+        warnings: 0,
+        critical: errors + healthResults.filter(h => h.status === "error").length
+      },
+      details: {
+        performance: performanceResults,
+        health: healthResults,
+        statistics: {
+          avgResponseTime,
+          maxResponseTime,
+          cacheHitRate,
+          errorRate
+        }
+      },
+      issues
+    };
+
+    if (jsonOutput) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printFormattedResults(result);
     }
-    if (avgResponseTime > 1000) {
-      console.log("  • Enable browser caching for static assets");
-      console.log("  • Consider CDN for static content");
+
+    if (watch) {
+      await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
     }
-    console.log("  • Monitor Grafana pod resource usage during peak loads");
-    console.log("  • Check Tailscale network latency with: tailscale ping");
+  } while (watch);
+}
+
+function printFormattedResults(result: MonitoringResult): void {
+  console.log(`\n🚀 Grafana Performance Test Results - ${result.timestamp}`);
+  console.log("=".repeat(60));
+  
+  console.log(`\n📊 Overall Status: ${getStatusEmoji(result.status)} ${result.status.toUpperCase()}`);
+  
+  console.log(`\n📈 Performance Statistics:`);
+  console.log(`   Average Response Time: ${result.details.statistics.avgResponseTime.toFixed(0)}ms`);
+  console.log(`   Maximum Response Time: ${result.details.statistics.maxResponseTime.toFixed(0)}ms`);
+  console.log(`   Cache Hit Rate: ${result.details.statistics.cacheHitRate.toFixed(1)}%`);
+  console.log(`   Error Rate: ${result.details.statistics.errorRate.toFixed(1)}%`);
+  
+  console.log(`\n🏥 Health Check Results:`);
+  for (const health of result.details.health) {
+    const emoji = health.status === "healthy" ? "✅" : health.status === "unhealthy" ? "⚠️" : "❌";
+    console.log(`   ${emoji} ${health.endpoint}: ${health.responseTime.toFixed(0)}ms - ${health.details}`);
   }
   
-  return {
-    status: overallStatus,
-    timestamp: startTime,
-    summary: {
-      total: healthChecks.length,
-      healthy,
-      warnings,
-      critical: criticalIssues
-    },
-    details: {
-      performance: {
-        avgResponseTime: Math.round(avgResponseTime),
-        minResponseTime: Math.round(minResponseTime), 
-        maxResponseTime: Math.round(maxResponseTime),
-        samples: options.samples
-      },
-      healthChecks,
-      allMetrics: allMetrics.map(m => ({
-        totalTime: Math.round(m.totalTime),
-        statusCode: m.statusCode,
-        responseSize: m.responseSize,
-        cacheHit: m.cacheHit
-      }))
-    },
-    issues
-  };
+  if (result.issues.length > 0) {
+    console.log(`\n⚠️  Issues Detected (${result.issues.length}):`);
+    for (const issue of result.issues) {
+      console.log(`   • ${issue}`);
+    }
+  }
+  
+  console.log(`\n🎯 Performance Targets:`);
+  console.log(`   Dashboard Load Time: <2000ms ${result.details.statistics.avgResponseTime < 2000 ? '✅' : '❌'}`);
+  console.log(`   Cache Hit Rate: >30% ${result.details.statistics.cacheHitRate > 30 ? '✅' : '❌'}`);
+  console.log(`   Error Rate: <5% ${result.details.statistics.errorRate < 5 ? '✅' : '❌'}`);
 }
 
-async function main(): Promise<void> {
-  await new Command()
-    .name("grafana-performance-monitor")
-    .version("1.0.0")
-    .description("Monitor Grafana performance through Tailscale ingress")
-    .option("-s, --samples <number:integer>", "Number of performance samples to take", { default: 5 })
-    .option("-j, --json", "Output results in JSON format")
-    .option("-w, --watch", "Continuously monitor (not compatible with --json)")
-    .action(async (options) => {
-      if (options.watch && options.json) {
-        console.error("Error: --watch and --json options are incompatible");
-        Deno.exit(1);
-      }
-      
-      if (options.watch) {
-        console.log(colors.blue.bold("📊 Continuous Grafana Performance Monitoring"));
-        console.log(colors.gray("Press Ctrl+C to stop\n"));
-        
-        while (true) {
-          const result = await runPerformanceAnalysis({ samples: options.samples, json: false });
-          console.log(`\n${colors.gray(`Last updated: ${new Date().toLocaleTimeString()}`)}`);
-          console.log(colors.gray("Waiting 30 seconds for next check...\n"));
-          
-          await new Promise(resolve => setTimeout(resolve, 30000));
-        }
-      } else {
-        const result = await runPerformanceAnalysis({ samples: options.samples, json: options.json });
-        
-        if (options.json) {
-          console.log(JSON.stringify(result, null, 2));
-        }
-        
-        // Set exit code based on status
-        const exitCode = result.status === "healthy" ? ExitCode.SUCCESS :
-                        result.status === "warning" ? ExitCode.WARNING :
-                        result.status === "critical" ? ExitCode.CRITICAL :
-                        ExitCode.ERROR;
-        
-        Deno.exit(exitCode);
-      }
-    })
-    .parse(Deno.args);
+function getStatusEmoji(status: string): string {
+  switch (status) {
+    case "healthy": return "✅";
+    case "warning": return "⚠️";
+    case "critical": return "🔥";
+    case "error": return "❌";
+    default: return "❓";
+  }
 }
 
+// CLI interface
 if (import.meta.main) {
-  await main();
+  const args = Deno.args;
+  const jsonOutput = args.includes("--json");
+  const watch = args.includes("--watch");
+  const samples = parseInt(args.find(arg => arg.startsWith("--samples="))?.split("=")[1] || "5");
+
+  try {
+    await runComprehensiveTest(samples, jsonOutput, watch);
+  } catch (error) {
+    console.error(`❌ Performance test failed: ${error.message}`);
+    Deno.exit(1);
+  }
 }

@@ -4,43 +4,16 @@ metadata:
   name: grafana-tailscale-ingress
   namespace: monitoring
   annotations:
-    # Performance optimizations for Tailscale ingress
+    # Tailscale-native performance optimizations
     tailscale.com/hostname: "grafana"
+    tailscale.com/experimental/websocket-compression: "true"
     
-    # Enable compression and caching optimizations
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/proxy-buffering: "on"
-    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
-    nginx.ingress.kubernetes.io/proxy-buffers: "8 16k"
-    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "32k"
+    # Backend connection optimization
+    tailscale.com/backend-timeout: "120s"
     
-    # Connection and timeout optimizations
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
-    nginx.ingress.kubernetes.io/keepalive-timeout: "75"
-    
-    # Static asset caching for better performance
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        add_header Vary Accept-Encoding;
-        gzip_static on;
-      }
-      
-      # Enable gzip compression for text-based content
-      gzip on;
-      gzip_vary on;
-      gzip_min_length 1000;
-      gzip_types
-        text/plain
-        text/css
-        text/xml
-        text/javascript
-        application/javascript
-        application/xml+rss
-        application/json;
+    # Enable experimental performance features
+    tailscale.com/experimental/allow-funnel: "false"
+    tailscale.com/experimental/websocket: "true"
 spec:
   ingressClassName: tailscale # Use ingressClassName as per Tailscale docs and K8s best practice
   rules:
