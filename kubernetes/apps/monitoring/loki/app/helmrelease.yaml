@@ -29,11 +29,13 @@ spec:
     # Use SingleBinary mode for simplicity
     deploymentMode: SingleBinary
     
-    # Disable caches
+    # Enable caches for better performance
     chunksCache:
-      enabled: false
+      enabled: true
+      allocatedMemory: 512MB
     resultsCache:
-      enabled: false
+      enabled: true
+      allocatedMemory: 256MB
     
     loki:
       auth_enabled: false
@@ -83,7 +85,9 @@ spec:
         reject_old_samples: true
         reject_old_samples_max_age: 72h  # Reject logs older than 3 days
         max_cache_freshness_per_query: 10m
-        split_queries_by_interval: 15m
+        split_queries_by_interval: 30m  # Reduced splitting for better performance
+        max_query_parallelism: 16  # Enable parallel query processing
+        query_timeout: 300s  # 5 minute timeout for complex queries
         ingestion_rate_mb: 50
         ingestion_burst_size_mb: 100
       
@@ -131,11 +135,11 @@ spec:
         failureThreshold: 5  # Generous for S3 connectivity issues
       resources:
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 500m  # Increased for better performance
+          memory: 512Mi  # Increased to support caching
         limits:
-          cpu: 1
-          memory: 1Gi
+          cpu: 2  # Increased for query processing
+          memory: 2Gi  # Increased for caching layer
       # S3 credentials from secret
       extraEnvFrom:
         - secretRef:

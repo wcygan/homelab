@@ -71,15 +71,16 @@ spec:
           access: proxy
           url: http://loki-gateway.monitoring.svc.cluster.local
           jsonData:
-            timeout: 60
-            maxLines: 1000
+            timeout: 120  # Increased timeout for better reliability
+            maxLines: 5000  # Increased for richer dashboards
+            maxConcurrentShardRequests: 32  # Enable concurrent requests
       resources:
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 200m  # Increased for better responsiveness
+          memory: 512Mi  # Increased for dashboard caching
         limits:
-          cpu: 500m
-          memory: 1Gi
+          cpu: 1000m  # Doubled for faster dashboard loading
+          memory: 2Gi  # Doubled for better caching
 
     kubeStateMetrics:
       enabled: true
