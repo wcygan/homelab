@@ -95,7 +95,7 @@ spec:
               disableDeletion: true
               updateIntervalSeconds: 0  # Disable auto-refresh
               options:
-                path: /tmp/dashboards/default
+                path: /tmp/dashboards
           
       # Performance optimizations
       grafana.ini:
