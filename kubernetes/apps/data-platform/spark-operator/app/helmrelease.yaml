@@ -1,0 +1,142 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: spark-operator
+  namespace: data-platform
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: spark-operator
+      version: "2.2.0"  # Pin to latest stable version
+      sourceRef:
+        kind: HelmRepository
+        name: kubeflow
+        namespace: flux-system
+  install:
+    createNamespace: false  # Namespace is managed by Kustomize
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  values:
+    # Controller configuration
+    controller:
+      # Resource limits for the operator
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      
+      # RBAC configuration
+      rbac:
+        create: true
+        createClusterRole: true
+        createRole: true
+      
+      # Service account
+      serviceAccount:
+        create: true
+        name: spark-operator
+        annotations: {}
+      
+      # Environment variables
+      env:
+        - name: SPARK_OPERATOR_LOG_LEVEL
+          value: "INFO"
+    
+    # Webhook configuration
+    webhook:
+      enable: true
+      port: 8080
+      
+      # Webhook service configuration
+      service:
+        type: ClusterIP
+        port: 443
+        targetPort: 8080
+      
+      # Certificate configuration
+      certManager:
+        enabled: false  # Use self-signed certs for simplicity
+      
+      # Webhook resource limits
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+    
+    # Image configuration
+    image:
+      repository: ghcr.io/kubeflow/spark-operator
+      tag: "v2.2.0"  # Pin to specific tag (changed to ghcr.io per v2.2.0 notes)
+      pullPolicy: IfNotPresent
+    
+    # Spark application configuration
+    sparkJobNamespace: "data-platform"
+    
+    # ServiceMonitor for Prometheus integration
+    serviceMonitor:
+      enable: true
+      labels:
+        app.kubernetes.io/component: spark-operator
+        app.kubernetes.io/name: spark-operator
+      interval: 30s
+      scrapeTimeout: 10s
+    
+    # Node selector and tolerations (if needed)
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    
+    # Security context
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    
+    # Pod security context
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    
+    # Liveness and readiness probes
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    
+    # Volume configuration for webhook certificates
+    volumes:
+      - name: webhook-certs
+        secret:
+          secretName: spark-operator-webhook-certs
+    
+    volumeMounts:
+      - name: webhook-certs
+        mountPath: /etc/certs
+        readOnly: true

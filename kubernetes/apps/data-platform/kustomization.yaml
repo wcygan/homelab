@@ -13,3 +13,6 @@ resources:
   
   # Phase 1: Metadata Backup Procedures  
   - ./nessie-backup/ks.yaml
+  
+  # Phase 2: Spark Job Management
+  - ./spark-operator/ks.yaml
