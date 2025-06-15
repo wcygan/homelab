@@ -7,5 +7,6 @@ resources:
   - helmrelease.yaml
   - servicemonitor.yaml
   - rbac.yaml
+  - spark-operator-rbac.yaml
   # Commented out example application - uncomment to test
   # - example-sparkapplication.yaml
