@@ -8,3 +8,4 @@ resources:
   - ./loki/ks.yaml
   - ./alloy/ks.yaml
   - ./loki-s3-bucket/ks.yaml
+  - ./grafana-dashboards/optimized/ks.yaml
