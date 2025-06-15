@@ -55,17 +55,7 @@ spec:
     # Webhook configuration
     webhook:
       enable: true
-      port: 8443
-      
-      # Webhook service configuration
-      service:
-        type: ClusterIP
-        port: 443
-        targetPort: 8443
-      
-      # Certificate configuration
-      certManager:
-        enabled: false  # Use self-signed certs for simplicity
+      # Use chart defaults: port=9443, health probes on 8081
       
       # Webhook resource limits
       resources:
@@ -75,6 +65,10 @@ spec:
         limits:
           cpu: 200m
           memory: 256Mi
+    
+    # Certificate manager - disabled for simplicity
+    certManager:
+      enable: false
     
     # Image configuration
     image:
@@ -112,32 +106,4 @@ spec:
       runAsUser: 1000
       fsGroup: 1000
     
-    # Liveness and readiness probes for controller (metrics on 8080)
-    livenessProbe:
-      httpGet:
-        path: /healthz
-        port: 8081  # Health probe port
-      initialDelaySeconds: 30
-      periodSeconds: 30
-      timeoutSeconds: 5
-      failureThreshold: 3
-    
-    readinessProbe:
-      httpGet:
-        path: /readyz  
-        port: 8081  # Health probe port
-      initialDelaySeconds: 10
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
-    
-    # Volume configuration for webhook certificates
-    volumes:
-      - name: webhook-certs
-        secret:
-          secretName: spark-operator-webhook-certs
-    
-    volumeMounts:
-      - name: webhook-certs
-        mountPath: /etc/certs
-        readOnly: true
+    # Use chart defaults for health probes, certificates, and volumes
