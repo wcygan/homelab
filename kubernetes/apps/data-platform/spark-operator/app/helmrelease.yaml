@@ -76,12 +76,8 @@ spec:
           cpu: 200m
           memory: 256Mi
     
-    # Image configuration
-    image:
-      registry: ghcr.io
-      repository: kubeflow/spark-operator
-      tag: "v2.2.0"  # Pin to specific tag (changed to ghcr.io per v2.2.0 notes)
-      pullPolicy: IfNotPresent
+    # Image configuration - using chart defaults
+    # Default: registry=ghcr.io, repository=kubeflow/spark-operator, tag=appVersion
     
     # Spark application configuration
     sparkJobNamespace: "data-platform"
