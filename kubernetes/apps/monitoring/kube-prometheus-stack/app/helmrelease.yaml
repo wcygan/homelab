@@ -65,6 +65,36 @@ spec:
       # Default admin password is "prom-operator"
       # Consider managing this via 1Password/ESO for production
       adminPassword: "prom-operator"
+      
+      # Enable persistent storage to prevent dashboard reloading
+      persistence:
+        enabled: true
+        type: pvc
+        size: 10Gi
+        storageClassName: ceph-block
+        
+      # Disable sidecar dashboard provisioning to stop thrashing
+      sidecar:
+        dashboards:
+          enabled: false  # Disable to prevent continuous reloading
+        datasources:
+          enabled: true   # Keep datasources enabled
+          
+      # Performance optimizations
+      grafana.ini:
+        server:
+          read_timeout: 120s
+        database:
+          wal: true       # Enable Write-Ahead Logging for better performance
+        unified_alerting:
+          enabled: true
+        dashboards:
+          default_home_dashboard_path: "/tmp/dashboards/homelab-critical-apps-v2.json"
+        panels:
+          enable_alpha: false
+        plugins:
+          enable_alpha: false
+        
       additionalDataSources:
         - name: Loki
           type: loki
@@ -74,13 +104,14 @@ spec:
             timeout: 120  # Increased timeout for better reliability
             maxLines: 5000  # Increased for richer dashboards
             maxConcurrentShardRequests: 32  # Enable concurrent requests
+            
       resources:
         requests:
-          cpu: 200m  # Increased for better responsiveness
-          memory: 512Mi  # Increased for dashboard caching
+          cpu: 300m  # Increased for dashboard operations
+          memory: 1Gi  # Increased for better caching and persistence
         limits:
-          cpu: 1000m  # Doubled for faster dashboard loading
-          memory: 2Gi  # Doubled for better caching
+          cpu: 1500m  # Increased for faster dashboard loading
+          memory: 3Gi  # Increased for better caching and UI responsiveness
 
     kubeStateMetrics:
       enabled: true
