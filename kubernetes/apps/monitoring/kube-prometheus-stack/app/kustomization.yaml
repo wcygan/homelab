@@ -7,3 +7,4 @@ resources:
   - dashboards
   - prometheusrules/flux-alerts.yaml
   - prometheusrules/recording-rules.yaml
+  - prometheusrules/enhanced-recording-rules.yaml

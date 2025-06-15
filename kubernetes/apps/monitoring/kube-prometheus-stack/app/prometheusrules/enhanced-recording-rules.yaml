@@ -1,0 +1,241 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: enhanced-performance-recording-rules
+  namespace: monitoring
+spec:
+  groups:
+    - name: top_consumers
+      interval: 1m
+      rules:
+        # Top 10 CPU consuming namespaces
+        - record: cluster:namespace_cpu_usage:top10
+          expr: |
+            topk(10, 
+              sum by (namespace) (
+                rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])
+              )
+            )
+        
+        # Top 10 memory consuming namespaces
+        - record: cluster:namespace_memory_usage:top10
+          expr: |
+            topk(10,
+              sum by (namespace) (
+                container_memory_working_set_bytes{container!="POD",container!=""}
+              )
+            )
+        
+        # Top 10 CPU consuming pods
+        - record: cluster:pod_cpu_usage:top10
+          expr: |
+            topk(10,
+              sum by (namespace, pod) (
+                rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])
+              )
+            )
+        
+        # Top 10 memory consuming pods
+        - record: cluster:pod_memory_usage:top10
+          expr: |
+            topk(10,
+              sum by (namespace, pod) (
+                container_memory_working_set_bytes{container!="POD",container!=""}
+              )
+            )
+    
+    - name: node_aggregations
+      interval: 30s
+      rules:
+        # Node CPU utilization percentage
+        - record: instance:node_cpu_utilization:ratio
+          expr: |
+            1 - avg by (instance) (
+              rate(node_cpu_seconds_total{mode="idle"}[5m])
+            )
+        
+        # Node memory utilization percentage
+        - record: instance:node_memory_utilization:ratio
+          expr: |
+            1 - (
+              node_memory_MemAvailable_bytes / 
+              node_memory_MemTotal_bytes
+            )
+        
+        # Node filesystem usage percentage
+        - record: instance:node_filesystem_usage:ratio
+          expr: |
+            1 - (
+              node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} /
+              node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"}
+            )
+        
+        # Node network receive bandwidth
+        - record: instance:node_network_receive_bytes:rate5m
+          expr: |
+            sum by (instance) (
+              rate(node_network_receive_bytes_total{device!~"lo|docker.*|veth.*"}[5m])
+            )
+        
+        # Node network transmit bandwidth
+        - record: instance:node_network_transmit_bytes:rate5m
+          expr: |
+            sum by (instance) (
+              rate(node_network_transmit_bytes_total{device!~"lo|docker.*|veth.*"}[5m])
+            )
+    
+    - name: percentile_aggregations
+      interval: 1m
+      rules:
+        # API server request latency percentiles
+        - record: apiserver:request_duration:p50
+          expr: |
+            histogram_quantile(0.50,
+              sum by (verb, le) (
+                rate(apiserver_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        - record: apiserver:request_duration:p95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (verb, le) (
+                rate(apiserver_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        - record: apiserver:request_duration:p99
+          expr: |
+            histogram_quantile(0.99,
+              sum by (verb, le) (
+                rate(apiserver_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        # Ingress request latency percentiles
+        - record: nginx_ingress:request_duration:p50
+          expr: |
+            histogram_quantile(0.50,
+              sum by (ingress, namespace, le) (
+                rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        - record: nginx_ingress:request_duration:p95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (ingress, namespace, le) (
+                rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        - record: nginx_ingress:request_duration:p99
+          expr: |
+            histogram_quantile(0.99,
+              sum by (ingress, namespace, le) (
+                rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])
+              )
+            )
+    
+    - name: grafana_performance
+      interval: 30s
+      rules:
+        # Grafana API response time percentiles
+        - record: grafana:api_response_time:p50
+          expr: |
+            histogram_quantile(0.50,
+              sum by (handler, method, le) (
+                rate(grafana_http_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        - record: grafana:api_response_time:p95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (handler, method, le) (
+                rate(grafana_http_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        - record: grafana:api_response_time:p99
+          expr: |
+            histogram_quantile(0.99,
+              sum by (handler, method, le) (
+                rate(grafana_http_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        # Grafana dashboard query performance
+        - record: grafana:datasource_request_duration:p95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (datasource, le) (
+                rate(grafana_datasource_request_duration_seconds_bucket[5m])
+              )
+            )
+        
+        # Grafana active users
+        - record: grafana:active_users:5m
+          expr: |
+            count(
+              count by (user) (
+                rate(grafana_http_request_duration_seconds_count[5m]) > 0
+              )
+            )
+        
+        # Grafana request rate by dashboard
+        - record: grafana:dashboard_request_rate:5m
+          expr: |
+            sum by (dashboard) (
+              rate(grafana_api_dashboard_get_milliseconds_count[5m])
+            )
+    
+    - name: storage_performance
+      interval: 1m
+      rules:
+        # Ceph OSD latency percentiles
+        - record: ceph:osd_op_latency:p95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (osd, le) (
+                rate(ceph_osd_op_latency_seconds_bucket[5m])
+              )
+            )
+        
+        # PVC usage percentage by namespace
+        - record: namespace:pvc_usage_percentage
+          expr: |
+            (
+              sum by (namespace, persistentvolumeclaim) (
+                kubelet_volume_stats_used_bytes
+              ) / sum by (namespace, persistentvolumeclaim) (
+                kubelet_volume_stats_capacity_bytes
+              )
+            ) * 100
+        
+        # Storage IOPS by PVC
+        - record: pvc:disk_iops:rate5m
+          expr: |
+            sum by (namespace, persistentvolumeclaim) (
+              rate(kubelet_volume_stats_iops_device[5m])
+            )
+    
+    - name: application_slo
+      interval: 30s
+      rules:
+        # Service success rate (for SLO monitoring)
+        - record: service:request_success_rate:5m
+          expr: |
+            (
+              sum by (namespace, service) (
+                rate(http_requests_total{code!~"5.."}[5m])
+              ) / sum by (namespace, service) (
+                rate(http_requests_total[5m])
+              )
+            )
+        
+        # Service availability (uptime)
+        - record: service:up:ratio_5m
+          expr: |
+            avg_over_time(up{job=~".*"}[5m])

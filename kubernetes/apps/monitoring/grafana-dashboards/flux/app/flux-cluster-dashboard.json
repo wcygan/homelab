@@ -93,7 +93,8 @@
       "targets": [
         {
           "expr": "sum(flux:failing_resources:count)",
-          "refId": "A"
+          "refId": "A",
+          "instant": true
         }
       ],
       "title": "Failing Resources",
@@ -150,7 +151,8 @@
       "targets": [
         {
           "expr": "avg(flux:reconcile_success_rate:5m)",
-          "refId": "A"
+          "refId": "A",
+          "instant": true
         }
       ],
       "title": "Reconciliation Success Rate",
