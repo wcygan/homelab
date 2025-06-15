@@ -405,6 +405,42 @@ To use: Type `/mcp` in Claude Code to access Kubernetes tools directly.
 
 For detailed usage, see: [MCP Kubernetes Usage Guide](docs/mcp/kubernetes-usage.md)
 
+### Dashboard Organization & Management
+
+**IMPORTANT**: Follow these principles for Grafana dashboard management:
+
+#### Centralization Preferences
+- **Consolidate, don't proliferate**: Enhance existing dashboards instead of creating new versions
+- **Single source of truth**: One dashboard per functional area (e.g., one Flux dashboard, one cluster overview)
+- **Avoid duplicates**: Remove "-optimized", "-v2", or similar versioned dashboard variants
+
+#### Dashboard Structure
+- **Location**: All custom dashboards in `/kubernetes/apps/monitoring/kube-prometheus-stack/app/dashboards/`
+- **Avoid scatter**: Don't create separate `/grafana-dashboards/` directories unless absolutely necessary
+- **Consistent naming**: Use descriptive, non-versioned names (e.g., `flux-cluster.json`, not `flux-cluster-v2.json`)
+
+#### Enhancement Strategy
+- **Update in place**: Add recording rules and performance optimizations to existing dashboards
+- **Modular sections**: Use dashboard rows to organize related metrics (e.g., "Performance", "Errors", "Storage")
+- **Recording rules**: Leverage pre-computed metrics for faster loading
+- **Progressive enhancement**: Improve existing dashboards incrementally
+
+#### Example Structure
+```
+kubernetes/apps/monitoring/kube-prometheus-stack/app/dashboards/
+├── flux-cluster.json              # Combined Flux GitOps + performance
+├── homelab-cluster-overview.json  # Main cluster health dashboard
+├── ceph-cluster.json              # Storage monitoring
+├── loki-dashboard.json            # Centralized logging
+└── grafana-performance.json       # Grafana self-monitoring
+```
+
+#### Anti-Patterns to Avoid
+- ❌ Creating multiple versions: `dashboard.json`, `dashboard-optimized.json`, `dashboard-v2.json`
+- ❌ Separate directories for similar functionality: `/grafana-dashboards/optimized/`
+- ❌ Version suffixes in titles: "Dashboard (Optimized)", "Dashboard V2"
+- ❌ Duplicate panels across multiple dashboards
+
 ### Talos Linux Troubleshooting
 
 For detailed Talos-specific troubleshooting including node reboots, kubeconfig issues, and storage verification, see:
