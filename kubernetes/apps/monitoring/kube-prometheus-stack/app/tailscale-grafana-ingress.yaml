@@ -6,14 +6,9 @@ metadata:
   annotations:
     # Tailscale-native performance optimizations
     tailscale.com/hostname: "grafana"
-    tailscale.com/experimental/websocket-compression: "true"
     
-    # Backend connection optimization
+    # Backend connection optimization  
     tailscale.com/backend-timeout: "120s"
-    
-    # Enable experimental performance features
-    tailscale.com/experimental/allow-funnel: "false"
-    tailscale.com/experimental/websocket: "true"
 spec:
   ingressClassName: tailscale # Use ingressClassName as per Tailscale docs and K8s best practice
   rules:
