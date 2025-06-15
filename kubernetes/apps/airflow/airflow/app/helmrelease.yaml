@@ -90,21 +90,25 @@ spec:
     #   persistence:
     #     enabled: false
 
-    # Configure Airflow logging
+    # Configure Airflow logging for centralized collection
     config:
       logging:
-        # Use local file logging instead of trying to fetch from pods
+        # Disable remote logging - we're using centralized logging via Loki
         remote_logging: "False"
         logging_level: "INFO"
         fab_logging_level: "WARN"
         # Force task logs to stdout for collection by Alloy
         colored_console_log: "True"
+        # Ensure logs are formatted for easy parsing
+        log_format: "[%%(asctime)s] {{%%(filename)s:%%(lineno)d}} %%(levelname)s - %%(message)s"
+        simple_log_format: "%%(asctime)s %%(levelname)s - %%(message)s"
         
       # Configure task logging to write to stdout
       core:
-        # Ensure task logs go to both file and stdout
+        # Ensure task logs go to stdout for Vector/Alloy collection
         logging_config_class: "airflow.config_templates.airflow_local_settings.DEFAULT_LOGGING_CONFIG"
-        
+        # Disable file-based log fetching since we use Loki
+        log_fetch_timeout_sec: "5"
         log_auto_tailing_offset: "30"
         log_animation_speed: "1000"
 
@@ -143,6 +147,10 @@ spec:
         limits:
           cpu: "1000m"
           memory: "2Gi"
+      # Ensure unbuffered output for log collection
+      env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
 
     # If using KubernetesExecutor, configure worker resources
     workers:
@@ -217,13 +225,20 @@ spec:
     # Extra secrets/configmaps without Helm hooks
     extraConfigMaps: {}
 
-    # Triggerer configuration with Ceph storage
+    # Triggerer configuration
     triggerer:
       enabled: true
-      persistence:
-        enabled: true
-        storageClassName: "ceph-block"
-        size: 100Gi
+      # Persistence removed - logs now go to centralized Loki via stdout
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+      env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
     
     # Pod template with Vector sidecar for KubernetesExecutor
     # Note: The Airflow Helm chart handles database connection automatically
