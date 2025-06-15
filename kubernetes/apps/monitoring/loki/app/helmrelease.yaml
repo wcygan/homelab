@@ -185,16 +185,18 @@ spec:
     minio:
       enabled: false
     
-    # Disable monitoring initially
+    # Enable monitoring integration with Prometheus and Grafana
     monitoring:
       dashboards:
-        enabled: false
+        enabled: true
       rules:
-        enabled: false
+        enabled: true
       serviceMonitor:
-        enabled: false
+        enabled: true
       selfMonitoring:
-        enabled: false
+        enabled: true
+        grafanaAgent:
+          installOperator: false  # Use existing Prometheus stack
     
     # Disable test
     test:
