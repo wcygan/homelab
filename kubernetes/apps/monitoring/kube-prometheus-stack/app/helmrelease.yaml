@@ -77,8 +77,25 @@ spec:
       sidecar:
         dashboards:
           enabled: false  # Disable to prevent continuous reloading
+          searchNamespace: null  # Disable dashboard search
+          provider:
+            disableDelete: true
+            allowUiUpdates: false
         datasources:
           enabled: true   # Keep datasources enabled
+          
+      # Disable dashboard provisioning entirely for performance
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              updateIntervalSeconds: 0  # Disable auto-updates
+              options:
+                path: /var/lib/grafana/dashboards/default
           
       # Performance optimizations
       grafana.ini:
