@@ -1,0 +1,78 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logging-test-script
+  namespace: monitoring
+data:
+  test.sh: |
+    #!/bin/sh
+    echo "Starting logging test workload..."
+    
+    # Generate different log levels
+    while true; do
+      timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      
+      # Info logs
+      echo "{\"timestamp\":\"${timestamp}\",\"level\":\"info\",\"message\":\"Test workload running\",\"component\":\"test\",\"iteration\":\"${i}\"}"
+      
+      # Warning logs (less frequent)
+      if [ $((RANDOM % 10)) -eq 0 ]; then
+        echo "{\"timestamp\":\"${timestamp}\",\"level\":\"warning\",\"message\":\"Test warning message\",\"component\":\"test\",\"details\":\"Random warning for testing\"}"
+      fi
+      
+      # Error logs (rare)
+      if [ $((RANDOM % 20)) -eq 0 ]; then
+        echo "{\"timestamp\":\"${timestamp}\",\"level\":\"error\",\"message\":\"Test error occurred\",\"component\":\"test\",\"error\":\"Simulated error for testing\"}"
+      fi
+      
+      # Multiline log simulation
+      if [ $((RANDOM % 15)) -eq 0 ]; then
+        echo "{\"timestamp\":\"${timestamp}\",\"level\":\"info\",\"message\":\"Starting multiline log\"}"
+        echo "  Stack trace line 1"
+        echo "  Stack trace line 2"
+        echo "  Stack trace line 3"
+      fi
+      
+      sleep 2
+    done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logging-test-workload
+  namespace: monitoring
+  labels:
+    app: logging-test
+    purpose: functional-testing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logging-test
+  template:
+    metadata:
+      labels:
+        app: logging-test
+        purpose: functional-testing
+    spec:
+      containers:
+      - name: log-generator
+        image: busybox:latest
+        command: ["/bin/sh"]
+        args: ["/scripts/test.sh"]
+        volumeMounts:
+        - name: test-script
+          mountPath: /scripts
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+      volumes:
+      - name: test-script
+        configMap:
+          name: logging-test-script
+          defaultMode: 0755
