@@ -31,3 +31,5 @@ resources:
   - ./fairwinds.yaml
   # renovate: datasource=helm depName=spark-operator lookupName=spark-operator registryUrl=https://kubeflow.github.io/spark-operator
   - ./kubeflow.yaml
+  # renovate: datasource=helm depName=trino lookupName=trino registryUrl=https://trinodb.github.io/charts
+  - ./trino.yaml

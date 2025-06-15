@@ -1,0 +1,23 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: trino
+  namespace: data-platform
+  labels:
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/component: trino
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trino
+      app.kubernetes.io/component: coordinator
+  endpoints:
+    - port: http
+      interval: 30s
+      scrapeTimeout: 10s
+      path: /ui/api/stats
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - data-platform

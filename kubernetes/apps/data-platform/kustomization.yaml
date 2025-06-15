@@ -20,3 +20,6 @@ resources:
   
   # Phase 2: Spark Applications (actual job deployments)
   - ./spark-applications/ks.yaml
+  
+  # Phase 3: Query Engine
+  - ./trino/ks.yaml
