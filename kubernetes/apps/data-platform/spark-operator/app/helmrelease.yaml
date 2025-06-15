@@ -76,8 +76,12 @@ spec:
           cpu: 200m
           memory: 256Mi
     
-    # Image configuration - using chart defaults
-    # Default: registry=ghcr.io, repository=kubeflow/spark-operator, tag=appVersion
+    # Image configuration
+    image:
+      registry: ghcr.io
+      repository: kubeflow/spark-operator/controller
+      tag: "2.2.0"
+      pullPolicy: IfNotPresent
     
     # Spark application configuration
     sparkJobNamespace: "data-platform"
