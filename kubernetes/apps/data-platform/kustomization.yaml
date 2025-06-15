@@ -15,4 +15,5 @@ resources:
   - ./nessie-backup/ks.yaml
   
   # Phase 2: Spark Job Management
-  - ./spark-operator/ks.yaml
+  # Note: spark-operator/ks.yaml creates a Kustomization in flux-system namespace
+  # It should NOT be included here to avoid namespace override issues
