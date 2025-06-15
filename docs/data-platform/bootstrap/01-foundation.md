@@ -50,8 +50,8 @@ After S3 validation is complete, create an integration test script that:
 
 ---
 
-### Objective 1.2: Apache Polaris Catalog Deployment
-**Goal**: Deploy Apache Polaris as modern Iceberg-native catalog service
+### Objective 1.2: Nessie Catalog Configuration
+**Goal**: Configure Nessie as the Iceberg catalog service with Git-like version control
 
 **Prerequisites**:
 - Data platform namespace configured
@@ -59,54 +59,47 @@ After S3 validation is complete, create an integration test script that:
 - Helm repository access
 
 **Deliverables**:
-- [ ] Apache Polaris Helm configuration
-- [ ] REST API endpoint configuration
-- [ ] RBAC and service configuration
-- [ ] Health checks and monitoring integration
+- [x] Nessie deployment with PostgreSQL backend
+- [x] REST API endpoint configuration and validation
+- [x] S3 integration readiness for Ceph object storage
+- [x] Health checks and monitoring integration
 
-**Implementation Pattern**:
+**Implementation Details**:
 ```yaml
-# kubernetes/apps/data-platform/polaris/app/helmrelease.yaml
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: polaris
-spec:
-  chart:
-    spec:
-      chart: polaris
-      version: "0.1.0"
-      sourceRef:
-        kind: HelmRepository
-        name: apache-polaris
+# Nessie is deployed with the following configuration:
+# - Version: 0.104.1
+# - Backend: PostgreSQL (CloudNativePG cluster)
+# - API Port: 19120
+# - Storage: JDBC2 schema with tables refs2 and objs2
 ```
 
 **Validation Criteria**:
 ```bash
-# Check Polaris pod status
-kubectl get pods -n data-platform -l app=polaris
+# Check Nessie pod status
+kubectl get pods -n data-platform -l app.kubernetes.io/name=nessie
 
 # Test catalog operations via REST API
-kubectl port-forward -n data-platform svc/polaris 8181:8181 &
-curl http://localhost:8181/api/management/v1/principal-roles
+kubectl port-forward -n data-platform svc/nessie 19120:19120 &
+curl http://localhost:19120/api/v2/config
+curl http://localhost:19120/api/v2/trees
 ```
 
 **Estimated Duration**: 2-3 days
 
 **Checkpoint & Integration Test Creation**:
-After Polaris deployment, introspect and test:
-- Connect to the Polaris REST API
-- Create catalog and namespace
-- Verify S3 backend integration
+After Nessie configuration, verify:
+- Nessie REST API is accessible
+- Default branch (main) exists
+- Ready for Iceberg table operations
 - Document actual connection strings and ports
 
 ```bash
 # At this checkpoint, run:
-kubectl exec -n data-platform deploy/hive-metastore -- \
-  beeline -u "jdbc:hive2://localhost:10000" -e "SHOW DATABASES; CREATE DATABASE test_checkpoint;"
+./scripts/validate-nessie.ts
 
-# Then create integration test:
-./scripts/test-data-platform-metastore.ts --create-integration-test
+# Verify Nessie is ready for Iceberg integration:
+curl http://localhost:19120/api/v2/config | jq .
+curl http://localhost:19120/api/v2/trees | jq .
 ```
 
 ---
@@ -189,10 +182,10 @@ aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://iceberg-test/checkpoint_test/ 
 ---
 
 ### Objective 1.4: Metadata Backup Procedures
-**Goal**: Implement backup and recovery for Hive Metastore
+**Goal**: Implement backup and recovery for Nessie catalog metadata
 
 **Prerequisites**:
-- Hive Metastore operational
+- Nessie catalog operational with PostgreSQL backend
 - Backup storage available (S3 or PVC)
 - Scheduled job execution capability
 
@@ -204,11 +197,11 @@ aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://iceberg-test/checkpoint_test/ 
 
 **Implementation Pattern**:
 ```yaml
-# kubernetes/apps/data-platform/hive-metastore/app/backup-cronjob.yaml
+# kubernetes/apps/data-platform/nessie/app/backup-cronjob.yaml
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: metastore-backup
+  name: nessie-backup
 spec:
   schedule: "0 2 * * *"  # Daily at 2 AM
   jobTemplate:
@@ -223,41 +216,41 @@ spec:
             - -c
             - |
               pg_dump -h ${POSTGRES_HOST} -U ${POSTGRES_USER} \
-                      ${POSTGRES_DB} > /backup/metastore-$(date +%Y%m%d).sql
+                      ${POSTGRES_DB} > /backup/nessie-$(date +%Y%m%d).sql
               # Upload to S3 or persistent storage
 ```
 
 **Validation Criteria**:
 ```bash
 # Test backup creation
-kubectl create job --from=cronjob/metastore-backup metastore-backup-test -n data-platform
+kubectl create job --from=cronjob/nessie-backup nessie-backup-test -n data-platform
 
 # Verify backup files
-kubectl logs job/metastore-backup-test -n data-platform
+kubectl logs job/nessie-backup-test -n data-platform
 
 # Test recovery procedure
 kubectl exec -n data-platform deploy/postgres -- \
-  psql -U postgres -d metastore < /backup/metastore-backup.sql
+  psql -U postgres -d nessie < /backup/nessie-backup.sql
 ```
 
 **Estimated Duration**: 1 day
 
 **Checkpoint & Integration Test Creation**:
 After backup procedures are implemented, test and validate:
-- Execute an actual backup of the metastore database
+- Execute an actual backup of the Nessie database
 - Perform a test restoration to verify backup integrity
 - Test backup scheduling and retention policies
 - Document backup verification procedures
 
 ```bash
 # At this checkpoint, test actual backup/restore:
-kubectl create job --from=cronjob/metastore-backup metastore-backup-test -n data-platform
-kubectl wait --for=condition=complete job/metastore-backup-test -n data-platform --timeout=300s
-kubectl logs job/metastore-backup-test -n data-platform
+kubectl create job --from=cronjob/nessie-backup nessie-backup-test -n data-platform
+kubectl wait --for=condition=complete job/nessie-backup-test -n data-platform --timeout=300s
+kubectl logs job/nessie-backup-test -n data-platform
 
 # Test restoration to a test database:
 kubectl exec -n data-platform deploy/postgres -- \
-  psql -U postgres -c "CREATE DATABASE metastore_restore_test;"
+  psql -U postgres -c "CREATE DATABASE nessie_restore_test;"
   
 # Restore from backup and verify:
 # [restoration commands based on actual backup format]
@@ -275,7 +268,7 @@ At the end of Phase 1, create a comprehensive test that validates the entire fou
 
 # This test should validate:
 # - S3 storage operations with real data
-# - Hive Metastore connectivity and operations  
+# - Nessie catalog connectivity and operations  
 # - Iceberg table CRUD operations with real queries
 # - Backup and recovery procedures with real data
 # - Performance baselines for each component
@@ -285,7 +278,7 @@ At the end of Phase 1, create a comprehensive test that validates the entire fou
 
 ### Technical Validation
 - [ ] S3 API fully functional with Ceph storage
-- [ ] Hive Metastore responding to metadata queries
+- [ ] Nessie catalog REST API responding to metadata queries
 - [ ] Iceberg tables created, updated, and queried successfully
 - [ ] Backup and recovery procedures validated
 
@@ -304,13 +297,13 @@ At the end of Phase 1, create a comprehensive test that validates the entire fou
 ## Resource Allocation
 
 ### Memory Requirements
-- Hive Metastore: 4GB RAM
+- Nessie catalog: 4GB RAM
 - PostgreSQL backend: 2GB RAM
 - Supporting services: 2GB RAM
 - **Total Phase 1**: ~8GB RAM
 
 ### CPU Requirements
-- Hive Metastore: 200m CPU
+- Nessie catalog: 200m CPU
 - PostgreSQL backend: 100m CPU
 - Backup operations: 100m CPU burst
 - **Total Phase 1**: ~400m CPU
@@ -325,15 +318,15 @@ At the end of Phase 1, create a comprehensive test that validates the entire fou
 
 ### Common Issues
 
-**Hive Metastore Connection Failures**:
+**Nessie Catalog Connection Failures**:
 ```bash
 # Check PostgreSQL connectivity
-kubectl exec -n data-platform deploy/hive-metastore -- \
-  nc -zv postgres-service 5432
+kubectl exec -n data-platform deploy/nessie -- \
+  nc -zv nessie-postgres-rw 5432
 
 # Verify database schema
 kubectl exec -n data-platform deploy/postgres -- \
-  psql -U postgres -d metastore -c "\dt"
+  psql -U postgres -d nessie -c "\dt nessie.*"
 ```
 
 **S3 Authentication Errors**:
@@ -350,8 +343,8 @@ kubectl run s3-test --rm -it --image=amazon/aws-cli \
 
 **Iceberg Table Creation Failures**:
 ```bash
-# Check Hive Metastore logs
-kubectl logs -n data-platform deploy/hive-metastore --tail=100
+# Check Nessie logs
+kubectl logs -n data-platform deploy/nessie --tail=100
 
 # Verify S3 bucket permissions
 aws s3api --endpoint-url ${CEPH_S3_ENDPOINT} get-bucket-acl --bucket iceberg-test

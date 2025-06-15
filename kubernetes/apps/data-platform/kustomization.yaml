@@ -7,3 +7,6 @@ resources:
   # - ./polaris/ks.yaml  # Removed - migrating to Project Nessie due to lack of pre-built images
   # Note: nessie/ks.yaml creates a Kustomization in flux-system namespace
   # It should NOT be included here to avoid namespace override issues
+  
+  # Phase 1: Iceberg Table Operations Testing
+  - ./spark-iceberg-client/ks.yaml
