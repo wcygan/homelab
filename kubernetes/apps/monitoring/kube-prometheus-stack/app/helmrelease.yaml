@@ -73,22 +73,14 @@ spec:
         size: 10Gi
         storageClassName: ceph-block
         
-      # Re-enable dashboard sidecar with performance optimizations
+      # Enable dashboard sidecar to load dashboards
       sidecar:
         dashboards:
-          enabled: true   # Re-enable for essential dashboards
-          searchNamespace: "monitoring"  # Limit search scope to monitoring only
-          label: "grafana_dashboard"  # Look for ConfigMaps with this label
-          labelValue: "1"  # With this value
-          watchMethod: WATCH  # More efficient than LIST method
-          resource: configmap  # Only watch ConfigMaps (not secrets)
-          # Performance optimizations to prevent thrashing
-          provider:
-            disableDelete: true  # Prevent deletion loops
-            allowUiUpdates: false  # Prevent UI update cycles
-            foldersFromFilesStructure: true
+          enabled: true
+          label: "grafana_dashboard"
+          labelValue: "1"
         datasources:
-          enabled: true   # Keep datasources enabled
+          enabled: true
           defaultDatasourceEnabled: true
           
       # Configure dashboard providers with minimal refresh
