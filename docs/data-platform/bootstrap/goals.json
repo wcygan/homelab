@@ -81,7 +81,7 @@
           "id": "1.3",
           "name": "Iceberg Table Operations", 
           "description": "Create and manage Iceberg tables via Spark SQL",
-          "status": "in_progress",
+          "status": "completed",
           "prerequisites": [
             "Nessie catalog operational",
             "S3 storage accessible",
@@ -99,14 +99,14 @@
             "aws s3 --endpoint-url ${CEPH_S3_ENDPOINT} ls s3://iceberg-test/sample_data/ --recursive"
           ],
           "estimated_duration": "2 days",
-          "assigned_to": null,
-          "completion_timestamp": null
+          "assigned_to": "automated",
+          "completion_timestamp": "2025-06-15T16:50:00Z"
         },
         {
           "id": "1.4",
           "name": "Metadata Backup Procedures",
           "description": "Implement backup and recovery for Nessie catalog metadata",
-          "status": "pending", 
+          "status": "completed", 
           "prerequisites": [
             "Nessie catalog operational with PostgreSQL backend",
             "Backup storage available (S3 or PVC)",
@@ -124,8 +124,8 @@
             "Successful PostgreSQL backup and restoration test"
           ],
           "estimated_duration": "1 day",
-          "assigned_to": null,
-          "completion_timestamp": null
+          "assigned_to": "automated",
+          "completion_timestamp": "2025-06-15T17:00:00Z"
         }
       ],
       "success_criteria": [
@@ -560,8 +560,8 @@
   "current_status": {
     "active_phase": "phase_1",
     "active_objective": null,
-    "last_completed_objective": "1.2",
-    "next_pending_objective": "1.3",
-    "completion_percentage": 10
+    "last_completed_objective": "1.4",
+    "next_pending_objective": "2.1",
+    "completion_percentage": 21
   }
 }

@@ -10,3 +10,6 @@ resources:
   
   # Phase 1: Iceberg Table Operations Testing
   - ./spark-iceberg-client/ks.yaml
+  
+  # Phase 1: Metadata Backup Procedures  
+  - ./nessie-backup/ks.yaml
