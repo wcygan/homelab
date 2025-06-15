@@ -78,7 +78,8 @@ spec:
     
     # Image configuration
     image:
-      repository: ghcr.io/kubeflow/spark-operator
+      registry: ghcr.io
+      repository: kubeflow/spark-operator
       tag: "v2.2.0"  # Pin to specific tag (changed to ghcr.io per v2.2.0 notes)
       pullPolicy: IfNotPresent
     
