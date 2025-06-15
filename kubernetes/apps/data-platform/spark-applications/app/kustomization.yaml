@@ -3,6 +3,9 @@ kind: Kustomization
 namespace: data-platform
 
 resources:
+  # Setup jobs
+  - setup/create-iceberg-bucket.yaml
+  
   # Test applications
   - test-spark-pi/spark-pi.yaml
   - s3-integration-test/s3-test-job.yaml

@@ -6,3 +6,4 @@ resources:
   - tailscale-grafana-ingress.yaml
   - dashboards
   - prometheusrules/flux-alerts.yaml
+  - prometheusrules/recording-rules.yaml

@@ -1,0 +1,148 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: grafana-performance-recording-rules
+  namespace: monitoring
+spec:
+  groups:
+    - name: namespace_metrics
+      interval: 30s
+      rules:
+        # Pre-compute namespace CPU usage
+        - record: namespace:container_cpu_usage_seconds:sum_rate
+          expr: |
+            sum by (namespace) (
+              rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])
+            )
+        
+        # Pre-compute namespace memory usage
+        - record: namespace:container_memory_usage_bytes:sum
+          expr: |
+            sum by (namespace) (
+              container_memory_working_set_bytes{container!="POD",container!=""}
+            )
+        
+        # Pre-compute pod count by namespace
+        - record: namespace:kube_pod_info:count
+          expr: |
+            count by (namespace) (
+              kube_pod_info
+            )
+        
+        # Pre-compute container restart rate
+        - record: namespace:kube_pod_container_status_restarts:rate5m
+          expr: |
+            sum by (namespace) (
+              rate(kube_pod_container_status_restarts_total[5m])
+            )
+    
+    - name: flux_metrics
+      interval: 30s
+      rules:
+        # Pre-compute Flux reconciliation success rate
+        - record: flux:reconcile_success_rate:5m
+          expr: |
+            sum by (namespace, name, kind) (
+              rate(gotk_reconcile_duration_seconds_count{success="true"}[5m])
+            ) / sum by (namespace, name, kind) (
+              rate(gotk_reconcile_duration_seconds_count[5m])
+            )
+        
+        # Pre-compute Flux reconciliation duration p95
+        - record: flux:reconcile_duration:p95_5m
+          expr: |
+            histogram_quantile(0.95,
+              sum by (namespace, name, kind, le) (
+                rate(gotk_reconcile_duration_seconds_bucket[5m])
+              )
+            )
+        
+        # Pre-compute failing Flux resources
+        - record: flux:failing_resources:count
+          expr: |
+            count by (kind) (
+              gotk_reconcile_condition{type="Ready",status="False"} == 1
+            )
+    
+    - name: cluster_overview
+      interval: 30s
+      rules:
+        # Pre-compute cluster CPU utilization
+        - record: cluster:cpu_usage_cores:sum
+          expr: |
+            sum(
+              rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])
+            )
+        
+        # Pre-compute cluster memory utilization
+        - record: cluster:memory_usage_bytes:sum
+          expr: |
+            sum(
+              container_memory_working_set_bytes{container!="POD",container!=""}
+            )
+        
+        # Pre-compute cluster pod capacity utilization
+        - record: cluster:pod_capacity_usage:ratio
+          expr: |
+            sum(kube_pod_info) / sum(kube_node_status_allocatable{resource="pods"})
+        
+        # Pre-compute node availability
+        - record: cluster:node_availability:ratio
+          expr: |
+            sum(up{job="node-exporter"}) / count(up{job="node-exporter"})
+    
+    - name: storage_metrics
+      interval: 60s
+      rules:
+        # Pre-compute PVC usage by namespace
+        - record: namespace:kubelet_volume_stats_used_bytes:sum
+          expr: |
+            sum by (namespace) (
+              kubelet_volume_stats_used_bytes
+            )
+        
+        # Pre-compute PVC utilization ratio
+        - record: namespace:kubelet_volume_stats_usage:ratio
+          expr: |
+            sum by (namespace, persistentvolumeclaim) (
+              kubelet_volume_stats_used_bytes
+            ) / sum by (namespace, persistentvolumeclaim) (
+              kubelet_volume_stats_capacity_bytes
+            )
+        
+        # Pre-compute Ceph cluster usage
+        - record: ceph:cluster_usage_bytes:sum
+          expr: |
+            sum(ceph_cluster_total_used_bytes)
+        
+        # Pre-compute Ceph health status
+        - record: ceph:health_status:count
+          expr: |
+            count by (status) (ceph_health_status)
+    
+    - name: ingress_metrics
+      interval: 30s
+      rules:
+        # Pre-compute ingress request rate
+        - record: ingress:nginx_ingress_controller_requests:rate5m
+          expr: |
+            sum by (namespace, ingress) (
+              rate(nginx_ingress_controller_requests[5m])
+            )
+        
+        # Pre-compute ingress error rate
+        - record: ingress:nginx_ingress_controller_requests_errors:rate5m
+          expr: |
+            sum by (namespace, ingress) (
+              rate(nginx_ingress_controller_requests{status=~"5.."}[5m])
+            )
+        
+        # Pre-compute ingress p95 latency
+        - record: ingress:nginx_ingress_controller_request_duration:p95_5m
+          expr: |
+            histogram_quantile(0.95,
+              sum by (namespace, ingress, le) (
+                rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])
+              )
+            )

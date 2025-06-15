@@ -144,6 +144,21 @@ spec:
       extraEnvFrom:
         - secretRef:
             name: loki-s3-credentials
+      # Mount recording rules
+      extraVolumes:
+        - name: recording-rules
+          configMap:
+            name: loki-recording-rules
+        - name: ruler-config
+          configMap:
+            name: loki-ruler-config
+      extraVolumeMounts:
+        - name: recording-rules
+          mountPath: /etc/loki/rules/fake/recording_rules.yaml
+          subPath: recording_rules.yaml
+        - name: ruler-config
+          mountPath: /etc/loki/ruler.yaml
+          subPath: ruler.yaml
     
     # Disable all other deployment modes
     backend:

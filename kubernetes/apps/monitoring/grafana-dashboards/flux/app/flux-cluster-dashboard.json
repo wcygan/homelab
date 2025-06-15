@@ -92,7 +92,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "expr": "sum(gotk_reconcile_condition{type=\"Ready\",status=\"False\"})",
+          "expr": "sum(flux:failing_resources:count)",
           "refId": "A"
         }
       ],
@@ -149,7 +149,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "expr": "sum(rate(gotk_reconcile_duration_seconds_count{success=\"true\"}[5m])) / sum(rate(gotk_reconcile_duration_seconds_count[5m]))",
+          "expr": "avg(flux:reconcile_success_rate:5m)",
           "refId": "A"
         }
       ],

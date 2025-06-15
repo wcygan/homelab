@@ -100,19 +100,46 @@ spec:
       # Performance optimizations
       grafana.ini:
         server:
-          read_timeout: 120s
+          read_timeout: 300s  # Increased for complex queries
           static_root_path: public
           enable_gzip: true
+          protocol: http2  # Enable HTTP/2 for better multiplexing
+          http2_max_concurrent_streams: 250
           
         database:
           wal: true       # Enable Write-Ahead Logging for better performance
           cache_mode: shared
-          max_idle_conn: 10
+          max_idle_conn: 25  # Increased for concurrent users
           max_open_conn: 100
           conn_max_lifetime: 14400  # 4 hours
+          log_queries: false  # Disable query logging for performance
+          
+        # Optimize rendering performance
+        rendering:
+          concurrent_render_limit: 10  # Parallel rendering
+          
+        # Query caching configuration
+        caching:
+          enabled: true
+          
+        # Data proxy optimizations
+        dataproxy:
+          timeout: 300  # Match query timeout
+          keep_alive_seconds: 30
+          tls_handshake_timeout_seconds: 10
+          expect_continue_timeout_seconds: 1
+          max_idle_connections: 100
+          idle_conn_timeout_seconds: 90
+          
+        # Enable response compression
+        server.compression:
+          enabled: true
+          level: 6  # Balanced compression
           
         unified_alerting:
           enabled: true
+          max_attempts: 3
+          min_interval: 30s  # Reduce alert query frequency
           
         panels:
           enable_alpha: false
@@ -120,10 +147,7 @@ spec:
           
         plugins:
           enable_alpha: false
-          
-        # Enable caching for better performance
-        cache:
-          enabled: true
+          concurrent_install_limit: 1  # Prevent resource spikes
           
         # Optimize static content serving
         paths:
@@ -136,14 +160,37 @@ spec:
         # Security headers that also help with caching
         security:
           strict_transport_security: true
+          strict_transport_security_max_age_seconds: 63072000
+          strict_transport_security_preload: true
           x_content_type_options: true
           x_xss_protection: true
+          content_security_policy: true
+          
+        # Performance monitoring
+        metrics:
+          enabled: true
+          interval_seconds: 30  # Reduce metrics collection frequency
+          
+        # Optimize dashboard loading
+        dashboards:
+          min_refresh_interval: 30s  # Prevent too frequent refreshes
+          default_home_dashboard_path: /tmp/dashboards/home.json
+          
+        # Query performance settings
+        query_validators:
+          enabled: false  # Disable validation for performance
           
         # Reduce logging verbosity for performance
         log:
           level: warn
           filters:
             provisioning.dashboard: error  # Hide noisy dashboard provisioning logs
+            tsdb.postgres: error  # Reduce database logging
+            rendering: error  # Reduce rendering logs
+            
+        # Feature toggles for performance
+        feature_toggles:
+          enable: queryHistoryEnabled,showDashboardValidationWarnings,ngalert,accesscontrol,panelTitleSearch,publicDashboards,queryOverLive
         
       additionalDataSources:
         - name: Loki
@@ -156,6 +203,37 @@ spec:
             maxConcurrentShardRequests: 16  # Reduced to prevent overwhelming
             derivedFields: []  # Disable derived fields for performance
             manageAlerts: false  # Disable alert management for performance
+            # Query performance optimizations
+            queryTimeout: 300s
+            httpHeaderName1: "X-Scope-OrgID"
+            # Enable caching headers
+            httpHeaderName2: "Cache-Control"
+            httpHeaderValue2: "max-age=600"  # Cache for 10 minutes
+            # Optimize for streaming
+            streamingEnabled: true
+            streamingChunkSize: 1000
+        
+        # Prometheus datasource optimizations
+        - name: prometheus
+          type: prometheus
+          access: proxy
+          url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          isDefault: true
+          jsonData:
+            timeInterval: 30s  # Align with scrape interval
+            queryTimeout: 300s
+            httpMethod: POST  # Better for large queries
+            # Enable incremental querying
+            incrementalQuerying: true
+            incrementalQueryOverlapWindow: 10m
+            # Optimize query handling
+            disableMetricsLookup: false
+            # Custom query parameters for performance
+            customQueryParameters: "max_source_resolution=5m"
+            # Enable exemplar support
+            exemplarTraceIdDestinations:
+              - name: traceID
+                datasourceUid: tempo
             
       resources:
         requests:
