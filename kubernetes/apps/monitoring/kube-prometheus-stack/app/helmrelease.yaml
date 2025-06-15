@@ -73,44 +73,59 @@ spec:
         size: 10Gi
         storageClassName: ceph-block
         
-      # Disable sidecar dashboard provisioning to stop thrashing
+      # Completely disable sidecar dashboard provisioning for performance
       sidecar:
         dashboards:
-          enabled: false  # Disable to prevent continuous reloading
-          searchNamespace: null  # Disable dashboard search
-          provider:
-            disableDelete: true
-            allowUiUpdates: false
+          enabled: false  # Completely disable dashboard sidecar
         datasources:
           enabled: true   # Keep datasources enabled
+          defaultDatasourceEnabled: true
           
-      # Disable dashboard provisioning entirely for performance
-      dashboardProviders:
-        dashboardproviders.yaml:
-          apiVersion: 1
-          providers:
-            - name: 'default'
-              orgId: 1
-              folder: ''
-              type: file
-              updateIntervalSeconds: 0  # Disable auto-updates
-              options:
-                path: /var/lib/grafana/dashboards/default
+      # Remove dashboard providers to eliminate provisioning overhead
+      # Dashboards will be manually imported or managed via API
+      dashboardProviders: {}
           
       # Performance optimizations
       grafana.ini:
         server:
           read_timeout: 120s
+          static_root_path: public
+          enable_gzip: true
+          
         database:
           wal: true       # Enable Write-Ahead Logging for better performance
+          cache_mode: shared
+          
         unified_alerting:
           enabled: true
+          
         dashboards:
           default_home_dashboard_path: "/tmp/dashboards/homelab-critical-apps-v2.json"
+          
         panels:
           enable_alpha: false
+          disable_sanitize_html: false
+          
         plugins:
           enable_alpha: false
+          
+        # Enable caching for better performance
+        cache:
+          enabled: true
+          
+        # Optimize static content serving
+        paths:
+          static_root_path: public
+          
+        # Browser caching optimizations
+        frontend_logging:
+          enabled: false
+          
+        # Security headers that also help with caching
+        security:
+          strict_transport_security: true
+          x_content_type_options: true
+          x_xss_protection: true
         
       additionalDataSources:
         - name: Loki
@@ -118,9 +133,11 @@ spec:
           access: proxy
           url: http://loki-gateway.monitoring.svc.cluster.local
           jsonData:
-            timeout: 120  # Increased timeout for better reliability
-            maxLines: 5000  # Increased for richer dashboards
-            maxConcurrentShardRequests: 32  # Enable concurrent requests
+            timeout: 60   # Reduced timeout for faster failure detection
+            maxLines: 1000  # Reduced for faster loading (was 5000)
+            maxConcurrentShardRequests: 16  # Reduced to prevent overwhelming
+            derivedFields: []  # Disable derived fields for performance
+            manageAlerts: false  # Disable alert management for performance
             
       resources:
         requests:
