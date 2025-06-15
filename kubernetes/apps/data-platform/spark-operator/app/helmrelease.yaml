@@ -55,13 +55,13 @@ spec:
     # Webhook configuration
     webhook:
       enable: true
-      port: 8080
+      port: 8443
       
       # Webhook service configuration
       service:
         type: ClusterIP
         port: 443
-        targetPort: 8080
+        targetPort: 8443
       
       # Certificate configuration
       certManager:
@@ -112,11 +112,11 @@ spec:
       runAsUser: 1000
       fsGroup: 1000
     
-    # Liveness and readiness probes
+    # Liveness and readiness probes for controller (metrics on 8080)
     livenessProbe:
       httpGet:
         path: /healthz
-        port: 8080
+        port: 8081  # Health probe port
       initialDelaySeconds: 30
       periodSeconds: 30
       timeoutSeconds: 5
@@ -124,8 +124,8 @@ spec:
     
     readinessProbe:
       httpGet:
-        path: /readyz
-        port: 8080
+        path: /readyz  
+        port: 8081  # Health probe port
       initialDelaySeconds: 10
       periodSeconds: 10
       timeoutSeconds: 5
