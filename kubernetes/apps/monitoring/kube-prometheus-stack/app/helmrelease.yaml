@@ -114,9 +114,6 @@ spec:
         unified_alerting:
           enabled: true
           
-        dashboards:
-          default_home_dashboard_path: "/tmp/dashboards/homelab-critical-apps-v2.json"
-          
         panels:
           enable_alpha: false
           disable_sanitize_html: false
@@ -147,10 +144,6 @@ spec:
           level: warn
           filters:
             provisioning.dashboard: error  # Hide noisy dashboard provisioning logs
-            
-        # Set default home dashboard
-        dashboards:
-          default_home_dashboard_path: "/usr/share/grafana/public/dashboards/home.json"
         
       additionalDataSources:
         - name: Loki
