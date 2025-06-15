@@ -120,12 +120,43 @@ data:
     spark.driver.memory=2g
     spark.driver.maxResultSize=1g
 ---
-apiVersion: v1
-kind: Secret
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
 metadata:
   name: s3-credentials
   namespace: data-platform
-type: Opaque
-stringData:
-  access-key-id: "admin"  # Default Ceph admin user
-  secret-access-key: "admin123"  # Default Ceph admin password - TO BE REPLACED
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: ceph-storage-store
+    kind: SecretStore
+  target:
+    name: s3-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: access-key-id
+      remoteRef:
+        key: rook-ceph-object-user-storage-loki
+        property: AccessKey
+    - secretKey: secret-access-key
+      remoteRef:
+        key: rook-ceph-object-user-storage-loki
+        property: SecretKey
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ceph-storage-store
+  namespace: data-platform
+spec:
+  provider:
+    kubernetes:
+      remoteNamespace: storage
+      server:
+        caProvider:
+          type: ConfigMap
+          name: kube-root-ca.crt
+          key: ca.crt
+      auth:
+        serviceAccount:
+          name: external-secrets
