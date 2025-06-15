@@ -73,24 +73,34 @@ spec:
         size: 10Gi
         storageClassName: ceph-block
         
-      # Completely disable sidecar dashboard provisioning for performance
+      # Optimized dashboard provisioning for performance
       sidecar:
         dashboards:
-          enabled: false  # Completely disable dashboard sidecar
+          enabled: true   # Re-enable for essential dashboards
+          searchNamespace: "monitoring"  # Limit search scope
+          watchMethod: watch  # More efficient than list
+          resource: both     # ConfigMaps and Secrets
+          provider:
+            disableDelete: true  # Prevent deletion loops
+            allowUiUpdates: false  # Prevent UI update cycles
+            foldersFromFilesStructure: true
         datasources:
           enabled: true   # Keep datasources enabled
           defaultDatasourceEnabled: true
           
-      # Remove dashboard providers to eliminate provisioning overhead
-      # Dashboards will be manually imported or managed via API
-      dashboardProviders: {}
-      dashboards: {}
-      
-      # Disable all dashboard auto-provisioning
-      dashboardsConfigMaps: {}
-      
-      # Disable default dashboard provisioning path
-      extraConfigmapMounts: []
+      # Configure dashboard providers with minimal refresh
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: true
+              updateIntervalSeconds: 0  # Disable auto-refresh
+              options:
+                path: /tmp/dashboards/default
           
       # Performance optimizations
       grafana.ini:
@@ -141,7 +151,11 @@ spec:
         log:
           level: warn
           filters:
-            provisioning.dashboard: error  # Hide dashboard provisioning logs
+            provisioning.dashboard: error  # Hide noisy dashboard provisioning logs
+            
+        # Set default home dashboard
+        dashboards:
+          default_home_dashboard_path: "/usr/share/grafana/public/dashboards/home.json"
         
       additionalDataSources:
         - name: Loki
