@@ -52,19 +52,9 @@ spec:
         - name: SPARK_OPERATOR_LOG_LEVEL
           value: "INFO"
     
-    # Webhook configuration
+    # Webhook configuration - temporarily disabled to get core operator working
     webhook:
-      enable: true
-      # Use chart defaults: port=9443, health probes on 8081
-      
-      # Webhook resource limits
-      resources:
-        requests:
-          cpu: 50m
-          memory: 64Mi
-        limits:
-          cpu: 200m
-          memory: 256Mi
+      enable: false
     
     # Certificate manager - disabled for simplicity
     certManager:
