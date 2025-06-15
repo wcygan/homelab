@@ -26,6 +26,10 @@ spec:
   values:
     # Controller configuration
     controller:
+      # Namespaces to watch
+      namespaces:
+        - "data-platform"
+      
       # Resource limits for the operator
       resources:
         requests:
