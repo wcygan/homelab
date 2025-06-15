@@ -177,7 +177,8 @@
       "Bash(./scripts/validate-nessie.ts)",
       "Bash(./scripts/test-iceberg-operations.ts)",
       "Bash(./scripts/logging-performance-test.ts)",
-      "Bash(./scripts/validate-iceberg-readiness.ts)"
+      "Bash(./scripts/validate-iceberg-readiness.ts)",
+      "Bash(helm history:*)"
     ],
     "deny": [
       "Bash(kubectl delete kustomization cluster-apps -n flux-system)",

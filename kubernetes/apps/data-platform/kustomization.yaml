@@ -17,6 +17,3 @@ resources:
   # Phase 2: Spark Job Management
   # Note: spark-operator/ks.yaml creates a Kustomization in flux-system namespace
   # It should NOT be included here to avoid namespace override issues
-  
-  # Phase 2: Spark Applications
-  - ./spark-applications/ks.yaml

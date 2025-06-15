@@ -1,0 +1,108 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-history-server
+  namespace: data-platform
+  labels:
+    app.kubernetes.io/name: spark-history-server
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: data-platform
+spec:
+  type: ClusterIP
+  ports:
+  - port: 18080
+    targetPort: 18080
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: spark-history-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history-server
+  namespace: data-platform
+  labels:
+    app.kubernetes.io/name: spark-history-server
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: data-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spark-history-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spark-history-server
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/part-of: data-platform
+    spec:
+      serviceAccountName: spark-application-sa
+      containers:
+      - name: spark-history-server
+        image: apache/spark:3.5.5
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/spark/bin/spark-class
+        - org.apache.spark.deploy.history.HistoryServer
+        env:
+        - name: SPARK_HISTORY_OPTS
+          value: "-Dspark.history.fs.logDirectory=s3a://iceberg-test/spark-events -Dspark.hadoop.fs.s3a.endpoint=http://rook-ceph-rgw-storage.storage.svc:80 -Dspark.hadoop.fs.s3a.path.style.access=true -Dspark.hadoop.fs.s3a.connection.ssl.enabled=false"
+        - name: SPARK_DAEMON_MEMORY
+          value: "1g"
+        - name: SPARK_DAEMON_JAVA_OPTS
+          value: "-Xmx1g -XX:+UseG1GC"
+        envFrom:
+        - secretRef:
+            name: rook-ceph-object-user-storage-iceberg
+        ports:
+        - containerPort: 18080
+          name: http
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 18080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 18080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 200m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+---
+# Optional: Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spark-history-server
+  namespace: data-platform
+  labels:
+    app.kubernetes.io/name: spark-history-server
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: data-platform
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: internal
+  rules:
+  - host: spark-history.k8s.localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: spark-history-server
+            port:
+              number: 18080
